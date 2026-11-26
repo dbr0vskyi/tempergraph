@@ -47,6 +47,42 @@ def test_a_miss_becomes_a_local_candidate_without_request_text(tmp_path: Path) -
     assert [r["new"] for r in hv.harvest(root, spec, "review")] == [False, False]  # idempotent
 
 
+def test_an_escape_becomes_a_local_outcome_candidate_without_text(tmp_path: Path) -> None:  # LIF-AC12, AC 4
+    from tempergraph.run.outcome import with_outcome
+
+    from .test_run import with_outcome_spec
+
+    spec = with_outcome_spec()
+    wf = spec.name
+    root = tmp_path / "state"
+    ts = "2999-01-01T00:00:00+00:00"
+    pull = {"host": "github.com", "repo": "acme/notes", "number": 7, "commit": "abc123"}
+    entry = {"state": "open", "reviews": {"changes_requested": 1}, "comments": 2, "commits": 0, "files": 0}
+    rows = [
+        {"kind": "run_segment", "workflow": wf, "thread_id": f"{wf}/H-1", "ts": ts, "pull_request": pull,
+         "request": CANARY, "outcome": {"revision": 1, "verdict": "met", "criteria": [], "intermediate": [],
+                                        "later": []}},
+        {"kind": "run_segment", "workflow": wf, "thread_id": f"{wf}/H-2", "ts": ts,
+         "outcome": {"revision": 1, "verdict": "met", "criteria": [], "intermediate": [], "later": []}},
+        {"kind": "outcome_later", "workflow": wf, "thread_id": f"{wf}/H-1", "ts": ts, "entry": entry},
+    ]
+    for r in rows:
+        append_jsonl(root / "ledger.jsonl", r)
+    out = hv.harvest(root, spec, "outcome")
+    assert [(r["thread"], r["new"]) for r in out] == [(f"{wf}/H-1", True)]
+    case = hv.read_candidate(Path(out[0]["path"]))
+    assert case["origin"]["pull_request"] == {"host": "github.com", "repo": "acme/notes", "number": 7}
+    assert case["origin"]["entry"]["reviews"] == {"changes_requested": 1}
+    assert "changes_requested" in case["origin"]["signals"]
+    gate = with_outcome(spec).units["outcome"].gate
+    blockers = sorted(cal.judged_blockers(gate))
+    assert blockers and case["suggested"] == [{"criterion": c, "expected": "UNMET"} for c in blockers]
+    written = [p for p in root.rglob("*") if p.is_file() and "h-" in str(p)]
+    assert written and not any(CANARY in p.read_text() for p in written)
+    assert not any("h-" in str(p) for p in tmp_path.rglob("*") if not p.is_relative_to(root))
+    assert [r["new"] for r in hv.harvest(root, spec, "outcome")] == [False]
+
+
 def test_replay_compares_with_the_recorded_score(tmp_path: Path) -> None:  # LIF-B7 to LIF-B16 replay
     pkg, root = tmp_path / "pkg", tmp_path / "state"
     spec = spec_at(pkg)

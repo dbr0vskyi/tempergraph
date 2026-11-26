@@ -66,6 +66,21 @@ WHEN a `gate`, `attempt_start`, `agent_run`, `pause` or `run_exit` record is wri
 
 - GIVEN a `gate` record after a judgement WHEN read THEN its `judgement_seq` is the `seq` of that judgement
 
+### EVT-B26 Usage limit on a session's record
+
+WHEN an `agent_run` record is written THE engine SHALL give it `usage_limit` and `usage_limit_resets_at`, the values of the session's result ([SSN-B11](session-contract.spec.md)).
+
+- GIVEN a session that ends not ok with `usage_limit` true, a reset instant and `error_kind` `model` WHEN its `agent_run` record is read THEN `usage_limit` is true, `usage_limit_resets_at` is that instant and `error_kind` is `model`
+- GIVEN a session that ends ok WHEN its `agent_run` record is read THEN `usage_limit` is false and `usage_limit_resets_at` is null
+
+### EVT-B27 Reset instant on the `pause` record
+
+WHEN a gate pauses for a usage limit ([HUM-B14](gate-and-human.spec.md)) THE engine SHALL give the `pause` record `usage_limit_resets_at`, the value its payload carries, null when the session reported none.
+
+- GIVEN a pause for a usage limit with a reported reset instant WHEN its `pause` record is read THEN `reason` is `usage_limit` and `usage_limit_resets_at` is that instant
+- GIVEN a pause for a usage limit whose executor reported no reset instant WHEN its `pause` record is read THEN `usage_limit_resets_at` is null
+- GIVEN a pause for an approval WHEN its `pause` record is read THEN it has no `usage_limit_resets_at`
+
 ### EVT-B17 Activity journal
 
 WHEN a session runs THE writer that feeds the live progress file SHALL write the session's activity journal at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS](local-observability-store.spec.md)) from the normalized events ([SSN-B7](session-contract.spec.md)), one line per event with `t` (receive time in seconds since spawn), `n` (per-session line number), `ev` (the event name) and the event's fields, plus `capability` and `input_summary` on `tool_started` and `duration_s` on `tool_finished`, append-only, local only, buffered and appended at most once a second, on the `result` event and at session end, never read by the analyzer for cost; in-process observers get each line after it is appended.
@@ -168,6 +183,8 @@ WHEN the activity journal cannot be written, the ledger row or the exit file can
 - EVT-AC6 (EVT-B3, EVT-B22): `events --follow` on a live fixture run prints every record once, in order, and creates nothing
 - EVT-AC7 (EVT-B1, EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B20): A live fixture session shows its `session_opened`, journal lines, resource lines and live file while it runs, and a 30 000-event session is capped as EVT-B7 says
 - EVT-AC8 (EVT-B24): Each hook event is read off its record, and a hook's facts file holds only the listed fields
+- EVT-AC9 (EVT-B26): A scripted-executor run whose step session ends not ok with `usage_limit` true writes an `agent_run` record with `usage_limit` true and the reported `usage_limit_resets_at`, and the `agent_run` record of a session that ends ok has `usage_limit` false and `usage_limit_resets_at` null
+- EVT-AC10 (EVT-B27): The `pause` record of a scripted-executor run paused for a usage limit holds `usage_limit_resets_at` equal to the reported reset, null when none was reported, and the `pause` record of an approval holds no such key
 
 ## Open questions
 

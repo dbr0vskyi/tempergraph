@@ -117,8 +117,11 @@ def test_a_proposal_just_opened_shows_pr_state_unknown(repo: Path) -> None:  # P
 
 
 def test_pull_ref_reads_the_loops_own_pull_request_urls() -> None:  # PRP-B26, task AC 1
-    assert prp.pull_ref(PR) == ("acme/notes", 1)
+    # PRP-AC15: the code host comes with the repository and the number
+    assert prp.pull_ref(PR) == ("example.test", "acme/notes", 1)
+    assert prp.pull_ref("http://example.test/acme/notes/pull/7") == ("example.test", "acme/notes", 7)
     assert prp.pull_ref("https://example.test/acme/notes/issues/1") is None
+    assert prp.pull_ref("https://example.test/acme/notes/pull/1/files") is None
     assert prp.pull_ref("nonsense") is None
     assert prp.pull_ref(None) is None
 

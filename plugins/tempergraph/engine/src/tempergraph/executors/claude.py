@@ -1,6 +1,7 @@
 """The `claude` executor: one headless Claude Code session per step attempt or judge run (ECC).
 
-Argv is built from the constants of ECC-B8, ECC-B9, ECC-B10 and values from the binding table or engine-checked
+Argv is built from the constants of ECC-B8, ECC-B9, ECC-B10, ECC-B18 (every launch is strict about MCP servers) and
+ECC-B20 (the account's connectors are switched off in the environment) and values from the binding table or engine-checked
 numbers (ECC-AC1, SEC-B1). The prompt goes on stdin (EXI-B2). The stream is mapped by ECC-B11 and
 failures are classified by ECC-B12 from structured facts and one exact text match (ECC-B5).
 """
@@ -12,7 +13,7 @@ import json
 import os
 import re
 import shutil
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -57,7 +58,9 @@ HOST_KEEP = ("CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "CLAUDE_CODE_USE_BEDROC
              "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
                 "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
-_VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
+MCP_CONNECTORS_VAR = "ENABLE_CLAUDEAI_MCP_SERVERS"  # ECC-B20: set to `false` on every step, retry and judge launch
+MCP_CONNECTORS_OFF = "false"
+_VERSION_RE =re.compile(r"(\d+\.\d+\.\d+)")
 _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 
 
@@ -121,8 +124,11 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     # ECC-B8, ECC-B14: every step launch names its built-in tools, so a host's tools are never offered
     argv += ["--tools", ",".join(_with_preview(builtin_tools(req.tools), req.commands))]
     argv += ["--disallowedTools", ALWAYS_DISALLOWED]
-    if req.enforce_tools and mcp_config is not None and any(t.startswith("mcp:") for t in req.tools):
-        argv += ["--strict-mcp-config", "--mcp-config", str(mcp_config)]
+    # ECC-B18: every step launch is strict, so no MCP server of the account, the user or the repository is offered;
+    # ECC-B8: a config is named only when the step declares an MCP tool
+    argv += ["--strict-mcp-config"]
+    if mcp_config is not None and any(t.startswith("mcp:") for t in req.tools):
+        argv += ["--mcp-config", str(mcp_config)]
     applied: list[str] = []
     o = req.options
     if o.effort in _EFFORTS:
@@ -199,7 +205,8 @@ def judge_argv(views: ViewSet, model: str | None, *, isolated: bool, mcp_config:
     if mcp_config is not None and mcp:
         return argv + ["--tools", ",".join(tools), "--strict-mcp-config", "--mcp-config", str(mcp_config),
                        "--permission-mode", "dontAsk", "--allowedTools", ",".join([*tools, *mcp])]
-    argv += ["--tools", ",".join(tools), "--disallowedTools", "mcp__*", "--permission-mode", "dontAsk",
+    argv += ["--tools", ",".join(tools), "--strict-mcp-config", "--disallowedTools", "mcp__*",
+             "--permission-mode", "dontAsk",
              "--allowedTools", ",".join(tools)]
     return argv
 
@@ -210,7 +217,7 @@ def _money(v: float) -> str:
 
 def step_env(model: str | None, host: Mapping[str, str] | None = None) -> dict[str, str]:
     host = os.environ if host is None else host
-    env: dict[str, str] = {}
+    env: dict[str, str] = {MCP_CONNECTORS_VAR: MCP_CONNECTORS_OFF}  # ECC-B20: no claude.ai connector, whatever the host
     if "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR" not in host:
         env["CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR"] = "1"
     if model is not None:
@@ -355,6 +362,12 @@ def _credentials(profile: str | None, home: Path | None) -> dict[str, str]:
     return env
 
 
+def _mask_private(res: SessionResult) -> SessionResult:
+    """The path of a private configuration is in no record the engine keeps (SEC-B12)."""
+    res.argv = tuple("<private>" if i and res.argv[i - 1] == "--mcp-config" else a for i, a in enumerate(res.argv))
+    return res
+
+
 class ClaudeExecutor:
     name = NAME
 
@@ -391,6 +404,10 @@ class ClaudeExecutor:
             return self._probe
         helptext = run_probe([path, "--help"]).stdout
         flags = sorted(f for f in PROBED_FLAGS if f in helptext)
+        if "--strict-mcp-config" not in flags:
+            self._probe = ProbeReport(ok=False, reason="probe_failed", version=m.group(1), path=path,
+                                      facts={"flags": flags, "missing_flags": ["--strict-mcp-config"]})
+            return self._probe
         auth = run_probe([path, "auth", "status"])
         logged_in = False
         try:
@@ -420,15 +437,29 @@ class ClaudeExecutor:
             fallback = self.binding.model(fb) if fb else None
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
-        argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
-        return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
+        declared = mcpconfig.declared_servers(req.tools)
+        if not declared or self.mcp_config is not None:
+            argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
+            return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
+        servers = mcpconfig.operator_servers(req.workdir)
+        undefined = [s for s in declared if s not in servers]
+        base = mcpconfig.scratch_base(req.session_dir)
+        if undefined or base is None:  # a declared server is never dropped silently (ECC-B23)
+            why = ("MCP server not defined in the operator's configuration: " + ", ".join(undefined)
+                   if undefined else "no scratch folder for the private MCP config; declared servers: "
+                   + ", ".join(declared))
+            return SessionResult(ok=False, error_kind="refused", text=why)
+        with mcpconfig.private_config(declared, servers, base, direct=True) as cfg:  # removed on every exit path
+            argv, applied = step_argv(req, model, fallback, self._flags(), cfg)
+            res = self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
+        return _mask_private(res)
 
     def run_judge(self, req: SessionRequest, views: ViewSet, sink: EventSink) -> SessionResult:
         try:
             model = self.binding.model(req.alias)
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
-        env = _credentials(req.credentials_profile, self._home)
+        env = {**_credentials(req.credentials_profile, self._home), MCP_CONNECTORS_VAR: MCP_CONNECTORS_OFF}  # ECC-B20
         viewed = mcpconfig.viewed_servers(views.tools)
         servers = mcpconfig.operator_servers(req.workdir) if viewed else {}
         usable = {s: t for s, t in viewed.items() if mcpconfig.classify(s, servers) == "proxiable"}
@@ -442,9 +473,13 @@ class ClaudeExecutor:
             argv = judge_argv(replace(views, tools=tuple(offered)), model, isolated=CLAUDE.isolates_user_config,
                               mcp_config=cfg)
             res = self._run(req, argv, (), env, sink, idle_s=None)
-        # the path of the private configuration is in no record the engine keeps (SEC-B12)
-        res.argv = tuple("<private>" if i and res.argv[i - 1] == "--mcp-config" else a for i, a in enumerate(res.argv))
-        return res
+        return _mask_private(res)
+
+    def undefined_mcp_servers(self, tools: Sequence[str], workdir: Path | None = None) -> list[str]:
+        """ECC-B22: each declared MCP server the operator's own configuration does not define, in first-seen order;
+        an unreadable configuration defines none."""
+        defined = mcpconfig.operator_servers(workdir if workdir is not None else Path.cwd())
+        return [s for s in mcpconfig.declared_servers(tools) if s not in defined]
 
     def unreachable_views(self, views: ViewSet, workdir: Path) -> dict[str, str]:
         """ECC-B15: each viewed MCP server with no working proxy, with its reason; checked before the judge prompt."""
@@ -497,6 +532,7 @@ def _spent_allowance(info: Mapping[str, Any]) -> tuple[bool, float | None]:
     return True, float(at)
 
 
-# Live probe facts of ECC-B13 and their recorded state; none has run on a signed-in host yet (T0.1).
-LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 13)}
+# Live probe facts of ECC-B13 and their recorded state: P-CC-13 was run by the operator on 2026-11-25 (live row L-43);
+# P-CC-1 to P-CC-12 have not been run on a signed-in host yet.
+LIVE_FACTS: dict[str, str] = {**{f"P-CC-{i}": "not run" for i in range(1, 13)}, "P-CC-13": "confirmed"}
 ClaudeExecutor.live_facts = LIVE_FACTS  # type: ignore[attr-defined]  # read by `executors` (CLI-B3)

@@ -93,6 +93,11 @@
       "decision"
     ],
     [
+      "outline.human",
+      "outline.judge",
+      "decision"
+    ],
+    [
       "draft.step",
       "draft.judge",
       "next"
@@ -150,6 +155,11 @@
     [
       "draft.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "draft.human",
+      "draft.judge",
       "decision"
     ],
     [
@@ -210,6 +220,11 @@
     [
       "review.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "review.human",
+      "review.judge",
       "decision"
     ],
     [
@@ -285,6 +300,11 @@
     [
       "outcome.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "outcome.judge",
       "decision"
     ],
     [
@@ -298,5 +318,5 @@
       "next"
     ]
   ],
-  "digest": "a61c8ccc145f65880ba6b3e4a0f75073d75d6f1960922b7aa3480f7d0b199543"
+  "digest": "48aebc18b1de1732ed2812a1f1407449e4f7a0485fac8280a044ee29af9abc59"
 }

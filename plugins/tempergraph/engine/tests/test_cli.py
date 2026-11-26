@@ -70,6 +70,51 @@ def test_pause_exits_3_and_resume_finishes(repo: Path) -> None:
     assert code == 0, err
 
 
+def test_resume_dry_run_files_nothing_for_the_whole_thread(
+        repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    # ROP-AC12 (ROP-B14), task AC 9
+    from tempergraph import detach
+    from tempergraph.improve import child
+    from tempergraph.improve.codehost import MemoryCodeHost
+    from tempergraph.store.layout import home_path
+
+    from .test_loop_child import judge_says
+
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    monkeypatch.setattr(detach, "start", lambda *a, **k: True)  # the child is drained below
+    for verb in ("resume", "run"):
+        capsys.readouterr()
+        cli(repo, None, verb, "--help")
+        assert "--dry-run" in capsys.readouterr().out, verb
+
+    ex = standin("claude", steps=[DRAFT, DRAFT], judges=[judge(verdict_block("UNMET")),
+                                                         judge(verdict_block("UNVERIFIABLE"))])
+    code, _, err = cli(repo, ex, "run", "demo", "notes", "--task-id", "D-1")
+    assert code == ExitCode.PAUSED, err
+    ex.steps, ex.judges = [REVIEW], [judge(verdict_block("UNVERIFIABLE"))]
+    code, _, err = cli(repo, ex, "resume", "demo", "D-1", "--decision", "proceed", "--dry-run")
+    assert code == ExitCode.PAUSED, err  # a second pause: the hold must outlast this segment
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", "D-1", "--decision", "proceed")  # no --dry-run here
+    assert code == 0, err
+    tickets = sorted(child.tickets_dir(home_path()).glob("*.json"))
+    assert tickets and json.loads(tickets[0].read_text())["dry_run"] is True
+    for t in tickets:
+        doc = json.loads(t.read_text())
+        doc["issue_repository"] = "team/notes"
+        t.write_text(json.dumps(doc))
+    host = MemoryCodeHost(down=True)  # any call would raise
+    outs = child.drain(registry=_loop_registry(judge_says(0.9)), host=lambda: host)
+    assert "would_file" in {r["op"] for o in outs for r in o["results"]} and not host.issues
+    assert not host.comments
+
+
+def _loop_registry(reply: Any) -> Registry:
+    reg = Registry()
+    reg.register(standin("claude", judges=[reply]))
+    return reg
+
+
 def test_check_creates_nothing(repo: Path) -> None:
     before = hash_tree(repo)
     code, doc, _ = cli(repo, happy(), "run", "demo", "Release notes", "--check")
@@ -139,7 +184,7 @@ def test_stop_needs_a_live_run(repo: Path) -> None:  # RCT-AC5
     assert not stop_file(state_root_path(repo), "demo", "T-4").exists()  # no request file is left
 
 
-def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
+def test_executors_lists_live_facts_with_their_state(repo: Path) -> None:
     from tempergraph.executors.claude import ClaudeExecutor
 
     reg = Registry()
@@ -147,7 +192,10 @@ def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
     out = io.StringIO()
     assert main(["executors"], catalog=Catalog(), registry=reg, cwd=repo, out=out, err=io.StringIO()) == 0
     row = json.loads(out.getvalue())["executors"][0]
-    assert row["name"] == "claude" and set(row["live_facts"].values()) == {"not run"}  # CLI-B3
+    facts = row["live_facts"]
+    assert row["name"] == "claude" and set(facts.values()) == {"confirmed", "not run"}  # CLI-B3, AC 6
+    assert facts["P-CC-13"] == "confirmed"
+    assert all(facts[f"P-CC-{i}"] == "not run" for i in range(1, 13))
 
 
 def test_exit_codes_match_the_contract() -> None:

@@ -16,7 +16,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from tempergraph.contracts import WorkflowSpec
+from tempergraph.contracts import RunOptions, WorkflowSpec
 from tempergraph.durability.lock import LockHeld, RunLock, is_held
 from tempergraph.durability.status import Selector, _read, select, split_thread
 from tempergraph.executors.registry import Registry, default_registry
@@ -100,8 +100,11 @@ def _settle_thread(root: Path, spec: WorkflowSpec, tid: str, registry: Registry)
         if child.started_for(root, spec.name, task, tid, REASON):  # SIL-B31: once per thread
             return
         judges = (started.get("executors") or {}).get("judges") or {}
+        snap_options = (values.get("run") or {}).get("options") or {}  # as `settle_resume` reads them (PRP-B31)
+        options = RunOptions(settings={k: dict(v) for k, v in (snap_options.get("settings") or {}).items()},
+                             profiles=tuple(snap_options.get("profiles") or ()))
         runner.hand_to_loop(root, spec, task, tid, summary, None, registry, judges,
-                            run_cost_usd=cost.reported + cost.estimated_only, trigger=REASON)
+                            run_cost_usd=cost.reported + cost.estimated_only, trigger=REASON, options=options)
     finally:
         lock.release()
 

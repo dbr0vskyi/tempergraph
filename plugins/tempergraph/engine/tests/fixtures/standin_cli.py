@@ -25,7 +25,7 @@ def main() -> int:
         print(sc.get("version", "2.1.329 (Claude Code)"))
         return 0
     if args[:1] == ["--help"]:
-        print(sc.get("help", "--permission-prompts --tools --bare --setting-sources --max-budget-usd"))
+        print(sc.get("help", "--permission-prompts --tools --bare --setting-sources --max-budget-usd --strict-mcp-config"))
         return 0
     if args[:2] == ["auth", "status"]:
         print(json.dumps({"loggedIn": sc.get("logged_in", True)}))

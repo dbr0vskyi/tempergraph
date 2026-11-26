@@ -1,4 +1,5 @@
-"""Filing findings to the repository that owns the fault (SIL-B2, B3, B6, B7, SIL-B19, SIL-B20, ISS-B7 to B10).
+"""Filing findings to the repository that owns the fault (SIL-B2, B3, B6, B7, SIL-B18, SIL-B19, SIL-B20, SIL-B35,
+ISS-B7 to B10, ISS-B12).
 
 Publishing code: it reads findings (metadata) and the context the loop child built from the run log's ids, enums
 and numbers (`issue_context`), and never imports or opens the evidence file. An issue's title and body are built
@@ -54,6 +55,7 @@ class Candidate:
     records: Sequence[Mapping[str, Any]] = ()  # the run log's records, read for ISS-B8 to ISS-B10 through issue_context
     mode: str | None = None  # the workflow's improvement mode (ISS-B8)
     judge_executor: str | None = None  # the loop's judge executor (ISS-B8)
+    earlier_answers: Sequence[bool] = ()  # the attributed flags already recorded for the fingerprint in the window
 
 
 @dataclass(kw_only=True)
@@ -62,7 +64,8 @@ class Decision:
     reason: str
     candidate: Candidate
     repo: str | None = None
-    counts: dict[str, int] = field(default_factory=dict)
+    counts: dict[str, int] = field(default_factory=dict)  # the pattern figures an issue body shows
+    counted: dict[str, int] = field(default_factory=dict)  # runs, requests, machines of a judged friction fault
 
 
 def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
@@ -76,32 +79,94 @@ def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
     return issue_repository or None
 
 
+def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime | None) -> tuple[dict[str, int], bool]:
+    """SIL-B3: the runs, distinct requests and machines that record the candidate's fingerprint inside the window,
+    and whether they meet the pattern rule. Both lenses count here (SIL-B18)."""
+    f = c.finding
+    now = now or datetime.now(UTC)
+    since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
+    same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
+    runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
+    first: dict[str, str] = {}  # SIL-B3: a thread counts its request once, by the first digest it recorded
+    for h in sorted(same, key=lambda h: str(h.get("at") or "")):
+        t = str(h.get("thread"))
+        if h.get("request_digest") and t not in first:
+            first[t] = str(h["request_digest"])
+    if c.request_digest:
+        first[str(f.get("thread"))] = c.request_digest  # the exit's run counts by its own digest
+    reqs = set(first.values())
+    counts = {"runs": len(runs), "requests": len(reqs),
+              "machines": len({str(h.get("machine")) for h in same} | {str(f.get("machine"))})}
+    met = len(runs) >= params.value("pattern_rule.min_runs") and len(reqs) >= params.value(
+        "pattern_rule.min_distinct_requests")
+    return counts, met
+
+
+def recorded_answers(root: Path, workflow: str, now: datetime | None = None) -> dict[str, list[bool]]:
+    """SIL-B18, SIL-B36: the `attributed` flags of the `loop_judged` answers of the workflow's runs in the state
+    root, per fingerprint, inside `pattern_rule.window_days` by the record's time, oldest first."""
+    now = now or datetime.now(UTC)
+    since = now - timedelta(days=int(params.value("pattern_rule.window_days")))
+    rows: list[tuple[datetime, str, bool]] = []
+    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for ln in lines:
+            try:
+                rec = json.loads(ln)
+                if rec.get("kind") != "loop_judged":
+                    continue
+                at = datetime.fromisoformat(str(rec.get("ts")).replace("Z", "+00:00"))
+                at = at if at.tzinfo else at.replace(tzinfo=UTC)
+                if at < since:
+                    continue
+                for a in rec.get("answers") or []:
+                    rows.append((at, str(a["fingerprint"]), bool(a["attributed"])))
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+    out: dict[str, list[bool]] = {}
+    for _, fp, flag in sorted(rows, key=lambda r: r[0]):
+        out.setdefault(fp, []).append(flag)
+    return out
+
+
 def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository: str,
            now: datetime | None = None) -> Decision:
-    """Whether a candidate files, or is only recorded, and why (SIL-B12 to SIL-B16, B3, B7)."""
+    """Whether a candidate files, or is only recorded, and why (SIL-B12 to SIL-B16, B3, B7). A friction finding
+    files only when its judge attributed it and either its confidence is at or above the floor or its fingerprint
+    meets the pattern rule on a majority of the recorded answers (SIL-B18); one that does not file carries one of
+    `not_judged` (SIL-B35), `not_attributed`, `few_answers` or `below_count`."""
     f = c.finding
     repo = repository(f, issue_repository)
     if f.get("class") != "fault":
         return Decision(action="record", reason=str(f.get("class")), candidate=c)
     if repo is None:
         return Decision(action="record", reason="host" if f.get("side") == "host" else "no_repository", candidate=c)
-    if c.lens == "outcome" and not c.calibrated:
+    escape = str(f.get("cause") or "").split(":", 1)[0] == "outcome_escape"  # SIL-B34: the pattern rule alone
+    if c.lens == "outcome" and not c.calibrated and not escape:
         return Decision(action="record", reason="uncalibrated", candidate=c)  # SIL-B7
-    if c.lens == "friction" and (c.confidence is None
-                                 or c.confidence < params.value("friction.file_confidence") or not c.attributed):
-        return Decision(action="record", reason="not_judged" if c.confidence is None else "below_floor", candidate=c)
+    if c.lens == "friction":
+        if c.confidence is None:
+            return Decision(action="record", reason="not_judged", candidate=c)  # SIL-B35
+        counts, met = _pattern(c, history, now)
+        if not c.attributed:
+            return Decision(action="record", reason="not_attributed", candidate=c, counted=counts)
+        answers = [*c.earlier_answers, True]
+        majority = len(answers) >= 2 and 2 * sum(answers) > len(answers)  # SIL-B18: more than half, two or more
+        if met and majority:  # the count files at any confidence
+            return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts,
+                            counted=counts)
+        if c.confidence >= params.value("friction.file_confidence"):
+            return Decision(action="file", reason="fault", candidate=c, repo=repo, counted=counts)
+        if met:
+            reason = "few_answers" if len(answers) == 1 else "not_attributed"
+            return Decision(action="record", reason=reason, candidate=c, counted=counts)
+        return Decision(action="record", reason="below_count", candidate=c, counted=counts)
     if c.lens == "outcome" and f.get("side") == "workflow":  # SIL-B3; one clear engine fault is enough
-        now = now or datetime.now(UTC)
-        since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
-        same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
-        runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
-        reqs = {str(h.get("request_digest")) for h in same if h.get("request_digest")}
-        if c.request_digest:
-            reqs.add(c.request_digest)
-        counts = {"runs": len(runs), "requests": len(reqs),
-                  "machines": len({str(h.get("machine")) for h in same} | {str(f.get("machine"))})}
-        if len(runs) < params.value("pattern_rule.min_runs") or len(reqs) < params.value(
-                "pattern_rule.min_distinct_requests"):
+        counts, met = _pattern(c, history, now)
+        if not met:
             return Decision(action="record", reason="pattern_not_met", candidate=c, repo=repo,
                             counts={**counts, "scope_local": 1})
         return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts)
@@ -336,12 +401,41 @@ def _match_open(issues: Sequence[Mapping[str, Any]], fps: Sequence[str], key: st
     return next((i for i in order if _holds(i, [_cause_line(key)])), None)
 
 
+def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> dict[tuple[str, int], int]:
+    """ISS-B13: the `issue_commented` records of the workflow's runs in the state root dated on `now`'s UTC day,
+    counted per (repo, issue number). An unreadable file or line is skipped."""
+    day = (now or datetime.now(UTC)).astimezone(UTC).date()
+    out: dict[tuple[str, int], int] = {}
+    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for ln in lines:
+            try:
+                rec = json.loads(ln)
+                if rec.get("kind") != "issue_commented":
+                    continue
+                at = datetime.fromisoformat(str(rec.get("ts")).replace("Z", "+00:00"))
+                at = at if at.tzinfo else at.replace(tzinfo=UTC)
+                if at.astimezone(UTC).date() != day:
+                    continue
+                key = (str(rec["repo"]), int(rec["number"]))
+                out[key] = out.get(key, 0) + 1
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+    return out
+
+
 def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False,
-         now: datetime | None = None) -> list[dict[str, Any]]:
+         now: datetime | None = None, comments_today: Mapping[tuple[str, int], int] | None = None
+         ) -> list[dict[str, Any]]:
     """SIL-B2, ISS-B7: the findings of one cause key go to one issue: a comment on the open issue that holds one of
-    their fingerprints or the cause key, else (ISS-B3 to ISS-B6: not planned mutes, completed links a possible
-    regression) one new issue for all of them; ISS-B9: issues are read from the label list, once per repository and
-    state; a dry run makes no call (SIL-B6)."""
+    their fingerprints or the cause key, else (ISS-B3 to ISS-B6: not planned or duplicate mutes, completed links a
+    possible regression) one new issue for all of them; ISS-B13: a comment over `seen_again.max_per_issue_per_day`
+    (with `comments_today`, the comments each (repo, number) got on `now`'s UTC day) is not sent and leaves one
+    `comment_capped` result; ISS-B9: issues are read from the label list, once per repository and state; a dry run
+    makes no call (SIL-B6)."""
     results: list[dict[str, Any]] = []
     now = now or datetime.now(UTC)
     if not dry_run:
@@ -362,6 +456,7 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             continue
         groups.setdefault((d.repo, cause_key(f)), []).append(d)
     listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]] = {}
+    sent_now: dict[tuple[str, int], int] = {}  # the comments this call has sent, by (repo, issue number)
     for (repo, key), ds in groups.items():
         fps = list(dict.fromkeys(str(x.candidate.finding.get("fingerprint")) for x in ds))
         note = None
@@ -383,12 +478,18 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             elif last is not None:
                 reason = str(last.get("state_reason") or "")
                 days = float(params.value("mute.days"))
-                if reason == "not_planned" and now - _closed_at(last) < timedelta(days=days):
+                if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
                     results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
                     continue
                 if reason == "completed" and last.get("number") is not None:
                     regression = int(last["number"])  # ISS-B4
         f = ds[0].candidate.finding
+        if match is not None:  # ISS-B13: at most the bound of "seen again" comments to one issue in one UTC day
+            ident = (repo, int(match["number"]))
+            if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+                    params.value("seen_again.max_per_issue_per_day")):
+                results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fps[0]})
+                continue
         if match is not None:
             p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0],
                  "body": comment_body(ds)}
@@ -402,6 +503,9 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             results += [{"op": "queued", "fingerprint": fp} for fp in fps]
             continue
         op = "commented" if p["op"] == "comment" else "filed"
-        results.append({"op": op, "url": url, "fingerprint": fps[0], **({"note": note} if note else {})})
+        if op == "commented":
+            sent_now[(repo, int(p["number"]))] = sent_now.get((repo, int(p["number"])), 0) + 1
+        where = {"repo": repo, **({"number": int(p["number"])} if op == "commented" else {})}  # FFD-B5
+        results.append({"op": op, "url": url, "fingerprint": fps[0], **where, **({"note": note} if note else {})})
         results += [{"op": "grouped", "url": url, "fingerprint": fp, "with": fps[0]} for fp in fps[1:]]
     return results

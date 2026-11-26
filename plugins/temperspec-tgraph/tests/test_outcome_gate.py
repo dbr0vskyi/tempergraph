@@ -15,7 +15,7 @@ from typing import Any
 from tempergraph.package.loader import load_package
 from tempergraph.run.checks import CheckContext, GitFacts, git_facts, run_check
 from tempergraph.run.judging import JudgeInputs, render_judge
-from tempergraph.run.outcome import deliverable_producers, outcome_unit
+from tempergraph.run.outcome import deliverable_producers, derived_back, outcome_unit
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = load_package(ROOT).spec
@@ -264,3 +264,96 @@ def test_ogt_ac13_the_result_is_the_same_with_the_branch_pushed_or_not(tmp_path:
                         out_dir=tmp_path.parent / f"{tmp_path.name}.code", deadline_at=time.monotonic() + 60)
     for evidence in (str(checks._result(code, []).evidence), str(checks.code_check(code).evidence)):
         assert "branch is pushed" not in evidence and "branch is not pushed" not in evidence, evidence
+
+
+# -- where a failing judged criterion goes back to (OGT-B6 to OGT-B10) ------------------------------------------
+
+FULL_DISCOVERY_PATH = ["triage", "owner_questions", "ask_route", "read_gap", "discovery", "plan", "code"]
+
+
+def _serving(final: str) -> set[str]:
+    """The units that hold a criterion serving the final criterion, read from the loaded outcome record."""
+    return {unit for unit, io in SPEC.outcome.intermediate.items()  # type: ignore[union-attr]
+            if any(final in c.serves for c in io.criteria)}
+
+
+def _back(failing: list[str], path: list[str]) -> str | None:
+    """The engine's own routing on the loaded package (`derived_back`), with the units in the order of the package."""
+    assert set(path) <= set(SPEC.order), set(path) - set(SPEC.order)
+    taken = [unit for unit in SPEC.order if unit in path]
+    back = derived_back(SPEC, failing, taken)
+    assert back is None or back in GATE.back_targets, (back, GATE.back_targets)
+    return back
+
+
+def test_ogt_ac14_a_failing_spec_sync_goes_back_to_the_full_discovery() -> None:  # OGT-AC14, AC 1
+    assert _back(["ts-spec-sync"], FULL_DISCOVERY_PATH) == "discovery"
+    assert not _serving("ts-spec-sync") & {"setup", "triage", "list_components", "read_component", "read_gap"}
+
+
+def test_ogt_ac15_a_failing_spec_sync_goes_back_to_the_full_discovery_not_the_setup_step() -> None:  # OGT-AC15, AC 1
+    setup_path = ["list_components", "read_component", "setup", "triage", "discovery", "plan", "code"]
+    assert _back(["ts-spec-sync"], setup_path) == "discovery"
+    short_then_full = ["triage", "discovery_short", "read_gap", "discovery", "plan"]
+    assert _back(["ts-spec-sync"], short_then_full) == "discovery"
+
+
+def test_ogt_ac16_a_failing_spec_sync_goes_back_to_the_plan_step_after_the_short_visit() -> None:  # OGT-AC16, AC 2
+    assert _back(["ts-spec-sync"], ["triage", "discovery_short", "plan", "code"]) == "plan"
+
+
+def test_ogt_ac17_a_failing_spec_sync_goes_back_to_the_plan_step_from_triage() -> None:  # OGT-AC17, AC 2
+    assert _back(["ts-spec-sync"], ["triage", "plan", "code"]) == "plan"
+
+
+def test_ogt_ac18_a_failing_spec_sync_on_the_quick_lane_goes_back_to_the_code_step() -> None:  # OGT-AC18, AC 2
+    assert _back(["ts-spec-sync"], ["triage", "code"]) == "code"
+
+
+def test_ogt_ac19_a_failing_accepted_criterion_goes_back_to_the_triage_step() -> None:  # OGT-AC19, AC 5
+    assert _back(["ts-accepted"], FULL_DISCOVERY_PATH) == "triage"
+
+
+def test_ogt_ac20_several_failing_criteria_go_back_to_the_earliest_step() -> None:  # OGT-AC20, AC 5
+    assert _back(["ts-spec-sync", "ts-accepted"], FULL_DISCOVERY_PATH) == "triage"
+
+
+# -- the outcome judge is told to state the place and the fix (OGT-B12) -----------------------------------------
+
+
+def _folded(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def test_ogt_ac22_the_brief_asks_for_the_place_and_the_fix_of_a_failing_criterion() -> None:  # OGT-AC22, AC 3
+    judge = GATE.judge
+    assert judge is not None
+    prompt = render_judge(JudgeInputs(gate=GATE, stance=judge.stance, brief="", request="the task", references={}))
+    sentence = ("For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and "
+                "the fix, in one line.")
+    assert _folded(sentence) in _folded(prompt), prompt
+    for phrase in ("quote the line you relied on", "grade a criterion partial, not met"):
+        assert phrase in _folded(prompt), phrase
+
+
+# -- the decision record, the spec and the authoring record agree (AC 5) ----------------------------------------
+
+
+def test_the_decision_record_agrees_with_the_serving_and_the_spec_states_each_judged_criterion() -> None:  # AC 5
+    assert _serving("ts-spec-sync") == {"discovery", "plan", "code"}
+    outcome = json.loads((ROOT / "outcome.json").read_text())
+    serving = {c["id"] for unit in outcome["intermediate"].values() for c in unit["criteria"]
+               if "ts-spec-sync" in c.get("serves", [])}
+    assert serving == {"ts-dis-links", "ts-plan-spec", "ts-code-related"}, serving
+    record = (ROOT / "docs" / "adr" / "ts-spec-sync.adr.md").read_text(encoding="utf-8")
+    for name in sorted(serving) + ["OGT-B6", "OGT-B7", "OGT-B8", "OGT-B11", "OGT-B12"]:
+        assert name in record, name
+    spec = (ROOT / "docs" / "specs" / "outcome-gate.spec.md").read_text(encoding="utf-8")
+    for criterion in outcome["final"]:
+        if criterion.get("verified_by") == "judge":
+            assert f"`{criterion['id']}`" in spec, criterion["id"]
+    authoring = json.loads((ROOT / "authoring.json").read_text())
+    d1 = next(d for d in authoring["decisions"] if d["id"] == "d1")
+    assert d1["subject"] == "ts-spec-sync"
+    assert "step that owns the specs" in d1["choice"], d1["choice"]
+    assert "ts-plan-spec" in d1["consequence"], d1["consequence"]

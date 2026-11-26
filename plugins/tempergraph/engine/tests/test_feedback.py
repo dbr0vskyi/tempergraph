@@ -106,10 +106,10 @@ def test_refusals_write_nothing(repo: Path) -> None:  # RRN-B16, RRN-B17, RRN-B1
     assert hash_tree(repo / ".tempergraph") == before
 
 
-def test_feedback_on_an_unfinished_thread(repo: Path) -> None:  # RRN-B4
+def test_feedback_on_an_unfinished_thread(repo: Path) -> None:  # RRN-B4, CMP-AC8
     seen = Seen()
-    ex = standin("claude", steps=[seen(DRAFT)], judges=[seen(judge())])
-    code, _, _ = cli(repo, ex, "run", "demo", "notes", "--task-id", "F-5", "--set", "run.attempt_cap=1")
+    ex = standin("claude", steps=[seen(DRAFT), seen(DRAFT)], judges=[seen(judge(verdict_block("UNMET"))), seen(judge())])
+    code, _, _ = cli(repo, ex, "run", "demo", "notes", "--task-id", "F-5", "--set", "run.attempt_cap=1")  # the retry counts
     assert code != 0  # drained before review started
     ex.steps, ex.judges = [seen(REVIEW)], [seen(judge())]
     code, _, err = cli(repo, ex, "resume", "demo", "F-5", "--decision", "proceed", "--feedback", "z")

@@ -50,7 +50,7 @@ def _reopen(rec: Mapping[str, Any], host: CodeHost, outbox: filing.Outbox) -> No
     done: set[int] = set()
     for url in (rec.get("cluster") or {}).get("issues") or []:
         issue = prp.issue_ref(url)
-        if issue is None or issue[0] != ref[0] or issue[1] in done:
+        if issue is None or issue[0] != ref[1] or issue[1] in done:
             continue
         done.add(issue[1])
         try:

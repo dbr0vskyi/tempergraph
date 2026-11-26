@@ -14,6 +14,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+from urllib.parse import quote
 
 REPO = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
 LOOP_LABEL = "tempergraph-loop"  # the label every loop issue carries (ISS-B1); its list read (ISS-B9) filters on it
@@ -21,6 +22,10 @@ LOOP_LABEL = "tempergraph-loop"  # the label every loop issue carries (ISS-B1); 
 
 class CodeHostError(Exception):
     pass
+
+
+class NotFound(CodeHostError):
+    """The host answered `HTTP 404`."""
 
 
 class CodeHost(Protocol):
@@ -36,6 +41,47 @@ class PullRequestHost(Protocol):
     def default_branch(self, repo: str) -> str: ...
     def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str: ...
     def pull_state(self, repo: str, number: int) -> dict[str, Any]: ...
+
+
+class PullReviewHost(Protocol):
+    """Read-only questions about a pull request's reviews, review comments and commits. Each answer holds an
+    author kind (`person`, `bot` or `other`); the text of a review or comment is for local use only. Only the
+    commits after `after` hold their changed files."""
+
+    def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]: ...
+    def pull_comments(self, repo: str, number: int) -> list[dict[str, Any]]: ...
+    def pull_commits(self, repo: str, number: int, after: str = "") -> list[dict[str, Any]]: ...
+
+
+REVIEW_STATES = ("approved", "changes_requested", "commented", "dismissed")
+SHA = re.compile(r"^[0-9a-f]{7,64}$")
+STANDING = ("OWNER", "MEMBER", "COLLABORATOR")
+
+
+def _kind(user: Any, association: Any = None) -> str:
+    """`bot` for a `Bot` account or a `[bot]` login; `person` only for a `User` whose standing the host gives
+    (`association` of `OWNER`, `MEMBER` or `COLLABORATOR`); `other` for anything else, a missing user included."""
+    if not isinstance(user, dict):
+        return "other"
+    login = str(user.get("login") or "")
+    if user.get("type") == "Bot" or login.endswith("[bot]"):
+        return "bot"
+    return "person" if user.get("type") == "User" and association in STANDING else "other"
+
+
+def _records(text: str) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for ln in text.splitlines():
+        if not ln.strip():
+            continue
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            raise CodeHostError("the pull request answer is not JSON") from None
+        if not isinstance(r, dict):
+            raise CodeHostError("the pull request answer has no known shape")
+        out.append(r)
+    return out
 
 
 BRANCH = re.compile(r"^(improve/[A-Za-z0-9_.-]{1,80}|tempergraph/upgrade/[A-Za-z0-9_.-]{1,80}/[A-Za-z0-9_.-]{1,40})$")
@@ -72,6 +118,8 @@ class GhCodeHost:
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise CodeHostError(type(exc).__name__) from None
         if proc.returncode != 0:
+            if "HTTP 404" in (proc.stderr or ""):
+                raise NotFound("HTTP 404")
             raise CodeHostError(f"gh exited {proc.returncode}")
         return proc.stdout
 
@@ -139,6 +187,86 @@ class GhCodeHost:
             raise CodeHostError("the pull request answer has no known state")
         return {"state": str(state), "merged_at": None}
 
+    def _paged(self, repo: str, number: int, part: str) -> list[dict[str, Any]]:
+        text = self._run(["api", "--method", "GET", f"repos/{_check(repo)}/pulls/{int(number)}/{part}",
+                          "-f", "per_page=100", "--paginate", "--jq", ".[]"])
+        return _records(text)
+
+    def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
+        """One read-only GET: each review with its lower-case state and author kind; a pending review is left out."""
+        out: list[dict[str, Any]] = []
+        for r in self._paged(repo, number, "reviews"):
+            state = str(r.get("state") or "").lower()
+            if state == "pending":
+                continue
+            if state not in REVIEW_STATES:
+                raise CodeHostError("the review answer has no known state")
+            out.append({"state": state, "author_kind": _kind(r.get("user"), r.get("author_association")),
+                        "text": str(r.get("body") or ""),
+                        "submitted_at": str(r.get("submitted_at") or "")})
+        return out
+
+    def pull_comments(self, repo: str, number: int) -> list[dict[str, Any]]:
+        """One read-only GET: each review comment with its author kind."""
+        return [{"author_kind": _kind(r.get("user"), r.get("author_association")), "text": str(r.get("body") or ""),
+                 "path": str(r.get("path") or ""), "created_at": str(r.get("created_at") or "")}
+                for r in self._paged(repo, number, "comments")]
+
+    def _collaborator(self, repo: str, login: str) -> bool:
+        """One read-only GET of the repository's collaborator check: no answer body is a yes, `HTTP 404` a no."""
+        try:
+            self._run(["api", "--method", "GET", f"repos/{_check(repo)}/collaborators/{quote(login, safe='')}"])
+        except NotFound:
+            return False
+        return True
+
+    def pull_commits(self, repo: str, number: int, after: str = "") -> list[dict[str, Any]]:
+        """Each commit of the pull request with its author kind. One GET for the list, and one for each commit after
+        the commit `after` (a sha or its prefix) for its changed files; none when `after` is empty or not in the
+        list, and a commit up to `after` holds kind `other` and no files. A commit after `after` is a `person` only
+        with an account of type `User`, exactly one parent and a yes from the collaborator check (one GET for each
+        distinct login)."""
+        listed = self._paged(repo, number, "commits")
+        for r in listed:
+            sha = r.get("sha")
+            if not isinstance(sha, str) or not SHA.match(sha):
+                raise CodeHostError("the commit answer has no known sha")
+        cut = -1
+        if after:
+            for i, r in enumerate(listed):
+                sha = str(r["sha"])
+                if sha.startswith(after) or after.startswith(sha):
+                    cut = i
+                    break
+        standing: dict[str, bool] = {}
+        out: list[dict[str, Any]] = []
+        for i, r in enumerate(listed):
+            sha = str(r["sha"])
+            commit = r.get("commit") if isinstance(r.get("commit"), dict) else {}
+            when = (commit.get("committer") or {}).get("date") if isinstance(commit, dict) else None
+            kind, files = "other", []
+            if cut >= 0 and i > cut:
+                try:
+                    one = self._gh(["api", "--method", "GET", f"repos/{_check(repo)}/commits/{sha}"])
+                except ValueError:
+                    raise CodeHostError("the commit answer is not JSON") from None
+                if not isinstance(one, dict):
+                    raise CodeHostError("the commit answer has no known shape")
+                files = [str(f.get("filename")) for f in one.get("files") or []
+                         if isinstance(f, dict) and f.get("filename")]
+                author = r.get("author")
+                login = str(author.get("login") or "") if isinstance(author, dict) else ""
+                if not isinstance(author, dict) or not login:
+                    kind = "other"
+                elif author.get("type") == "Bot" or login.endswith("[bot]"):
+                    kind = "bot"
+                elif author.get("type") == "User" and len(r.get("parents") or []) == 1:
+                    if login not in standing:
+                        standing[login] = self._collaborator(repo, login)
+                    kind = "person" if standing[login] else "other"
+            out.append({"sha": sha, "author_kind": kind, "files": files, "committed_at": str(when or "")})
+        return out
+
     def _read_pull(self, repo: str, number: int) -> Any:
         try:
             return self._gh(["api", f"repos/{_check(repo)}/pulls/{int(number)}"])
@@ -153,9 +281,43 @@ class MemoryCodeHost:
     issues: list[dict[str, Any]] = field(default_factory=list)
     comments: list[dict[str, Any]] = field(default_factory=list)
     pulls: list[dict[str, Any]] = field(default_factory=list)
+    reviews: dict[tuple[str, int], list[dict[str, Any]]] = field(default_factory=dict)
+    review_comments: dict[tuple[str, int], list[dict[str, Any]]] = field(default_factory=dict)
+    commits: dict[tuple[str, int], list[dict[str, Any]]] = field(default_factory=dict)
+    files_asked: list[str] = field(default_factory=list)
     fail_search: int = 0
     fail_closed: int = 0
     down: bool = False
+
+    def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        return list(self.reviews.get((repo, number), []))
+
+    def pull_comments(self, repo: str, number: int) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        return list(self.review_comments.get((repo, number), []))
+
+    def pull_commits(self, repo: str, number: int, after: str = "") -> list[dict[str, Any]]:
+        """The commits given, with `files` emptied for each commit up to and including `after` (for all when `after`
+        is empty or not among them); the sha of each commit after it is added to `files_asked`."""
+        if self.down:
+            raise CodeHostError("unreachable")
+        given = [dict(c) for c in self.commits.get((repo, number), [])]
+        cut = -1
+        if after:
+            for i, c in enumerate(given):
+                sha = str(c.get("sha") or "")
+                if sha and (sha.startswith(after) or after.startswith(sha)):
+                    cut = i
+                    break
+        for i, c in enumerate(given):
+            if cut >= 0 and i > cut:
+                self.files_asked.append(str(c.get("sha") or ""))
+            else:
+                c["files"] = []
+        return given
 
     def loop_issues(self, repo: str, state: str) -> list[dict[str, Any]]:
         """Issues in `state` with the loop's label; `fail_search` fails open reads, `fail_closed` closed ones."""

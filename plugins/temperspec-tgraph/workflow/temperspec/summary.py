@@ -5,7 +5,8 @@ option chosen, present only when the pause kept answers), the other owner decisi
 default the run took for each (`Assumptions to confirm`, never clipped, present only when the note has an
 `Owner decisions` section), the
 behaviours and criteria that changed in each spec, the decisions and open questions of the hand-off, and the
-deviations of the code report. Everything else a run writes is a
+deviations of the code report, and, after `Read these`, the findings of the independent review that are marked
+not blocking (`Review findings that block nothing`). Everything else a run writes is a
 hand-over between steps and is named only by its path."""
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from typing import Any
 
 from tempergraph.api import checks
 
+from . import review
 from . import specfmt as fmt
 
 MAX_LINES = 14
@@ -133,6 +135,19 @@ def _assumptions(note_text: str, decided: set[str] | None = None) -> list[str]:
             f"If wrong: {e.cost or '(not stated)'}" for e in rest]
 
 
+def _unblocking(ctx: Any, note_path: str) -> list[str]:
+    """PRD-B9: each finding marked not blocking, from both sections of the committed findings document that sits
+    beside the triage note, as file, line and text."""
+    if not note_path:
+        return []
+    try:
+        text = (Path(ctx.workdir) / Path(note_path).parent / f"{ctx.task_id}.review.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    doc = review.parse_document(text)
+    return [f"- `{f.file}:{f.line}`: {f.text}" for f in [*doc.findings, *doc.earlier] if f.mark == "not blocking"]
+
+
 def build(ctx: Any) -> str:
     """The description, as Markdown."""
     note_text, note_path = _text(ctx, "triage_note")
@@ -162,6 +177,8 @@ def build(ctx: Any) -> str:
         out += [f"- `{path}`: decision record" for path in records]
     else:
         out.append("- No spec and no decision record changed.")
+    if unblocking := _unblocking(ctx, note_path):
+        out += ["", "### Review findings that block nothing", ""] + unblocking
     for title, lines in (("Decisions taken", _section(handoff, "Decisions")),
                          ("Open questions", _section(handoff, "Open questions")),
                          ("Deviations from the plan", _section(report, "Deviations"))):

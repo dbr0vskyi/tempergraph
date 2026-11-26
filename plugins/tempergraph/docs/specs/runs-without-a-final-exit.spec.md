@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, and how that exit is recorded once.
+Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, how that exit is recorded once, and how the findings of the pauses that ended earlier segments of a thread reach the loop at the thread's final exit, with what answered each pause. That no text of a run reaches the loop's judge or its log is owned by [self-improvement](self-improvement.spec.md).
 
 ## Behaviours
 
@@ -13,13 +13,21 @@ WHEN a person stops a paused thread, at a gate or before a unit named by `--paus
 - GIVEN a thread paused before unit `code` by `--pause-before code` WHEN a person runs `resume --decision stop` THEN the command exits 4, the ledger gains one row with exit code 4 and reason `person` and the run log gains one `finding_recorded` record
 - GIVEN a thread paused at a gate WHEN a person stops it THEN the ledger and the run log gain the same row and record
 
-### SIL-B28 A stop at a pause covers the thread's earlier pauses
+### SIL-B28 A final exit covers the thread's earlier pauses
 
-WHEN a person stops a paused thread THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread judged, as findings of the stop, so that its friction lens judges their faults and its session review is planned from their signals (SIL-B10, [SRV-B13, SRV-B16](session-review.spec.md)).
+WHEN a thread reaches a final exit (SIL-B9) THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread was handed, as findings of that exit, so that its friction lens judges their faults (SIL-B10) and, at a person's stop (SIL-B27), its session review is planned from their signals ([SRV-B13, SRV-B16](session-review.spec.md)).
 
-- GIVEN a thread whose first segment paused on `retries_spent` at unit `code` WHEN a person stops it at that pause THEN the ticket's friction lens is on and the loop child's friction judge is asked about the `retries_spent` finding of `code`
-- GIVEN stable mode and that thread WHEN a person stops it THEN the session review plan has depth `partial` and its targets are the last attempt and the judge of `code`
-- GIVEN that thread stopped, re-opened with `retry`, paused again on `gap_escalation` at unit `review` and stopped again WHEN the second stop's loop child runs THEN its friction judge is asked about the `gap_escalation` finding of `review` and not about the `retries_spent` finding of `code`
+- GIVEN a thread whose first segment paused on `retries_spent` at unit `code` WHEN a person stops it at that pause THEN the ticket's friction lens is on and the loop child's friction judge is asked about the `retries_spent` finding of `code`; in stable mode the session review plan has depth `partial` with the last attempt and the judge of `code` as its targets
+- GIVEN a thread whose first segment paused on `gap_escalation` at unit `review`, was resumed with `proceed` and finished with exit 0 WHEN its loop child runs THEN the ticket holds the fingerprint of the `gap_escalation` finding of `review` and the friction judge is asked about it
+- GIVEN a thread stopped at a pause on `retries_spent` at unit `code`, re-opened with `retry`, paused a second time on `gap_escalation` at unit `review` and stopped a second time WHEN the second stop's loop child runs THEN its friction judge is asked about the `gap_escalation` finding of `review` and not about the `retries_spent` finding of `code`
+
+### SIL-B37 The friction judge is told what answered a pause
+
+WHEN the friction judge is asked about a finding of a segment that ended in a pause (at the finding's unit when more than one unit paused) THE loop child SHALL tell it the pause's reason, the decision word that answered the pause, the kind of caller that decided ([PRV-B11, PRV-B14](caller-provenance.spec.md)), whether feedback was given, whether the workspace changed between the pause and the resume ([WTR-B22](worktree-mode.spec.md)), and the verdict of the paused unit's next gate.
+
+- GIVEN a thread that paused with reason `unresolved_gap` at unit `review` and was resumed by a person with `proceed` and no feedback, in a worktree nobody changed WHEN the judge is asked about the `gap_escalation` finding of `review` THEN it is told the reason `unresolved_gap`, the decision `proceed`, the caller kind `person`, that no feedback was given, that the workspace did not change and that the next gate verdict is `none`
+- GIVEN a thread that paused at unit `code` with its retries spent and was resumed by an agent with `retry` and a feedback text, a person having committed a change in the worktree, and the next gate of `code` gave PROCEED WHEN the judge is asked about the `retries_spent` finding of `code` THEN it is told the decision `retry`, the caller kind `agent`, that feedback was given, that the workspace changed and the verdict PROCEED, and the prompt holds no word of the feedback
+- GIVEN a thread that runs in place, so that the engine compares no workspace between its segments WHEN the judge is asked about a finding of a paused segment THEN it is told that the workspace change is `not recorded`
 
 ### SIL-B29 A lost runner is a final exit
 
@@ -56,6 +64,13 @@ WHEN `status`, `stop` or `attention` hands a lost runner to the loop THE engine 
 - SIL-AC19 (SIL-B28): A fixture thread whose first segment paused on `retries_spent` and that a person then stops gives a ticket with the friction lens on, and its loop child's friction judge is asked about that finding
 - SIL-AC20 (SIL-B28): The same fixture in stable mode gives a session review plan of depth `partial` whose targets are the last attempt and the judge of the unit that paused
 - SIL-AC21 (SIL-B28): A fixture thread stopped at a pause, re-opened, paused and stopped again gives a second friction judgement over the findings of the second pause only
+- SIL-AC39 (SIL-B28): A fixture thread that pauses on `gap_escalation`, is resumed with `proceed` and ends with exit 0 gives a ticket with the friction lens on that holds the fingerprint of that finding, and its loop child's friction judge is asked about it
+- SIL-AC40 (SIL-B28): A fixture thread stopped at a pause, whose loop child has run, and then resumed and finished with exit 0 hands the loop at that exit none of the fingerprints the first loop child was handed, and no friction judge is asked about those findings a second time
+- SIL-AC41 (SIL-B37): In the fixture of SIL-AC39, whose worktree nobody changes between the pause and the resume, the friction judge's prompt names for the `gap_escalation` finding the reason `unresolved_gap`, the decision `proceed`, the kind of the resume's caller, that no feedback was given, that the workspace did not change and the next gate verdict `none`
+- SIL-AC42 (SIL-B37): A fixture thread paused with its retries spent and resumed with `retry` and a feedback text gives a friction judge prompt that names the decision `retry`, that feedback was given and the verdict of the unit's next gate, and that holds no word of the feedback
+- SIL-AC43 (SIL-B28, SIL-B2): At the final exit of a fixture thread that paused on `gap_escalation` and was resumed with `proceed`, when a fixture judge attributes the finding at 0.9 and an open issue on a fake code host holds its fingerprint or its cause, one "seen again" comment is added to that issue and no new issue is made
+- SIL-AC45 (SIL-B28): The stable-mode fixture of SIL-AC20, resumed with `retry` and finished with exit 0 instead of being stopped, gives a session review plan of depth `none`
+- SIL-AC46 (SIL-B37): A fixture thread in a worktree to which a person committed between its pause and its resume gives a friction judge prompt that names the workspace as changed, and the same thread run in place gives one that names the workspace change as `not recorded`
 - SIL-AC22 (SIL-B29): A fixture thread whose process died after a failed check, with no `run_exit`, leaves after `status` one ledger row with exit code 5 and reason `runner_lost`, a `check_fail` finding in `findings.json` and one ticket, and `status --detail` still shows `health.orphaned` true
 - SIL-AC23 (SIL-B29): After `attention`, and after `stop` (which exits 2), the same fixture leaves the same records and ticket as after `status`
 - SIL-AC24 (SIL-B29): The same fixture with its newest record older than 7 days leaves the state root unchanged after `status`

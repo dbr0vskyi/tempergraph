@@ -63,7 +63,7 @@ tempergraph attention                                     # everything waiting o
 tempergraph resume <workflow> <thread> --decision retry --feedback 'Keep the table, shorten the intro'
 ```
 
-Use `--ruling` with your feedback when it should hold on every later attempt, not just the next one. Don't `proceed` after an infrastructure failure: nothing was judged.
+Use `--ruling` with your feedback when it should hold on every later attempt, not just the next one. Don't `proceed` after an infrastructure failure: nothing was judged. The same holds for `proceed` at a usage-limit pause (below).
 
 ### Questions, events and breakpoints
 
@@ -74,6 +74,7 @@ Some pauses are not about a failed gate. They show their kind in `tempergraph at
 | `input` | Answers to the questions of an ask step | `--answers <file>` (a JSON object of name and value), or `--decision answer:<name>=<value>` once per answer. Partial answers are kept; the run goes on when the set is complete |
 | `event_wait` | A value from an outside system | `--decision event:<name>=<value>`. The step's own check decides; `proceed` is refused |
 | `breakpoint` | You asked for it | `--decision proceed` or `stop` |
+| `escalation`, reason `usage_limit` | The account's usage limit ended a session. Nothing was spent and nothing was judged. The pause gives the reset instant as `usage_limit_resets_at` (also in the `tempergraph status` row; null when none was reported) | `tempergraph resume <workflow> <thread>` with no `--decision`. It runs only the session the limit ended again, under the same attempt, before or after the reset |
 
 ```sh
 tempergraph run <workflow> 'the request' --pause-before <step>   # stop before a step, with nothing spent on it
@@ -94,6 +95,8 @@ tempergraph logs <thread> --kind raw|check|stderr|engine   # raw session and che
 tempergraph facts <thread>                     # read-only facts about a run
 tempergraph stop <thread> [--now]              # drain after the current step, or stop now
 ```
+
+A thread stopped by `stop` (drain or `--now`) shows in `tempergraph status` as `unfinished` with its `resume` command, and `tempergraph resume <workflow> <thread>` with no `--decision` continues it from the interrupted or next attempt. A thread stopped by a person's decision or a spent budget is refused that plain resume: the message names the unit and the reason, and it re-opens only with `--decision retry`, `back:<unit>` or `rewind:<unit>`.
 
 With the `tempergraph-monitor` plugin installed, Claude Code also shows running and paused runs, alerts and cost while you work.
 

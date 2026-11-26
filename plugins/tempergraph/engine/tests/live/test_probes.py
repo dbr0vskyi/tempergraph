@@ -201,3 +201,53 @@ def test_p_cc_12_step_isolated_from_user_scope_plugins(tmp_path: Path) -> None: 
                    and not str(p.get("path", "")).startswith("@builtin") and not str(p.get("name", "")).startswith("cc-plugin"))
     print("init.plugins", names, "skills", [s for s in init.get("skills") or [] if ":" in s])
     assert names == sorted([workflow.name, "tempergraph"])
+
+
+def test_p_cc_13_step_and_judge_are_offered_no_account_connector(tmp_path: Path) -> None:  # ECC-AC19: P-CC-13 (ECC-B13, B18, B20, B24)
+    # a step and a judge, each launched with the engine's own argv and environment and each running more than one
+    # turn, are read at every turn: no connector tool in `system/init` and no context jump once the servers
+    # connect (live row L-43). A control launch without the flag and the variable must be flagged.
+    from tempergraph.contracts import EventSink
+    from tempergraph.executors.binding import BindingTable
+    from tempergraph.executors.claude import ClaudeExecutor, step_env
+
+    from ..fixtures.mcp_turns import enough_turns, leaks, turn_readings
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (ws / "note.txt").write_text("probe-4412\n")
+    (tmp_path / "s").mkdir()
+    prompt = "Read note.txt with the Read tool, then reply with the word it holds."
+    req = SessionRequest(kind="step", prompt=prompt, workdir=ws, alias="small",
+                         session_key="probe.1.step", tools=("read",), timeout_s=240, session_dir=tmp_path / "s",
+                         options=SessionOptions(cost_cap_usd=0.10))
+    ex = ClaudeExecutor(bindings=BindingTable())
+    assert ex.probe().ok
+    ex.run_step(req, EventSink())
+    step_events = [json.loads(ln) for ln in (tmp_path / "s" / "raw.jsonl").read_text().splitlines()
+                   if ln.startswith("{")]
+
+    argv = judge_argv(ViewSet(tools=("Read",)), MODEL, isolated=False) + CAP
+    assert "--strict-mcp-config" in argv
+    base_env = {k: v for k, v in os.environ.items() if not k.startswith("CLAUDECODE")}
+    env = {**base_env, **step_env(MODEL)}
+    out = subprocess.run(argv, input=prompt, capture_output=True, text=True, cwd=ws, timeout=240, env=env,
+                         check=False)
+    judge_events = [json.loads(ln) for ln in out.stdout.splitlines() if ln.startswith("{")]
+    for name, events in (("step", step_events), ("judge", judge_events)):
+        print(name, [(r["turn"], r["context"]) for r in turn_readings(events)], "init.tools",
+              _init(events).get("tools"), "mcp", _init(events).get("mcp_servers"))
+        assert enough_turns(events), f"{name} ran fewer than two turns"
+        assert leaks(events) == []
+    assert sorted(_init(step_events).get("tools") or []) == ["Read"]
+    assert sorted(_init(judge_events).get("tools") or []) == ["Read"]
+
+    # control: the same step launch without `--strict-mcp-config` and without the connector switch is flagged
+    cargv, _ = step_argv(req, MODEL, None, frozenset())
+    cargv = [a for a in cargv if a != "--strict-mcp-config"]
+    cenv = {k: v for k, v in base_env.items() if k != "ENABLE_CLAUDEAI_MCP_SERVERS"}
+    cout = subprocess.run(cargv + CAP, input=prompt, capture_output=True, text=True, cwd=ws, timeout=240, env=cenv,
+                          check=False)
+    control = [json.loads(ln) for ln in cout.stdout.splitlines() if ln.startswith("{")]
+    print("control", leaks(control))
+    assert leaks(control), "the control launch was not flagged: the account has no MCP servers to leak"

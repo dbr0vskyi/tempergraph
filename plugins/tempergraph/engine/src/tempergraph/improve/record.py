@@ -190,7 +190,8 @@ def _when(ts: Any) -> datetime | None:
 
 def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
     """SIL-B28: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
-    judged: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made."""
+    was handed: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made.
+    Read at every final exit of the thread."""
     from tempergraph.improve import child
 
     held = [f for f in read_findings(root, workflow, task_id) if f.get("segment_exit") == 3
@@ -273,8 +274,9 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
+    final = int(row.get("exit_code") or 0) in FINAL_EXITS
     stop = int(row.get("exit_code") or 0) == 4 and row.get("reason") == "person"
-    earlier = unjudged_pause_findings(root, spec.name, task_id, thread) if stop else []  # SIL-B28
+    earlier = unjudged_pause_findings(root, spec.name, task_id, thread) if final else []  # SIL-B28
     append_findings(root, spec.name, task_id, thread, lines)  # one document per thread; each segment appends (SIL-B8)
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
     summary: dict[str, Any] = {"digests": len(digests), "causes": sorted({x["cause"] for x in lines}),
@@ -287,10 +289,12 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                                                                if x.get("lens") == "outcome"})}
     covered = [x for x in earlier if x.get("lens") not in ("outcome", "review")]  # their lines are already written
     if covered:
-        summary["fingerprints"] = sorted({*summary["fingerprints"], *(str(x["fingerprint"]) for x in covered)})
+        # SIL-B28, SIL-AC45: the session review plans from `fingerprints`, so only a person's stop adds the pauses there
+        key = "fingerprints" if stop else "pause_fingerprints"
+        summary[key] = sorted({*summary.get(key, ()), *(str(x["fingerprint"]) for x in covered)})
         summary["fault_fingerprints"] = sorted({*summary["fault_fingerprints"],
                                                 *(str(x["fingerprint"]) for x in covered if x.get("class") == "fault")})
-    if int(row.get("exit_code") or 0) in FINAL_EXITS:
+    if final:
         summary["lenses"] = lenses.decide(spec, root, thread,
                                           [x for x in lines if x.get("lens") != "outcome"] + covered, row, seg)
     return summary

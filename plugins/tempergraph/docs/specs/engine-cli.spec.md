@@ -58,7 +58,7 @@ WHEN the engine CLI is called THE engine CLI SHALL accept exactly the verbs `run
 
 ### CLI-B8 Read-only verbs write nothing
 
-WHEN a verb this spec marks read-only runs THE engine CLI SHALL leave the state root unchanged and start no session, except that `status` and `attention` hand a lost runner to the loop ([SIL-B29](runs-without-a-final-exit.spec.md)); the read-only verbs are `run --check`, `rerun --check`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `facts`, `stats` (but `stats flush` and `stats sync`), `outcome`, `upgrade --check` and `install --check` and `update --check`.
+WHEN a verb this spec marks read-only runs THE engine CLI SHALL leave the state root unchanged and start no session, except that `status` and `attention` hand a lost runner to the loop ([SIL-B29](runs-without-a-final-exit.spec.md)); the read-only verbs are `run --check`, `rerun --check`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `facts`, `stats` (but `stats flush`, `stats sync` and `stats forget`), `outcome`, `upgrade --check` and `install --check` and `update --check`.
 
 - GIVEN a fixture state root WHEN each read-only verb runs THEN the state root's hash is unchanged and no process starts except the read-only probes of `executors --probe`
 
@@ -136,7 +136,7 @@ WHEN an exception reaches the top of the engine CLI THE engine CLI SHALL write a
 
 ### CLI-B20 The loop's findings beside what waits
 
-WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B22](self-improvement.spec.md)) holds at least one recorded finding, kept observation or failed review ([SIL-B24](self-improvement.spec.md)) THE engine CLI SHALL print that summary after the items, one block per workflow, newest first, with the thread, the counts of findings recorded and filed, the failed reviews counted by error class, the observations as `category`, `unit` and `confidence`, and the command `tempergraph improve review show <thread>`, and in `--json` as `loop[]` beside `items`, with the failed-review counts as `review_failed`, never as an item waiting on a person.
+WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B22](loop-summary-and-review-retries.spec.md)) holds at least one recorded finding, kept observation or failed review ([SIL-B24](loop-summary-and-review-retries.spec.md)) THE engine CLI SHALL print that summary after the items, one block per workflow, newest first, with the thread, the counts of findings recorded and filed, the failed reviews counted by error class, the observations as `category`, `unit` and `confidence`, and the command `tempergraph improve review show <thread>`, and in `--json` as `loop[]` beside `items`, with the failed-review counts as `review_failed`, never as an item waiting on a person.
 
 - GIVEN a thread whose loop child ended with 3 findings recorded, none filed and two kept observations WHEN `attention` runs THEN after the items it shows that thread, 3 recorded, 0 filed, the two observations as category, unit and confidence and no note text
 - GIVEN two threads of one workflow whose loop children ended one after the other WHEN `attention` runs THEN it shows the later thread's summary only for that workflow, and `status <thread> --detail` of the earlier thread still shows its own

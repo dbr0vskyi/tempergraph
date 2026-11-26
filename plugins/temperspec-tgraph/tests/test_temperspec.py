@@ -16,13 +16,14 @@ import pytest
 
 from tempergraph.package.loader import load_package
 from tempergraph.run.checks import CheckContext, GitFacts, git_facts, run_check
-from tempergraph.run.commands import CommandRun
+from tempergraph.run.commands import CommandRefusal, CommandRun, resolve_command
 from tempergraph.run.outcome import outcome_unit
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = load_package(ROOT).spec
 checks = importlib.import_module("tgwf_temperspec.checks")
 routing = importlib.import_module("tgwf_temperspec.routing")
+summary = importlib.import_module("tgwf_temperspec.summary")
 fmt = importlib.import_module("tgwf_temperspec.specfmt")
 OWNER = {key: unit for unit in SPEC.order for key in (SPEC.units[unit].step.produces if SPEC.units[unit].step else {})}
 
@@ -428,6 +429,18 @@ def test_commit_step_commits_the_steps_files_and_leaves_the_state_folder(repo: P
     assert git_facts(repo).clean
 
 
+def test_commit_step_commits_when_git_ignores_the_state_folder(repo: Path) -> None:
+    # git 2.39 exits 1 on an exclude pathspec that names an ignored path; the step must still commit
+    (repo / ".gitignore").write_text(".tempergraph/\n")
+    (repo / ".tempergraph").mkdir()
+    (repo / ".tempergraph" / "capabilities.md").write_text("x\n")
+    (repo / "note.md").write_text("x\n")
+    ctx = SimpleNamespace(workdir=repo, unit="prepare", request={"task_id": "i1"})
+    assert routing.commit_step(ctx) == {}
+    assert _git(repo, "log", "-1", "--format=%s").strip() == "docs(temperspec): prepare for i1"
+    assert sorted(_git(repo, "show", "--name-only", "--format=").split()) == [".gitignore", "note.md"]
+
+
 def test_install_rules_writes_the_rule_files_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(Path, "home", lambda: repo / "no-home")
     ctx = SimpleNamespace(workdir=repo, unit="triage", request={})
@@ -600,7 +613,8 @@ def test_every_step_and_judge_states_its_model_effort_and_reason() -> None:  # d
                                                    "why": judge.sizing}, name
     assert efforts == {"setup": ("high", "medium"), "triage": ("medium", "medium"),
                        "discovery_short": ("high", "high"), "discovery": ("max", "high"),
-                       "plan": ("high", "high"), "expand": ("medium", "medium"), "code": ("high", "high")}
+                       "plan": ("high", "high"), "expand": ("medium", "medium"), "code": ("high", "high"),
+                       "independent_review": ("high", "medium")}
 
 
 # -- the quick lane, the proof of a criterion and the pull request's description ---------------------------
@@ -687,6 +701,7 @@ class _Summary(_Final):
 
 
 def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> None:
+    # PRD-AC1, PRD-AC2, PRD-AC3, PRD-AC4 (AC 6)
     (tmp_path / "note.md").write_text("# Triage\n\n## Acceptance criteria\n\n1. An idle session is refused\n")
     (tmp_path / "handoff.md").write_text("# Hand-off\n\n## Decisions\n\n- Idle time counts from the last request\n\n"
                                          "## Open questions\n\n- None\n")
@@ -699,8 +714,13 @@ def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> Non
                    {"git diff --name-only": "docs/specs/session.spec.md\nsrc/auth/session.py\n.claude/rules/x.md\n",
                     "git diff --unified=0": diff})
     got = routing.finalize(ctx)
-    assert got.outcome == "opened" and ctx.ran[-1].endswith(f"--body-file {tmp_path / '.out' / 'pull-request.md'}")
-    body = (tmp_path / ".out" / "pull-request.md").read_text()
+    assert got.outcome == "opened" and ctx.ran[-1].endswith("--body-file .tempergraph/pull-request.md")
+    # the engine refuses a command that names an absolute or parent path, so every command of the last stage is one
+    # its own resolver accepts (a refused `gh pr create` ends the run `pushed`, with no pull request)
+    allow = importlib.import_module("tgwf_temperspec").ALLOW
+    assert [c for c in ctx.ran if isinstance(resolve_command(allow, c, tmp_path), CommandRefusal)] == []
+    assert (tmp_path / ".tempergraph" / ".gitignore").read_text() == "*\n"  # the description is never committed
+    body = (tmp_path / ".tempergraph" / "pull-request.md").read_text()
     assert "1. An idle session is refused" in body and "`docs/specs/session.spec.md`" in body
     assert "added: SES-B2 Idle expiry" in body and "added: SES-AC2 (SES-B2)" in body and "prose" not in body
     assert "Idle time counts from the last request" in body and "Open questions" not in body
@@ -708,12 +728,93 @@ def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> Non
 
 
 def test_a_reused_pull_request_gets_the_new_description(tmp_path: Path) -> None:
+    # PRD-AC8 (AC 6)
     (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
     ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr edit": (0, ""),
                               "gh pr list": (0, '[{"url":"https://github.com/acme/tool/pull/9"}]\n')}, {})
     got = routing.finalize(ctx)
     assert got.outcome == "reused" and "not updated" not in got.reason
-    assert ctx.ran[-1].startswith("gh pr edit https://github.com/acme/tool/pull/9 --body-file ")
+    assert ctx.ran[-1] == "gh pr edit https://github.com/acme/tool/pull/9 --body-file .tempergraph/pull-request.md"
+    assert not any(c.startswith("gh pr create") for c in ctx.ran)
+
+
+def test_a_refused_replacement_says_the_description_was_not_updated(tmp_path: Path) -> None:
+    # PRD-AC8 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr edit": (1, "denied"),
+                              "gh pr list": (0, '[{"url":"https://github.com/acme/tool/pull/9"}]\n')}, {})
+    got = routing.finalize(ctx)
+    assert got.outcome == "reused" and "not updated" in got.reason
+
+
+def test_a_new_draft_pull_request_carries_the_description(tmp_path: Path) -> None:
+    # PRD-AC7 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                              "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")}, {})
+    got = routing.finalize(ctx)
+    created = [c for c in ctx.ran if c.startswith("gh pr create")]
+    assert got.outcome == "opened" and len(created) == 1
+    assert created[0].endswith("--body-file .tempergraph/pull-request.md")
+    assert "1. One" in (tmp_path / ".tempergraph" / "pull-request.md").read_text()
+
+
+def test_a_description_that_cannot_be_written_opens_the_pull_request_without_one(tmp_path: Path) -> None:
+    # PRD-AC6 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    (tmp_path / ".tempergraph").write_text("a file where the folder should be")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                              "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")}, {})
+    got = routing.finalize(ctx)
+    created = [c for c in ctx.ran if c.startswith("gh pr create")]
+    assert got.outcome == "opened" and len(created) == 1 and "--body-file" not in created[0]
+
+
+def test_the_description_is_never_committed(repo: Path) -> None:
+    # PRD-AC5 (AC 6)
+    (repo / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(repo, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                          "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")}, {})
+    routing.finalize(ctx)
+    assert (repo / ".tempergraph" / "pull-request.md").is_file()
+    status = _git(repo, "status", "--porcelain", "--untracked-files=all")
+    assert "pull-request" not in status and ".tempergraph" not in status
+    assert "pull-request" not in _git(repo, "log", "--name-only", "--format=")
+
+
+def test_the_description_lists_only_the_first_14_criteria_and_names_what_the_run_wrote(tmp_path: Path) -> None:
+    # PRD-AC1, PRD-AC2, PRD-AC3, PRD-AC4 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n" + "".join(f"{n}. Criterion {n}\n" for n in range(1, 16)))
+    (tmp_path / "handoff.md").write_text("## Decisions\n\n- None\n\n## Open questions\n\n- None\n")
+    (tmp_path / "report.md").write_text("## Deviations\n\n- None\n")
+    ctx = _Summary(tmp_path, {}, {"git diff --name-only": "src/a.py\n"})
+    body = summary.build(ctx)
+    assert "14. Criterion 14" in body and "15. Criterion 15" not in body
+    assert "No spec and no decision record changed." in body
+    assert "Open questions" not in body and "Deviations from the plan" not in body and "Decisions taken" not in body
+    # the run wrote no plan: the line names the three other documents
+    line = next(ln for ln in body.splitlines() if "not needed for review" in ln)
+    assert "note.md" in line and "handoff.md" in line and "report.md" in line and line.count("`") == 6
+
+
+def test_the_description_lists_the_findings_that_block_nothing(tmp_path: Path) -> None:
+    # PRD-AC9 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    (tmp_path / "TASK-7.review.md").write_text(
+        "# Review: TASK-7\n\n## Findings\n\n1. `src/a.py:3` blocking: the loop never ends\n"
+        "2. `src/b.py:9` not blocking: a name could be clearer\n\n## Earlier review\n\n"
+        "1. `src/c.py:5` not blocking: a comment is stale\n")
+    body = summary.build(_Summary(tmp_path, {}, {}))
+    head = "Review findings that block nothing"
+    assert head in body and body.index("Read these") < body.index(head)
+    listed = body[body.index(head):]
+    assert "src/b.py" in listed and "9" in listed and "a name could be clearer" in listed
+    assert "src/c.py" in listed and "a comment is stale" in listed
+    assert "the loop never ends" not in body
+    (tmp_path / "TASK-7.review.md").write_text("# Review: TASK-7\n\n## Findings\n\nNone\n")
+    assert head not in summary.build(_Summary(tmp_path, {}, {}))
+    (tmp_path / "TASK-7.review.md").unlink()
+    assert head not in summary.build(_Summary(tmp_path, {}, {}))
 
 
 # -- the plan's marks: checked first at the code gate, then verified against what changed -------------------
@@ -808,6 +909,11 @@ def test_the_code_step_declares_the_preview_and_its_prompt_runs_the_commands_thr
         assert phrase in text.lower(), phrase
 
 
+def _counted(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The runs `ts-code-reuse` counts: the read of the run's history (PHC-B16) comes after that finding."""
+    return [r for r in runs if "--name-only" not in r["argv"]]
+
+
 def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
         repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 3, ts-code-reuse (CHK-B13)
     store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
@@ -829,7 +935,8 @@ def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
     first, second = gate_run(), gate_run()  # a retry, or a later visit, on the same tree and the same store
     assert first and all(r["reused"] is False and r["exit_code"] == 0 for r in first)
     assert len(second) == len(first) and all(r["reused"] is True for r in second)  # none was started again
-    assert reuse[0].startswith("0 of ") and reuse[1].startswith(f"{len(second)} of {len(second)} ")
+    counted = len(_counted(second))
+    assert reuse[0].startswith("0 of ") and reuse[1].startswith(f"{counted} of {counted} ")
     (repo / "notes.txt").write_text("changed\n")  # a changed tree changes the key: the commands run again
     third = gate_run()
     assert third and all(r["reused"] is False for r in third)
@@ -902,7 +1009,8 @@ def test_the_gate_takes_the_previews_runs_though_the_files_were_committed_after_
     assert res.runs and all(r["reused"] is True for r in res.runs), res.evidence  # none started again
     assert _named(res, "ts-code-verify") == ["pass"] and _named(res, "ts-code-reuse") == ["pass"], res.evidence
     message = next(f.message for f in res.findings if f.criterion == "ts-code-reuse")
-    assert message.startswith(f"{len(res.runs)} of {len(res.runs)} ")
+    counted = len(_counted(res.runs))
+    assert message.startswith(f"{counted} of {counted} ")
 
 
 @pytest.mark.parametrize("change", ["tracked", "untracked"])

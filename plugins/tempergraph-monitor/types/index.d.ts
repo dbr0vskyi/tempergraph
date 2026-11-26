@@ -47,7 +47,8 @@ export type MonitorOther = { key: string; repo: string; text: string; card: stri
 export type MonitorFleet = { live: unknown; month: unknown; byWorkflow: unknown; projection: unknown;
   missing: string[]; others: MonitorOther[]; readAt: number | null; error: string | null }
 
-export type MonitorEngine = { installed: boolean; staleSince: number | null; error: string | null }
+/** `looked` is what a failed lookup tried, in order (MDS-B7): the setting, PATH, the shim of the engine home. */
+export type MonitorEngine = { installed: boolean; staleSince: number | null; error: string | null; looked: string[] }
 
 declare module 'claude-code' {
   interface PluginState {

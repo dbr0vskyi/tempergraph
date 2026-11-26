@@ -43,6 +43,13 @@ WHEN preflight reads an executor's version THE engine SHALL compare it with the 
 
 - GIVEN `claude` 2.1.330 and a table recording 2.1.329 only WHEN a run is preflighted THEN it warns `executor-version-untested`
 
+### LIF-B18 A confirmed version is a recorded version
+
+WHEN a live probe of an executor is recorded `confirmed` on a CLI version ([ECC-B13](executor-claude-code.spec.md)) THE engine SHALL list that version in the executor's `recorded` versions and inside its `range` in the compatibility table.
+
+- GIVEN a probe recorded `confirmed` on `claude` 2.4.0 and a table that lists 2.4.0 in `recorded` and inside `range` WHEN a run is preflighted on `claude` 2.4.0 THEN it raises no `executor-version-untested` warning and `executors` shows the version as recorded
+- GIVEN the same table WHEN a run is preflighted on `claude` 2.5.0, above its `range` THEN it warns `executor-version-untested`
+
 ### LIF-B11 Diagram model
 
 WHEN the diagram model is generated THE engine SHALL write versioned JSON with a digest generated from the spec and verified against the compiled graph, rendered by pure renderers.
@@ -106,6 +113,14 @@ WHEN `evals replay <workflow>` runs THE engine SHALL rerun each judged gate's ju
 
 - GIVEN a replay of 10 cases with one changed status WHEN it ends THEN the report shows 90% equal and names the changed case
 
+### LIF-B17 An escape is a harvest candidate
+
+WHEN `evals harvest <workflow> outcome` runs THE engine SHALL write one candidate for each escape of the workflow ([OUT-B26](run-outcome.spec.md)) under `evals/harvest/outcome/<case_id>/case.json` in the state root, holding the origin (thread, the pull request's code host, repository and number, the counts and kinds of its entries), the suggested expected status `UNMET` per judged criterion, the run's workspace and no request or review text.
+
+- GIVEN a `met` run whose pull request had a review in state `changes_requested` WHEN `evals harvest <workflow> outcome` runs THEN one candidate for that run exists under the state root and none in the package
+- GIVEN a `met` run that is no escape WHEN harvest runs THEN it has no candidate
+- GIVEN a canary in a review comment of an escaped run WHEN harvest runs THEN the candidate holds no review text
+
 ## Acceptance criteria
 
 - LIF-AC1 (LIF-B1): `update` decides currency by content hash, by a test with equal versions and different files
@@ -119,3 +134,5 @@ WHEN `evals replay <workflow>` runs THE engine SHALL rerun each judged gate's ju
 - LIF-AC9 (LIF-B4): A package scenario finishes on the reference stand-in and names each executor without one
 - LIF-AC10 (LIF-B7, LIF-B8, LIF-B9): The installer stops without Python 3.11+, `update --json` prints one object per line, and reconcile never deletes an entry
 - LIF-AC11 (LIF-B15, LIF-B16): A score is recorded per judge binding, and a replay reports agreement and each changed status
+- LIF-AC12 (LIF-B17): A harvest of a fixture workflow with a `met` run whose pull request had a review in state `changes_requested` and a `met` run that is no escape writes one candidate, for the first run, under the state root and none in the package, holding the pull request's code host, repository and number, the counts and kinds of its entries and no request or review text
+- LIF-AC13 (LIF-B18): For each executor of the compatibility table, a version its facts name as confirmed is in its `recorded` versions and inside its `range`, and preflight on that version raises no `executor-version-untested` warning

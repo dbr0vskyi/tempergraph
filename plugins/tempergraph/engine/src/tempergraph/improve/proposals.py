@@ -72,9 +72,10 @@ def _ts(text: Any) -> datetime | None:
 
 # -- autonomy (PRP-B11) -------------------------------------------------------------------------------------
 
-def autonomy(spec: WorkflowSpec, machine: str | None = None) -> str:
+def autonomy(spec: WorkflowSpec, machine: str | None = None, setting: str | None = None) -> str:
     """The declared level (`improvement.autonomy` in the package's `tempergraph.json`, default `file`),
-    lowered, never raised, by the machine's `TEMPERGRAPH_AUTONOMY`."""
+    lowered, never raised, by the machine's `TEMPERGRAPH_AUTONOMY` and the run setting `loop_autonomy`:
+    the lowest of the three (PRP-B31)."""
     declared = "file"
     if spec.package_root is not None:
         try:
@@ -84,8 +85,9 @@ def autonomy(spec: WorkflowSpec, machine: str | None = None) -> str:
                 declared = str(got)
         except (OSError, ValueError):
             pass
-    if machine in AUTONOMY and AUTONOMY.index(str(machine)) < AUTONOMY.index(declared):
-        return str(machine)
+    for other in (machine, setting):
+        if other in AUTONOMY and AUTONOMY.index(str(other)) < AUTONOMY.index(declared):
+            declared = str(other)
     return declared
 
 
@@ -669,13 +671,13 @@ def issue_ref(url: Any) -> tuple[str, int] | None:
     return (m.group(1), int(m.group(2))) if m else None
 
 
-PULL_URL = re.compile(r"^https?://[^/\s]+/([A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100})/pull/([0-9]{1,9})$")
+PULL_URL = re.compile(r"^https?://([^/\s]+)/([A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100})/pull/([0-9]{1,9})$")
 
 
-def pull_ref(url: Any) -> tuple[str, int] | None:
-    """`(owner/name, number)` of a pull request URL of the loop's own records, none for any other text (PRP-B26)."""
+def pull_ref(url: Any) -> tuple[str, str, int] | None:
+    """`(code host, owner/name, number)` of a pull request URL, none for any other text (PRP-B26, PRP-B30)."""
     m = PULL_URL.match(str(url))
-    return (m.group(1), int(m.group(2))) if m else None
+    return (m.group(1), m.group(2), int(m.group(3))) if m else None
 
 
 def _saved(root: Path, workflow: str) -> list[dict[str, Any]]:
@@ -709,7 +711,7 @@ def sync_pr_state(root: Path, workflow: str, host: Any) -> list[tuple[str, str]]
         if rec.get("state") != "opened" or ref is None:
             continue
         try:
-            got = host.pull_state(*ref)
+            got = host.pull_state(ref[1], ref[2])
             state = str(got["state"])
         except (CodeHostError, ValueError, KeyError, TypeError):
             continue

@@ -55,7 +55,7 @@ WHEN a capability is mapped THE executor SHALL map `read` to `Read` with the rul
 
 ### ECC-B8 Step launch
 
-WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the built-ins mapped from the step's declared tools on every launch, whether or not the operator's enforcement setting is on, the shell tool added when the step is granted the check preview command ([CHK-B17](check-contract-and-command-runs.spec.md)); always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](worktree-mode.spec.md)); `--strict-mcp-config --mcp-config <engine file>` under enforcement with an MCP tool declared; `--setting-sources project` and the plugin folders of ECC-B16; and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
+WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the built-ins mapped from the step's declared tools on every launch, whether or not the operator's enforcement setting is on, the shell tool added when the step is granted the check preview command ([CHK-B17](check-contract-and-command-runs.spec.md)); always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](worktree-mode.spec.md)); the MCP flags of ECC-B18; `--setting-sources project` and the plugin folders of ECC-B16; and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
 
 - GIVEN a step with `effort: high` and alias `inherit` WHEN it launches THEN argv holds `--effort high` and no `--model`
 - GIVEN a step declaring `read` and `shell` with prefix `pytest` and the enforcement setting off WHEN it launches THEN `--tools` is `Read,Bash`
@@ -70,9 +70,11 @@ WHEN a step session starts THE executor SHALL overlay `CLAUDE_BASH_MAINTAIN_PROJ
 
 ### ECC-B10 Judge launch
 
-WHEN a judge launches THE executor SHALL send `claude -p --output-format stream-json --verbose`; `--bare` when P-CC-1 passed, else `--setting-sources ""`; `--model <bound judge model>`; `--tools` with `Read,Grep,Glob` plus the built-in views; `--disallowedTools "mcp__*"` when there is no MCP view, else the strict private MCP config of ECC-B3; `--permission-mode dontAsk`; and `--allowedTools` with the view rules plus read-only command rules when opted in; lay judge-only credentials from the operator's credentials profile over the environment; and never send a judge `--fallback-model`, `--resume`, `--continue`, a write tool or a step's allow rules.
+WHEN a judge launches THE executor SHALL send `claude -p --output-format stream-json --verbose`; `--bare` when P-CC-1 passed, else `--setting-sources ""`; `--model <bound judge model>`; `--tools` with `Read,Grep,Glob` plus the built-in views; `--disallowedTools "mcp__*"` when there is no MCP view, else the private MCP config of ECC-B3; the MCP flags of ECC-B18; `--permission-mode dontAsk`; and `--allowedTools` with the view rules plus read-only command rules when opted in; lay judge-only credentials from the operator's credentials profile over the environment; and never send a judge `--fallback-model`, `--resume`, `--continue`, a write tool or a step's allow rules.
 
 - GIVEN any judge launch WHEN its argv is read THEN it holds no write tool, no step rule, no `--fallback-model` and no `--resume`
+- GIVEN a judge with no MCP view WHEN it launches THEN argv holds `--disallowedTools "mcp__*"`
+- GIVEN a judge with an MCP view WHEN it launches THEN argv holds no `--disallowedTools "mcp__*"`
 
 ### ECC-B11 Stream mapping
 
@@ -96,7 +98,7 @@ WHEN a `claude` session ends not ok and the last `rate_limit_event` of its strea
 
 ### ECC-B13 Probe and preflight
 
-WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at preflight when `claude` is not on the engine's resolved `PATH`, or `claude auth status` reports signed out with no gateway variables set; read `--permission-prompts` and other flags from `--help`, sending them only when listed; record a judge view server that `system/init` reports in `mcp_server_errors` as deferred, its criterion rendered out of reach; and rest no control on a live probe until its result is recorded `confirmed` with date and pinned CLI version: P-CC-1 (`--bare` removes user-level plugins and hooks while gateway credentials work, `@builtin` plugins staying listed), P-CC-2 (`--tools Read,Grep,Glob` with `--disallowedTools "mcp__*"` leaves exactly those tools), P-CC-3 (the stream shape at `--max-budget-usd`), P-CC-4 (precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model), P-CC-5 (a prompt on stdin with no positional prompt is accepted), P-CC-6 (`dontAsk` refuses an unlisted call and emits `permission_denied`), P-CC-7 (whether a session keeps a native transcript under the isolation flags, and where, [EVT-B20](run-events.spec.md)), P-CC-8 (a `Skill(<plugin>:<name>)` rule admits only that skill and the record names it) and P-CC-9 (`--plugin-dir` loads a workflow plugin's skills and agents with a step's isolation flags).
+WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at preflight when `claude` is not on the engine's resolved `PATH`, or `claude auth status` reports signed out with no gateway variables set; read `--permission-prompts` and other flags from `--help`, sending them only when listed; record a judge view server that `system/init` reports in `mcp_server_errors` as deferred, its criterion rendered out of reach; and rest no control on a live probe until its result is recorded `confirmed` with date and pinned CLI version: P-CC-1 (`--bare` removes user-level plugins and hooks while gateway credentials work, `@builtin` plugins staying listed), P-CC-2 (`--tools Read,Grep,Glob` with `--disallowedTools "mcp__*"` leaves exactly those tools), P-CC-3 (the stream shape at `--max-budget-usd`), P-CC-4 (precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model), P-CC-5 (a prompt on stdin with no positional prompt is accepted), P-CC-6 (`dontAsk` refuses an unlisted call and emits `permission_denied`), P-CC-7 (whether a session keeps a native transcript under the isolation flags, and where, [EVT-B20](run-events.spec.md)), P-CC-8 (a `Skill(<plugin>:<name>)` rule admits only that skill and the record names it), P-CC-9 (`--plugin-dir` loads a workflow plugin's skills and agents with a step's isolation flags) and P-CC-13 (ECC-B24).
 
 - GIVEN a signed-out `claude` and no gateway variables WHEN preflight runs THEN it exits 2
 
@@ -129,6 +131,59 @@ WHEN a judge view names an MCP server that is not in the operator's own MCP conf
 - GIVEN a judge view of `mcp:wiki/get_page` and no `wiki` server in the operator's own MCP configuration WHEN the judge launches THEN the view is deferred for that attempt
 - GIVEN a judge view of a server that the operator's configuration defines by a URL WHEN the judge launches THEN the view is deferred for that attempt
 
+### ECC-B18 A session is offered only the MCP servers it declares
+
+WHEN a step session, a retry of it or a judge session launches THE executor SHALL offer it no MCP server of the account, the user or the repository other than those the step's declared MCP tools or the judge's MCP views name, passing `--strict-mcp-config` on every such launch and `--mcp-config` only when the step declares an MCP tool or the judge has an MCP view.
+
+- GIVEN a step declaring `read` and no MCP tool and the enforcement setting off WHEN it launches THEN argv holds `--strict-mcp-config` and no `--mcp-config`
+- GIVEN a step declaring `mcp:tracker/get_issue`, a `tracker` server in the operator's own MCP configuration and the enforcement setting off WHEN it launches or is retried THEN each argv holds `--strict-mcp-config` and `--mcp-config`
+- GIVEN a judge with no MCP view WHEN it launches THEN argv holds `--strict-mcp-config` and no `--mcp-config`
+
+### ECC-B19 A step is offered the servers of its declared MCP tools
+
+WHEN a step declares an MCP tool THE executor SHALL pass `--mcp-config` naming a private config ([WSP-B5](workspace-and-concurrency.spec.md), [SEC-B12](security.spec.md)) that lists every server the declared MCP tools name, as the operator's own MCP configuration defines it, and no other server.
+
+- GIVEN a step declaring `mcp:tracker/get_issue` and a `tracker` server in the operator's own MCP configuration WHEN it launches THEN the private config lists `tracker` as that configuration defines it and no other server
+- GIVEN a step declaring `mcp:tracker/get_issue` and `mcp:wiki/get_page` and both servers in the operator's own MCP configuration WHEN it launches THEN the private config lists `tracker` and `wiki`, each as that configuration defines it
+- GIVEN a `mailer` server in the operator's own MCP configuration and a step declaring only `mcp:tracker/get_issue` WHEN it launches THEN the private config does not list `mailer`
+
+### ECC-B20 The account's MCP servers are switched off
+
+WHEN a step session, a retry of it or a judge session starts THE executor SHALL set `ENABLE_CLAUDEAI_MCP_SERVERS` to `false` in its environment, whatever value the host's environment or a judge's credentials profile holds.
+
+- GIVEN a host environment without `ENABLE_CLAUDEAI_MCP_SERVERS` WHEN a step launches THEN its environment holds `ENABLE_CLAUDEAI_MCP_SERVERS=false`
+- GIVEN a host environment holding `ENABLE_CLAUDEAI_MCP_SERVERS=true` WHEN a step, a retry of it and a judge launch THEN all three environments hold `ENABLE_CLAUDEAI_MCP_SERVERS=false`
+- GIVEN a judge credentials profile holding `ENABLE_CLAUDEAI_MCP_SERVERS=true` WHEN the judge launches THEN its environment holds `ENABLE_CLAUDEAI_MCP_SERVERS=false`
+
+### ECC-B21 A CLI without the MCP isolation flag is refused
+
+WHEN the executor is probed and `claude --help` does not list `--strict-mcp-config` THE executor SHALL fail the probe at preflight with exit 2, reason `probe_failed` and a message that names `--strict-mcp-config`.
+
+- GIVEN a `claude` whose `--help` does not list `--strict-mcp-config` WHEN the run is preflighted THEN it exits 2 with a message naming `--strict-mcp-config` and no session launches
+- GIVEN a `claude` whose `--help` lists `--strict-mcp-config` WHEN the run is preflighted THEN the probe does not fail on that flag
+
+### ECC-B22 A step's declared MCP servers must be defined before the run starts
+
+WHEN a run is preflighted and a step declares an MCP tool of a server the operator's own MCP configuration does not define (a configuration that cannot be read defines none) THE executor SHALL refuse the run with exit 2 before any session starts, naming the step and each such server.
+
+- GIVEN a step declaring `mcp:tracker/get_issue` and `mcp:wiki/get_page` and only a `tracker` server in the operator's own MCP configuration WHEN the run is preflighted THEN it exits 2 naming the step and `wiki`, not `tracker`, and no session starts
+- GIVEN a step declaring `mcp:wiki/get_page` and an operator MCP configuration file that cannot be read WHEN the run is preflighted THEN it exits 2 naming the step and `wiki`
+
+### ECC-B23 A step is never launched without a server it declares
+
+WHEN a step session or a retry of it would launch without a server its declared MCP tools name, because the operator's own MCP configuration does not define the server or no scratch folder ([WSP-B5](workspace-and-concurrency.spec.md)) can hold the private config, THE executor SHALL start no session and fail the attempt, the reason naming each such server.
+
+- GIVEN a step declaring `mcp:tracker/get_issue` and an operator MCP configuration without a `tracker` server at launch WHEN it launches THEN no session starts and the attempt fails with a reason naming `tracker`
+- GIVEN a step declaring `mcp:tracker/get_issue`, a `tracker` server in the operator's own MCP configuration and no scratch folder WHEN it launches THEN no session starts and the attempt fails with a reason naming `tracker`
+- GIVEN the same step and server with a scratch folder WHEN it launches THEN a session starts with a private config that lists `tracker`
+
+### ECC-B24 The MCP isolation probe reads every turn of a session
+
+WHEN P-CC-13 is run THE probe SHALL pass only when it has read the tools a session is offered or the size of its context at every turn of a session of more than one turn, launched as ECC-B18 and ECC-B20 say, and each reading shows the tools of each MCP server the session declares and no tool of any other MCP server.
+
+- GIVEN an account that has MCP servers and a session launched as ECC-B18 and ECC-B20 say WHEN the probe reads every turn THEN no turn shows a tool of an undeclared server and the probe passes
+- GIVEN an account that has MCP servers and a session launched with neither `--strict-mcp-config` nor `ENABLE_CLAUDEAI_MCP_SERVERS=false` WHEN the probe reads every turn THEN a later turn shows tools of the account's MCP servers and the probe fails
+
 ## Acceptance criteria
 
 - ECC-AC1 (ECC-B1, ECC-B2, ECC-B7, ECC-B8, ECC-B9): Argv for every launch shape is built from constants and the binding table only (source-scan and planted-canary tests)
@@ -142,6 +197,14 @@ WHEN a judge view names an MCP server that is not in the operator's own MCP conf
 - ECC-AC9 (ECC-B6): `executors --json` declares `judge_mcp` true for `claude`
 - ECC-AC10 (ECC-B16): Argv of a step and a retry launch holds `--setting-sources project` and one `--plugin-dir` for the workflow plugin and for each dependency found beside it, none for a dependency found nowhere; and live, with a plugin installed at user scope, a step's `system/init` lists the workflow plugin and its dependency and not the user-scope plugin
 - ECC-AC11 (ECC-B17): Recorded-stream fixtures give `usage_limit` true with the instant read as epoch seconds for a `rejected` event, true with a null instant for `credits_required` and false for `allowed` events, each with `infra_cause` and `error_kind` as ECC-B12 gives them
+- ECC-AC12 (ECC-B8, ECC-B18): Argv of a step and of a retry of it holds `--strict-mcp-config` with the enforcement setting on and off, and holds `--mcp-config` when the step declares an MCP tool and not when it declares none
+- ECC-AC13 (ECC-B10, ECC-B18): Argv of a judge launch with no MCP view holds `--strict-mcp-config` and `--disallowedTools "mcp__*"` and no `--mcp-config`
+- ECC-AC14 (ECC-B19): Against a stand-in operator MCP configuration, the config that a step's `--mcp-config` names lists exactly the servers the step's declared MCP tools name, each as that configuration defines it, and is gone when the session ends
+- ECC-AC15 (ECC-B20): The environments of a step, a retry of it and a judge launch from a planted host environment each hold `ENABLE_CLAUDEAI_MCP_SERVERS=false` when the host environment holds `true`, and the judge's does when its credentials profile holds `true`
+- ECC-AC16 (ECC-B21): Against a stand-in `claude` whose `--help` lists no `--strict-mcp-config`, preflight exits 2 with reason `probe_failed` and a message naming the flag, and no session launches; against one that lists it, the probe passes
+- ECC-AC17 (ECC-B22): Against a stand-in operator MCP configuration, a step declaring a server that configuration does not define, or a configuration file that cannot be read, exits 2 at preflight naming the step and each such server with no session started; the same step with every declared server defined passes
+- ECC-AC18 (ECC-B23): Against stand-ins of the operator's MCP configuration and of `claude`, a step launch whose declared server is not defined, or that has no scratch folder, starts no session and fails with a reason naming the server; with the server defined and a scratch folder it starts one
+- ECC-AC19 (ECC-B24): The live probe for P-CC-13 reads every turn of a step session and of a judge session, each of more than one turn and launched as ECC-B18 and ECC-B20 say, and passes; it fails when the launch omits `--strict-mcp-config` and `ENABLE_CLAUDEAI_MCP_SERVERS=false` in an account that has MCP servers
 
 ## Open questions
 

@@ -109,6 +109,9 @@ class RunContext:
     capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS-B17)
     main_checkout: Path | None = None
     attempts_started: int = 0
+    counted: dict[tuple[str, str | None], int] = field(default_factory=dict)  # counted attempts by unit and item (CMP-B19)
+    started: dict[tuple[str, str | None], int] = field(default_factory=dict)  # every attempt started, counted or not
+    trips: dict[str, int] = field(default_factory=dict)  # trips back, by the unit they entered (CMP-B20)
     origin: str = "cli"
     stage: str = "local-dev"  # PRO-B7, PRO-B4
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
@@ -120,6 +123,21 @@ class RunContext:
     child: str | None = None  # SWF-B8: the sub-workflow unit whose child this context runs; None for the run's own spec
     parent_thread: str = ""  # a child's context keeps the parent's thread
     read_worktreeinclude: bool = True  # `run.worktree.read_worktreeinclude`, for the writer worktrees (WSP-B2)
+
+    def count_attempt(self, unit: str, item: str | None, attempt: int, visit: int) -> None:
+        """CMP-B19: an attempt counts against the cap only when its unit, item or slot has attempted before in the
+        thread, as a retry or in a visit after a trip back."""
+        self.started[(unit, item)] = self.started.get((unit, item), 0) + 1
+        if attempt > 1 or visit > 1:
+            self.attempts_started += 1
+            self.counted[(unit, item)] = self.counted.get((unit, item), 0) + 1
+
+    def report(self) -> dict[str, Any]:
+        """CMP-B20: what repeated in this invocation, for the exit at the attempt cap."""
+        repeated = [{"unit": u, "item": i, "attempts": self.started.get((u, i), n),
+                     "trips_back": self.trips.get(u, 0)} for (u, i), n in self.counted.items()]
+        return {"attempts_counted": self.attempts_started, "trips_back": sum(self.trips.values()),
+                "repeated": repeated}
 
     @property
     def thread(self) -> str:
@@ -338,6 +356,10 @@ class EngineNodes:
 
             write_prompt(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, req.session_key, req.prompt)
         key = req.session_key
+        started = ""
+        if req.kind in ("step", "retry"):  # SIL-B33: the commit the session started from
+            with contextlib.suppress(Exception):
+                started = gitmod.head(req.workdir)
         for n in range(self.ctx.infra_tries):
             if hold is not None:
                 reason = self.ledger.acquire(
@@ -376,9 +398,12 @@ class EngineNodes:
                                                          if not ex.capabilities().knows_tool(c.name)}),
                                    infra_cause=str(res.infra_cause) if res.infra_cause else None,
                                    error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
+                                   usage_limit=res.usage_limit, usage_limit_resets_at=res.usage_limit_resets_at,
                                    duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
                                    slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
                                    **({"lessons_digest": lessons_digest} if lessons_digest else {}),
+                                   **({"wrote_paths": self._wrote_paths(req, started)}
+                                      if req.kind in ("step", "retry") else {}),
                                    **dict(extra or {}))
                 if hold is not None:
                     spent = CostTotals()
@@ -387,10 +412,19 @@ class EngineNodes:
             finally:
                 if hold is not None:
                     self.ledger.release(key, snapshot=hold["snapshot"], real_usd=0.0)  # a no-op once released
-            if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
-                break
+            if res.infra_cause is None or n + 1 >= self.ctx.infra_tries or (res.usage_limit and not res.ok):
+                break  # a usage-limit refusal is never rerun after a backoff (BUD-B17)
             self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
         return results[-1], results
+
+    @staticmethod
+    def _wrote_paths(req: SessionRequest, started: str) -> list[str]:
+        """SIL-B33: the files that differ from the commit the session started from, committed or not, by any tool or
+        command; empty when git cannot say."""
+        try:
+            return gitmod.changed_paths(req.workdir, started or None)
+        except Exception:  # noqa: BLE001 - observability never changes the run (OVR-B4)
+            return []
 
     def _cost(self, state: Mapping[str, Any], results: list[SessionResult]) -> dict[str, Any]:
         totals = CostTotals.from_json((state.get("run") or {}).get("cost"))
@@ -472,8 +506,21 @@ class EngineNodes:
             maps = {unit: m}
         iid = item["id"] if item else None
         first = entered or prev.get("item") != iid
+        entry_head = ""  # SRV-B35: the commit an item's first attempt of the visit started from, carried by its retries
+        if u.map is not None:
+            if first:
+                with contextlib.suppress(Exception):
+                    entry_head = gitmod.head(workdir)
+            else:
+                entry_head = str(prev.get("entry_head") or "")
         attempt = int(item["attempt"]) if item else int(prev.get("attempt", 0)) + 1
-        self.ctx.attempts_started += 1
+        again = prev.get("reuse") if (item is None and prev.get("escalate") == "usage_limit"
+                                      and prev.get("usage_limit_stage") == "step" and prev.get("visit") == visit
+                                      and isinstance(prev.get("reuse"), Mapping)) else None
+        if again is not None:  # DUR-B12: the session the limit ended runs again, as that attempt and with its inputs
+            attempt, first = int(prev["attempt"]), bool(again["first"])
+        else:
+            self.ctx.count_attempt(unit, iid, attempt, visit)
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM-B6, RST-B22, RST-B23)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}
@@ -506,7 +553,8 @@ class EngineNodes:
                 record: dict[str, Any] = {
                     "attempt": attempt, "visit": visit, "item": iid, "ok": False, "text": "", "issues": [],
                           "tools": [], "session_id": None, "error_kind": "item_model", "infra_spent": False,
-                          "check": None, "escalate": "workflow_fault", "timed_out": False}
+                          "check": None, "escalate": "workflow_fault", "timed_out": False,
+                          "entry_head": entry_head}
                 return {"attempts": {unit: record}, "maps": maps}
             alias = chosen
         slot_spec = self._slot_spec(unit, iid) if u.contest is not None else None  # CTS-B6: this slot's own overrides
@@ -522,7 +570,7 @@ class EngineNodes:
         failed, env, hybrid = self._scripts(st.before, unit, attempt, "before", state, workdir)
         fields.update(hybrid)  # a `before` script's keys are the session's to read (SCR-B5)
         if failed is not None:
-            return self._script_failed(unit, state, attempt, visit, failed, env, path_units, first, hybrid)
+            return self._script_failed(unit, state, attempt, visit, failed, env, path_units, first, hybrid, entry_head)
         judged = (state.get("judgements") or {}).get(unit) or {}
         fb = (state.get("feedback") or {}).get(unit) or {}
         retry = not first and bool(prev)
@@ -530,18 +578,34 @@ class EngineNodes:
         prev_judged = ((state.get("judgements") or {}).get(prev_unit) or {}) if prev_unit else {}
         notes = tuple(prev_judged.get("notes") or ()) if first else ()
         lessons_text = lessonsmod.block(lessonsmod.load(spec, unit))
+        prior_check = prev.get("check") if retry else None  # BUD-B16: the previous attempt's failing check, same visit and item
+        # what the attempt's prompt is made from; a refused attempt keeps it, because the judge node overwrites the
+        # judgement and the gate clears one-time feedback before the rerun (DUR-B12)
+        inputs: dict[str, Any] = dict(again) if again is not None else {
+            "first": first, "retry": retry,
+            "blockers": [dict(b) for b in (judged.get("blockers") or [])] if retry else [],
+            "check_evidence": str(((prev.get("check") or {}).get("evidence")) or "") if retry else "",
+            "previous_report": str(prev.get("text") or "") if retry else "",
+            "paths_only": retry and bool(prev.get("cut_off")),
+            "notes": [*notes, *([str(fb.get("text"))] if fb.get("as") == "notes" else [])],
+            "visit_reason": str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "") if first else "",
+            "visit_from": str(((state.get("visits") or {}).get(unit) or {}).get("from") or "") if first else "",
+            "feedback": str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
+            "prior_failing": {"findings": [{k: f.get(k) for k in ("criterion", "place", "message")}
+                                           for f in prior_check.get("findings") or [] if f.get("status") == "fail"],
+                              "evidence": str(prior_check.get("evidence") or "")}
+            if isinstance(prior_check, Mapping) and prior_check.get("result") == "FAIL"
+            and not prior_check.get("environmental") else None}
+        retry = bool(inputs["retry"])
         ctx = AttemptContext(
             template=load_text(spec, st.prompt), fields=fields, attempt=attempt, retry=retry, lessons=lessons_text,
             blockers=tuple(Blocker(criterion=str(b.get("criterion", "")), place=str(b.get("place", "")),
                                    problem=str(b.get("problem", "")), fix=str(b.get("fix", "")))
-                           for b in (judged.get("blockers") or [])) if retry else (),
-            check_evidence=str(((prev.get("check") or {}).get("evidence")) or "") if retry else "",
-            previous_report=str(prev.get("text") or "") if retry else "",
-            paths_only=retry and bool(prev.get("cut_off")),
-            notes=notes + ((str(fb.get("text")),) if fb.get("as") == "notes" else ()),
-            visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "") if first else "",
-            visit_from=str(((state.get("visits") or {}).get(unit) or {}).get("from") or "") if first else "",
-            feedback=str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
+                           for b in inputs["blockers"]),
+            check_evidence=str(inputs["check_evidence"]), previous_report=str(inputs["previous_report"]),
+            paths_only=bool(inputs["paths_only"]), notes=tuple(str(n) for n in inputs["notes"]),
+            visit_reason=str(inputs["visit_reason"]), visit_from=str(inputs["visit_from"]),
+            feedback=str(inputs["feedback"]),
             rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             upstream_targets=tuple(u.gate.back_targets))
         commands = expand_commands(st.commands, workdir)  # `@repository`: what the repository declares (CHK-B11)
@@ -596,6 +660,10 @@ class EngineNodes:
                 for call in selfcheck.close(self.ctx.state_root, ticket):
                     self.ctx.log.write("self_check", unit=unit, item=iid, attempt=attempt, result=call.get("result"),
                                        findings=call.get("findings"), duration_s=call.get("duration_s"))
+        if res.partial and not res.ok:  # RCT-B11: a session the stop request ended is no failed attempt; none is recorded,
+            reason = self.ctx.drain_requested()  # so no retry is charged and a resume runs the attempt again
+            if reason:
+                raise Drain(reason)
         after = gitmod.fingerprint(workdir)
         foreign = self._foreign_worktrees(unit, iid, key, known, worktrees_before)  # WTR-B26: recorded, never touched
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
@@ -605,7 +673,10 @@ class EngineNodes:
             hybrid.update(after_arts)
         escalate: str | None = None
         reach = tool_access.refused(unit, st, caps, res.denied, res.tools_at_start)
-        if res.error_kind in ("auth", "refused"):
+        limited = bool(res.usage_limit and not res.ok)
+        if limited:
+            escalate = "usage_limit"  # BUD-B17: spends no retry and no infra try, whatever else the result says
+        elif res.error_kind in ("auth", "refused"):
             escalate = res.error_kind
         elif reach and (not res.ok or parsed.blocked):
             escalate = "tool_access"  # no retry spent; the pause offers the grants (BUD-B1, BUD-B11, RST-B28, RST-B29, RST-B30)
@@ -613,23 +684,25 @@ class EngineNodes:
             escalate = "blocked"
         elif parsed.upstream:
             escalate = "upstream"
-        prior = prev.get("check") if retry else None  # BUD-B16: the previous attempt's failing check, same visit and item
-        prior_failing = {"findings": [{k: f.get(k) for k in ("criterion", "place", "message")}
-                                      for f in prior.get("findings") or [] if f.get("status") == "fail"],
-                         "evidence": str(prior.get("evidence") or "")} \
-            if isinstance(prior, Mapping) and prior.get("result") == "FAIL" and not prior.get("environmental") else None
+        prior_failing = inputs["prior_failing"]
         record = {
             "item": iid, "prior_failing": prior_failing, "session_key": key,  # the check reads this session's journal (CHK-B24)
+            "visit_keys": [*([] if first else [str(k) for k in prev.get("visit_keys") or ()]), key],  # VSR-B1
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
-            "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
+            "infra_spent": res.infra_cause is not None and not limited, "timed_out": res.timed_out, "stalled": res.stalled,
             "error_kind": res.error_kind, "denied": list(res.denied), "tools": [c.name for c in res.tool_calls],
             "tool_access": reach,
             "session_id": res.session_id, "executor": ex.name, "alias": alias, "model": res.model,
             "changed": before != after, "escalate": escalate, "cut_off": res.partial, "check": None,
             "duration_s": res.duration_s, "tool_wall_share": res.tool_wall_share,
             "slow_host": res.timed_out and res.tool_wall_share >= 0.6, "missing_fields": rendered.missing_fields,
+            **({"entry_head": entry_head} if u.map is not None else {}),
         }
+        if limited:
+            record.update(usage_limit_resets_at=res.usage_limit_resets_at, usage_limit_stage="step", reuse=inputs)
+        else:  # the merge deletes a key written as None: nothing of an earlier refusal stays
+            record.update(usage_limit_resets_at=None, usage_limit_stage=None, reuse=None)
         esc_spec = laddermod.escalation_of(u, full_ov)
         if up:
             record.update(escalated=True, escalated_to=alias)
@@ -1062,11 +1135,15 @@ class EngineNodes:
         return Move(writes, goto=judge_node)
 
     def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
-                       path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
-        """A failed `before` script fails the attempt with no session (SCR-B7, SCR-B2)."""
-        record = {"attempt": attempt, "visit": visit, "ok": False, "text": "", "issues": [], "tools": [],
-                  "session_id": None, "error_kind": f"script_failed:{name}", "infra_spent": False, "check": None,
-                  "escalate": "environmental" if env else None, "timed_out": False}
+                       path_units: list[str], first: bool, arts: dict[str, str], entry_head: str = ""
+                       ) -> dict[str, Any]:
+        """A failed `before` script fails the attempt with no session (SCR-B7, SCR-B2). An item of a map keeps the
+        commit its first attempt started from, for the retry that follows (SRV-B35)."""
+        record: dict[str, Any] = {
+            "attempt": attempt, "visit": visit, "ok": False, "text": "", "issues": [], "tools": [],
+            "session_id": None, "error_kind": f"script_failed:{name}", "infra_spent": False, "check": None,
+            "escalate": "environmental" if env else None, "timed_out": False,
+            **({"entry_head": entry_head} if entry_head else {})}
         run = {"path": {"units": path_units + [unit]}} if first and unit not in path_units else {}
         return {"attempts": {unit: record}, "artifacts": {unit: arts or None}, "run": run}
 
@@ -1453,6 +1530,9 @@ class EngineNodes:
             write["judgements"][unit].update(judge_state=state_of, trusted=laddermod.trusted(state_of, self.ctx.stage))
             if u.step.escalation is not None or gatemod.arm_overrides(spec, unit, state)[0].get("escalation"):
                 write["judgements"][unit]["escalation"] = self._escalation_facts(unit, state, att, write)
+        if write["judgements"][unit].get("reason") == "usage_limit":  # JDG-B14: the attempt keeps the cause and the instant
+            att.update(escalate="usage_limit", usage_limit_stage="judge",
+                       usage_limit_resets_at=write["judgements"][unit].get("usage_limit_resets_at"))
         if write["judgements"][unit].get("infra_spent"):
             att["infra_spent"] = True
             att["infra_cause"] = "judge_infra"
@@ -1518,6 +1598,17 @@ class EngineNodes:
         if isinstance(skey, str) and skey.rsplit(".", 1)[-1] in ("step", "retry"):  # CHK-B24: no other check has a record
             calls = read_session(session_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, skey))
             ctx.session = None if calls is None else tuple(calls)
+            if calls is not None:  # VSR-B1, VSR-B2: the attempts of this visit and item, in order; no record adds no call
+                held = att.get("visit_keys")
+                keys = [k for k in held if isinstance(k, str)] if isinstance(held, list) and held else [skey]
+                visit_calls: list[Any] = []
+                for k in keys:
+                    if k.rsplit(".", 1)[-1] not in ("step", "retry"):
+                        continue
+                    got_calls = calls if k == skey else read_session(
+                        session_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, k))
+                    visit_calls.extend(got_calls or ())
+                ctx.visit_session = tuple(visit_calls)
         got = run_in_worker(u.gate, ctx)
         if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
             for f in ctx.out_dir.glob("*.out"):
@@ -1575,6 +1666,21 @@ class EngineNodes:
                 for server, tools in mcpconfig.viewed_servers(views.tools).items() if server in down for tool in tools]
         keep = tuple(t for t in views.tools if not (t.startswith("mcp__") and t.split("__", 2)[1] in down))
         return dataclasses.replace(views, tools=keep, deferred=(*views.deferred, *lost))
+
+    def _entry_commit(self, unit: str, visit: int) -> str:
+        """SRV-B34, SRV-B36: the commit recorded when the unit's visit was entered (EVT-B12), the first record of the
+        unit and visit in this run's log; empty when none holds one."""
+        from tempergraph.run.events import records
+        from tempergraph.run.subrun import root_log
+
+        try:
+            for r in records(root_log(self.ctx.log).path):
+                if r.get("kind") == "unit_entered" and r.get("unit") == unit and r.get("visit") == visit \
+                        and r.get("child") == self.ctx.child:
+                    return str(r.get("head_commit") or "")
+        except Exception:  # noqa: BLE001 - observability never changes the run (OVR-B4)
+            return ""
+        return ""
 
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
                        workdir: Path, claim: tuple[str, str] | None = None) -> dict[str, Any]:
@@ -1650,13 +1756,17 @@ class EngineNodes:
                              options=jopts,
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
-        changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV-B11)
+        base = str(att.get("entry_head") or "") if u.map is not None else self._entry_commit(
+            unit, int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1)))
+        changed = list(gitmod.changed_paths(workdir, base or None))[:200]  # the digest's `changed_read` (SRV-B11, SRV-B34)
         hold = self._hold(unit, state)
         res, results = self._session(ex, req, views, extra={"changed_paths": changed}, hold=hold)
         all_results = list(results)
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
         if risk is not None:
             out["risk"] = risk
+        if not res.ok and res.usage_limit:  # JDG-B14: a refusal derives no verdict and spends nothing
+            return self._judge_limited(out, res, state, all_results)
         if res.infra_cause is not None:
             out.update(verdict=str(Verdict.ESCALATE), infra_spent=True, reason="judge_infra")
             out["_cost"] = self._cost(state, all_results)
@@ -1673,6 +1783,8 @@ class EngineNodes:
                                       session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, rkey))
                 res2, r2 = self._session(ex, rreq, views, hold=hold)
                 all_results += r2
+                if not res2.ok and res2.usage_limit:
+                    return self._judge_limited(out, res2, state, all_results)
                 try:
                     judgement = parse_judgement(res2.text, g)
                 except Unparsed:
@@ -1710,6 +1822,14 @@ class EngineNodes:
         out["_cost"] = self._cost(state, all_results)  # the audit judge's cost is in no counter (JDG-B7)
         if claim is None and judgement is not None and self._audit_drawn(unit, iid, attempt):
             self._audit_judgement(unit, iid, attempt, ex, req, views, g, cres, state, att, workdir)
+        return out
+
+    def _judge_limited(self, out: dict[str, Any], res: SessionResult, state: Mapping[str, Any],
+                       results: list[SessionResult]) -> dict[str, Any]:
+        """JDG-B14: the usage limit ended a judge session; the gate gets the ESCALATE placeholder, no `judgement` record."""
+        out.update(verdict=str(Verdict.ESCALATE), reason="usage_limit", confidence=1.0,
+                   confidence_source="engine_placeholder", usage_limit_resets_at=res.usage_limit_resets_at)
+        out["_cost"] = self._cost(state, results)
         return out
 
     # -- the sampled audit judge (JDG-B7) ---------------------------------------------------------------
@@ -1804,6 +1924,9 @@ class EngineNodes:
         self.ctx.log.write("gate", unit=unit, item=((state.get("attempts") or {}).get(unit) or {}).get("item"),
                            verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
+        if r["token"] == "BACK":
+            to = ((state.get("judgements") or {}).get(unit) or {}).get("back_to") or r["node"]
+            self.ctx.trips[to] = self.ctx.trips.get(to, 0) + 1
         done = self._audits.pop((unit, ((state.get("attempts") or {}).get(unit) or {}).get("item")), None)
         if done is not None:  # JDG-B7: the audit record follows the gate of the judgement it audits
             self.ctx.log.write("audit_judge", unit=unit, **done)
@@ -1832,6 +1955,8 @@ class EngineNodes:
                                             for t in p.get("tool_access") or []] or None,
                                **({"deadline_at": p["deadline_at"], "on_deadline": p.get("on_deadline")}
                                   if p.get("deadline_at") else {}),
+                               **({"usage_limit_resets_at": p["usage_limit_resets_at"]}
+                                  if "usage_limit_resets_at" in p else {}),
                                **({"questions": len(p["questions"])} if p.get("questions") is not None else {}))
         return w
 
@@ -1873,6 +1998,11 @@ class EngineNodes:
 
         result = run_finalizer(self.ctx, state)
         self.ctx.log.write("finalize", **result)
+        if result.get("manual_steps") or result.get("outcome") == "error":  # FIN-B8: seen, not only logged
+            import sys
+
+            reason = str(result.get("reason") or "").replace("\n", " ")
+            sys.stderr.write(f"{self.ctx.thread}: finalizer {result.get('outcome')}: {reason}\n")
         return {"finalized": {"done": True, **result}}
 
 

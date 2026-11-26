@@ -18,7 +18,8 @@ from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
-                             "workflow_fault", "check_repeat", "merge_conflict", "map_check", "no_decision"})
+                             "workflow_fault", "check_repeat", "merge_conflict", "map_check", "no_decision",
+                             "usage_limit"})
 HUMAN_CAP = 100
 
 
@@ -301,6 +302,10 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
         out["repeated"] = list(held.get("repeated") or [])
         if not out["repeated"]:  # a check with no findings repeats on its evidence text
             out["repeated_evidence"] = str(held.get("repeated_evidence") or "")[:400]
+    if reason == "usage_limit":  # BUD-B17, HUM-B14: the instant the session returned, and a resume with no decision
+        held = (state.get("attempts") or {}).get(unit) or {}
+        out["usage_limit_resets_at"] = held.get("usage_limit_resets_at")
+        out["resume"] = f"tempergraph resume {spec.name} {task_id}" + (f" --unit {at}" if at else "")
     if kind == "approval" and u.extra.get("sign_off"):
         out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT-B15, OUT-B16, OUT-B17, OUT-B4)
     return out
@@ -606,6 +611,14 @@ def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payl
                    ) -> dict[str, Any]:
     if payload.get("decision") == "deadline":
         return apply_deadline(spec, unit, state, str((state.get("request") or {}).get("task_id") or ""), payload)
+    if payload.get("decision") == "usage_limit":  # DUR-B12: the session the limit ended runs again, nothing counted
+        held = (state.get("attempts") or {}).get(unit) or {}
+        at_judge = held.get("usage_limit_stage") == "judge"
+        node = flow.node_names(unit)[1 if at_judge else 0]
+        w = {"route": {unit: {"token": "RETRY", "node": node, "by": "person", "scope": None}}, "pause": {unit: None}}
+        if at_judge:  # the rerun judge must not read the cause again
+            w["attempts"] = {unit: {"escalate": None, "usage_limit_resets_at": None, "usage_limit_stage": None}}
+        return w
     w = _apply(spec, unit, state, payload)
     d = Decision.parse(str(payload.get("decision", "")))
     rulings = ruling_writes(state, payload, decision_target(spec, unit, d))

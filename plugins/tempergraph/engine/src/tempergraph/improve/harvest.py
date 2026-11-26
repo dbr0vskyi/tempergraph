@@ -71,6 +71,35 @@ def harvest(root: Path, spec: WorkflowSpec, gate: str) -> list[dict[str, Any]]:
             write_json(path, case)
         out.append({"case_id": cid, "path": str(path), "new": new, "thread": thread,
                     "suggested": case["suggested"]})
+    if gate == "outcome":
+        out.extend(_escape_candidates(root, spec, produced, blockers))
+    return out
+
+
+def _escape_candidates(root: Path, spec: WorkflowSpec, produced: list[str], blockers: list[str]
+                       ) -> list[dict[str, Any]]:
+    """LIF-B17: one candidate per escape of the outcome gate; ids, counts and kinds only, never text."""
+    from tempergraph.run import outcome_record
+
+    out = []
+    for rec in outcome_record.escape_records(spec, root / "ledger.jsonl"):
+        thread = str(rec["thread"])
+        cid = "h-" + hashlib.sha256(f"{thread}\0escape".encode()).hexdigest()[:10]
+        pull = {k: v for k, v in (rec.get("pull_request") or {}).items() if k in ("host", "repo", "number")}
+        case = {"schema_version": 1, "case_id": cid, "gate": "outcome", "provenance": "harvested",
+                "state": "candidate",
+                "origin": {"thread": thread, "pull_request": pull, "entry": rec.get("entry"),
+                           "entries": rec.get("entries"), "signals": rec.get("signals")},
+                "suggested": [{"criterion": c, "expected": "UNMET"} for c in blockers],
+                "subject": {"produces": produced, "workspace": _workspace(root, spec.name, thread)},
+                "labels": [], "harvested_at": now_iso()}
+        path = harvest_dir(root, "outcome") / cid / "case.json"
+        new = not path.exists()
+        if new:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            write_json(path, case)
+        out.append({"case_id": cid, "path": str(path), "new": new, "thread": thread,
+                    "suggested": case["suggested"]})
     return out
 
 

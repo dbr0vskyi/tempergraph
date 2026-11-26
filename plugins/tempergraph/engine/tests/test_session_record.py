@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from tempergraph.api import CheckFinding, CheckResult, Gate, Judge, Routing, Step, Workflow
+from tempergraph.api import CheckFinding, CheckResult, Gate, Judge, Routing, Step, Value, Workflow
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import Event, SessionRequest, SessionResult
 from tempergraph.executors.standins import answer, standin
@@ -25,10 +25,11 @@ from tempergraph.run import selfcheck
 from tempergraph.run.checks import CheckContext
 from tempergraph.run.commands import resolve_command
 from tempergraph.run.runner import RunSettings, start
+from tempergraph.run.session_record import read_session
 from tempergraph.store.layout import state_root_path
 
 from .fixtures.workflows import crit, named
-from .test_run import MET, registry
+from .test_run import MET, registry, verdict_block
 
 NO_SLEEP = RunSettings(sleep=lambda s: None)
 SRC = Path(__file__).resolve().parents[1] / "src" / "tempergraph"
@@ -43,7 +44,9 @@ def seen_check(ctx: Any) -> CheckResult:
     out = os.environ.get(OUT_VAR)
     if out:
         doc = {
-            "session": None if ctx.session is None else [dict(c) for c in ctx.session], "preview": ctx.preview,
+            "session": None if ctx.session is None else [dict(c) for c in ctx.session],
+            "visit_session": None if ctx.visit_session is None else [dict(c) for c in ctx.visit_session],
+            "preview": ctx.preview,
             "attempt": ctx.attempt, "visit": ctx.visit, "unit": ctx.unit, "item": ctx.item,
             "workdir_name": ctx.workdir.name, "artifacts": ctx.artifacts, "values": ctx.values,
             "settings": ctx.settings, "criteria": list(ctx.criteria), "allow": list(ctx.allow),
@@ -75,8 +78,8 @@ def push_calls(sink: Any, calls: Sequence[Call], first: int = 0, finish: bool = 
             sink.push(Event(kind="tool_finished", data={"call_id": f"c{i}", "ok": ok}))
 
 
-def started(sink: Any) -> None:
-    sink.push(Event(kind="session_started", data={"session_id": "s", "model": None, "tools": []}))
+def started(sink: Any, sid: str | None = "s") -> None:
+    sink.push(Event(kind="session_started", data={"session_id": sid, "model": None, "tools": []}))
 
 
 def script(calls: Sequence[Call], finish: bool = True) -> Callable[[SessionRequest, Any], SessionResult]:
@@ -146,9 +149,9 @@ def test_ok_false_the_retry_attempt_a_restart_and_an_unfinished_call(
     monkeypatch.setenv(FAIL_FIRST_VAR, "1")
 
     def restarted(req: SessionRequest, sink: Any) -> SessionResult:
-        started(sink)
+        started(sink, "died")
         push_calls(sink, [("Read", READ, "docs/old.md", True)])
-        started(sink)  # an infra try that started again: only what follows counts
+        started(sink)  # an infra try that started again, a new session id: only what follows counts
         push_calls(sink, [("Read", READ, "docs/new.md", True)], first=1)
         push_calls(sink, [("Read", READ, "docs/open.md", True)], first=2, finish=False)
         return answer("Expanded.", session_id="s")
@@ -162,6 +165,62 @@ def test_ok_false_the_retry_attempt_a_restart_and_an_unfinished_call(
     assert second["attempt"] == 2 and second["session"] == [  # the retry's own record, not the first attempt's
         {"name": "Read", "capability": "read", "target": "docs/new.md", "ok": True},
         {"name": "Read", "capability": "read", "target": "docs/open.md", "ok": False}]  # no finish: ok false
+
+
+def test_a_session_woken_with_its_own_id_keeps_the_calls_made_before(repo: Path, seen: Path) -> None:
+    # CHK-AC19, CHK-B24
+    def woken(req: SessionRequest, sink: Any) -> SessionResult:
+        started(sink)
+        push_calls(sink, [("Read", READ, "docs/first.md", True)])
+        started(sink)  # the turn ended while a background command ran; the same session is woken
+        push_calls(sink, [("Edit", EDIT, "src/b.py", True)], first=1)
+        started(sink)
+        return answer("Expanded.", session_id="s")
+
+    out = go(repo, Scripted([woken]))
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    (got,) = lines(seen)
+    assert got["session"] == [
+        {"name": "Read", "capability": "read", "target": "docs/first.md", "ok": True},
+        {"name": "Edit", "capability": "edit", "target": "src/b.py", "ok": True}]
+
+
+def _journal(folder: Path, rows: Sequence[tuple[str, str | None]]) -> Path:
+    """A journal of `("start", session id)` and `("call", target)` rows."""
+    out = []
+    for n, (what, value) in enumerate(rows):
+        if what == "start":
+            out.append({"ev": "session_started", **({} if value is None else {"session_id": value})})
+        else:
+            out += [{"ev": "tool_started", "name": "Read", "call_id": f"c{n}", "capability": "read",
+                     "input_summary": value}, {"ev": "tool_finished", "call_id": f"c{n}", "ok": True}]
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "activity.jsonl").write_text("".join(json.dumps(r) + "\n" for r in out), encoding="utf-8")
+    return folder
+
+
+@pytest.mark.parametrize(("rows", "want"), [
+    ([("start", "a"), ("call", "1"), ("start", "a"), ("call", "2")], ["1", "2"]),  # one session, woken
+    ([("start", "a"), ("call", "1"), ("start", "b"), ("call", "2")], ["2"]),  # the first session died
+    ([("start", "a"), ("call", "1"), ("start", "b"), ("call", "2"), ("start", "b"), ("call", "3")], ["2", "3"]),
+    ([("start", "a"), ("call", "1"), ("start", "b"), ("call", "2"), ("start", "a"), ("call", "3")], ["3"]),
+    ([("start", None), ("call", "1"), ("start", None), ("call", "2")], ["2"]),  # no id: every start is a start
+    ([("start", "a"), ("call", "1"), ("start", None), ("call", "2")], ["2"]),
+    ([("call", "1"), ("call", "2")], ["1", "2"]),
+])
+def test_the_record_starts_at_the_first_start_of_the_last_session_id(
+        tmp_path: Path, rows: list[tuple[str, str | None]], want: list[str]) -> None:  # CHK-AC19, CHK-AC15, CHK-B24
+    got = read_session(_journal(tmp_path / "s", rows))
+    assert got is not None and [c["target"] for c in got] == want
+
+
+def test_a_tool_line_dropped_before_a_wake_up_leaves_no_record(tmp_path: Path) -> None:  # CHK-AC17, CHK-B25
+    folder = _journal(tmp_path / "s", [("start", "a"), ("call", "1"), ("start", "a"), ("call", "2")])
+    journal = folder / "activity.jsonl"
+    first, *rest = journal.read_text(encoding="utf-8").splitlines()
+    dropped = json.dumps({"ev": "truncated", "dropped": {"tool_started": 1}})
+    journal.write_text("\n".join([first, dropped, *rest]) + "\n", encoding="utf-8")
+    assert read_session(folder) is None
 
 
 def _scan(root: Path, planted: str) -> set[str]:
@@ -254,9 +313,93 @@ def test_a_check_that_ignores_the_record_gets_the_same_context_on_every_executor
     assert (first["workdir_name"], second["workdir_name"]) == ("demo--S-1", "demo--S-2")  # named by the task
     for doc in (first, second):
         doc.pop("session")
+        doc.pop("visit_session")  # VSR-B1 differs by executor as `session` does
         doc.pop("workdir_name")
     assert first == second  # unit, item, visit, attempt, workdir, artifacts, values, settings, criteria, runs, git
     assert first["runs"] == 0 and first["unit"] == "expand" and first["attempt"] == 1
+
+
+def _call(target: str) -> dict[str, Any]:
+    return {"name": "Read", "capability": "read", "target": target, "ok": True}
+
+
+def test_a_retry_check_sees_the_calls_of_the_whole_visit(
+        repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 7, VSR-AC1
+    monkeypatch.setenv(FAIL_FIRST_VAR, "1")
+    ex = Scripted([script([("Read", READ, "docs/a.md", True)]), script([("Read", READ, "docs/b.md", True)])])
+    assert go(repo, ex).exit_code is ExitCode.FINISHED
+    first, second = lines(seen)
+    assert first["session"] == [_call("docs/a.md")] and first["visit_session"] == [_call("docs/a.md")]
+    assert second["session"] == [_call("docs/b.md")]  # the retry's own calls only
+    assert second["visit_session"] == [_call("docs/a.md"), _call("docs/b.md")]  # first attempt, then the retry
+
+
+def test_a_visit_started_by_a_trip_back_holds_no_call_of_an_earlier_visit(repo: Path, seen: Path) -> None:
+    # AC 7, VSR-AC1
+    review = Step(prompt="Review {request}", tools=["read"],
+                  gate=Gate(judge=Judge(stance="V."), criteria=[crit("c2")], back_targets=["expand"]))
+    expand = Step(prompt="Expand the plan for {request}", tools=["read", "write"],
+                  produces={"notes": Value(choices=["a", "b"])},
+                  gate=Gate(check=seen_check, judge=Judge(stance="V."), criteria=[crit("c1")]))
+    spec = named(Workflow(order=["expand", "review"], units={"expand": expand, "review": review},
+                          issue_repository="acme/x", routing=Routing(description="Expand a plan")))
+
+    def scripted(target: str, art: str) -> Callable[[SessionRequest, Any], SessionResult]:
+        def run(req: SessionRequest, sink: Any) -> SessionResult:
+            started(sink)
+            push_calls(sink, [("Read", READ, target, True)])
+            return answer(f"Done.\nARTIFACT notes: {art}" if art else "Done.", session_id="s")
+        return run
+
+    ex = Scripted([scripted("docs/a.md", "a"), scripted("docs/r.md", ""),
+                   scripted("docs/b.md", "b"), scripted("docs/r.md", "")])
+    judges = [MET, verdict_block("UNMET", defect_in="notes"), MET, MET]
+    ex.run_judge = lambda req, views, sink: answer(judges.pop(0), tools=("Read",), session_id="j")  # type: ignore[method-assign]
+    assert go(repo, ex, spec).exit_code is ExitCode.FINISHED
+    first, second = lines(seen)
+    assert (first["visit"], second["visit"]) == (1, 2)
+    assert first["visit_session"] == [_call("docs/a.md")]
+    assert second["visit_session"] == [_call("docs/b.md")]  # nothing of the first visit
+
+
+def test_visit_session_is_none_for_a_stand_in_that_reports_tool_names_only(repo: Path, seen: Path) -> None:
+    # AC 7, VSR-AC2
+    names_only = standin("claude", steps=[answer("x", tools=("Read",), session_id="s")],
+                         judges=[answer(MET, tools=("Read",), session_id="j")])
+    assert [g["visit_session"] for g in _none_case(repo, seen, names_only)] == [None]
+
+
+def test_visit_session_is_none_when_the_retrys_own_record_is_none(
+        repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 7, VSR-AC2
+    monkeypatch.setenv(FAIL_FIRST_VAR, "1")
+    ex = Scripted([script([("Read", READ, "docs/a.md", True)]), script([])])  # the retry has no record
+    got = _none_case(repo, seen, ex)
+    assert got[1]["session"] is None and got[1]["visit_session"] is None  # although the first attempt has a record
+
+
+def test_a_retry_after_an_attempt_with_no_record_holds_its_own_calls_alone(
+        repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 7, VSR-AC2
+    monkeypatch.setenv(FAIL_FIRST_VAR, "1")
+    ex = Scripted([script([]), script([("Read", READ, "docs/b.md", True)])])
+    first, second = _none_case(repo, seen, ex)
+    assert first["visit_session"] is None
+    assert second["visit_session"] == [_call("docs/b.md")]
+
+
+def test_the_preview_has_no_visit_session(repo: Path, seen: Path) -> None:
+    # AC 7, VSR-AC2
+    def previewing(req: SessionRequest, sink: Any) -> SessionResult:
+        (ticket,) = set(re.findall(r"tempergraph self-check ([0-9a-f]{32})", req.prompt))
+        started(sink)
+        push_calls(sink, [("Read", READ, "docs/a.md", True)])
+        assert selfcheck.run(state_root_path(repo), ticket, io.StringIO()) == 0
+        return answer("Expanded.", session_id="s")
+
+    got = _none_case(repo, seen, Scripted([previewing]), wf(self_check=True))
+    assert [(g["preview"], g["visit_session"] is None) for g in got] == [(True, True), (False, False)]
 
 
 def test_one_resolver_serves_every_executor_and_every_caller() -> None:  # CHK-AC3, CHK-B11, CHK-B9, AC 5

@@ -34,7 +34,7 @@ WHEN the finalizer returns THE engine SHALL take `outcome` (a slug from the work
 
 WHEN a run that passed every gate is finalized and the finalizer publishes THE engine SHALL exit 0 with the `finalize` event holding the outcome and the URL.
 
-- GIVEN a finalizer that pushes and opens a draft WHEN it returns `opened` THEN the run exits 0, the event holds `opened` and the URL, and the self-improvement loop's pull-request label reads that URL later ([FBK](feedback-and-judge-reliability.spec.md) `pr_state`)
+- GIVEN a finalizer that pushes and opens a draft WHEN it returns `opened` THEN the run exits 0, the event holds `opened` and the URL, and the run's ledger row holds the pull request (FIN-B11)
 
 ### FIN-B2 Cannot publish
 
@@ -66,9 +66,18 @@ WHEN a workflow with a finalizer is validated THE engine SHALL refuse a finalize
 
 - GIVEN a declared finalizer and no `finalizer_outcomes` WHEN validated THEN it is refused
 
+### FIN-B11 A pull request the finalizer publishes is recorded
+
+WHEN the finalizer returns a `url` that names a pull request ([PRP-B30](improvement-proposals.spec.md)) THE engine SHALL record on the run's ledger row the pull request's code host, repository and number and the commit the run's branch held when the run ended, and no title, body or comment of it.
+
+- GIVEN a finalizer that returns `opened` or `reused` with the url of pull request 12 of repository `owner/app` on host `code.example` WHEN the run ends THEN its ledger row holds `code.example`, `owner/app`, 12 and the commit the run's branch held, and no title, body or comment
+- GIVEN a finalizer that returns the url of a pull request when the run's workspace is gone WHEN the run ends THEN its ledger row holds the pull request and no end commit
+- GIVEN a finalizer that returns `skipped` with no url, or a url that names no pull request WHEN the run ends THEN its ledger row holds no pull request and the run exits 0
+
 ## Acceptance criteria
 
 - FIN-AC1 (FIN-B8, FIN-B1, FIN-B2, FIN-B3): Every case of FIN-B8 holds in an offline test with a local bare remote
 - FIN-AC2 (FIN-B5, FIN-B6): FIN-B5's canary appears in no argv, standard input or record of a finalizer run
 - FIN-AC3 (FIN-B9, FIN-B4): A run killed during its finalizer and resumed runs the finalizer once more and then never again
 - FIN-AC4 (FIN-B7, FIN-B10): No finalizer run inherits an interactive credential prompt (test with a remote that asks for one), and each refusal of FIN-B10 has a fixture
+- FIN-AC5 (FIN-B11): A finalizer that returns the url of a pull request leaves that pull request's code host, repository and number, and the commit the run's branch held when the run ended, on the run's ledger row and none of its text, one that returns it when the run's workspace is gone leaves no commit, and one that returns no url, or a url that names no pull request, leaves no pull request there and the run exits 0

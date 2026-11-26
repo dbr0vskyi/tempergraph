@@ -95,6 +95,13 @@ WHEN the self-improvement verbs are given THE engine CLI SHALL take these synops
 
 - GIVEN `evals run wf --kind check` with a failed regression case WHEN it ends THEN it exits 1
 
+### ROP-B14 Dry run on resume
+
+WHEN `resume` is given `--dry-run` THE engine CLI SHALL take it, listed in `resume --help`, with the meaning it has on `run` (ROP-B9): every step runs, and the thread's loop files nothing and records each finding that would file as `would_file`.
+
+- GIVEN a thread paused at a gate with a friction finding that would file WHEN `resume --dry-run` runs it to its final exit THEN no issue and no comment is made and the thread's `loop.jsonl` holds a `would_file` record for the finding
+- GIVEN `resume --help` WHEN it is read THEN it lists `--dry-run`
+
 ## Acceptance criteria
 
 - ROP-AC1 (ROP-B1, ROP-B2): For every named option, a run given the option and a run given the `--set` it spells have equal effective-settings records
@@ -108,3 +115,4 @@ WHEN the self-improvement verbs are given THE engine CLI SHALL take these synops
 - ROP-AC9 (ROP-B11): Two requests that differ only in whitespace resolve to the same thread id, and an empty request gives `needs`
 - ROP-AC10 (ROP-B12): `run --check`, `run`, `resume` and `rerun` refuse the same invalid options in the same words, before any spend
 - ROP-AC11 (ROP-B13): Every synopsis in ROP-B13 parses with the built CLI's argument definitions
+- ROP-AC12 (ROP-B14): `resume --help` lists `--dry-run`, and a paused fixture thread resumed with it to its final exit has no issue and no comment on a fake code host and a `would_file` record in its `loop.jsonl`

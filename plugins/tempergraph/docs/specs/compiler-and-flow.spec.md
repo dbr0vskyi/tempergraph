@@ -102,9 +102,27 @@ WHEN a unit's step node runs THE engine SHALL run one step session for `step`, o
 
 ### CMP-B5 Attempt cap in nodes
 
-WHEN the attempt cap of an invocation is reached THE engine SHALL request a drain from the scheduling node and stop cleanly before the next attempt, the graph's recursion limit being only a backstop.
+WHEN the attempts counted in an invocation (CMP-B19) have reached the attempt cap THE engine SHALL stop the run before its next attempt with exit 4, reason `attempt_cap` and no engine-error record, leaving the thread resumable, the graph's recursion limit being only a backstop.
 
-- GIVEN an attempt cap of 15 WHEN the 16th attempt would start THEN the run stops cleanly before it
+- GIVEN an attempt cap of 15 and 15 attempts counted WHEN the next attempt would start THEN the run stops before it with exit 4 and reason `attempt_cap`
+- GIVEN an attempt cap of 15 and 14 attempts counted WHEN a retry starts THEN it runs, and the run stops before the attempt that follows it
+- GIVEN a run stopped at its attempt cap WHEN it is resumed THEN its count starts at 0
+
+### CMP-B19 What the attempt cap counts
+
+WHEN a step, a council, a sub-workflow, a map item or a contest slot starts an attempt THE engine SHALL count the attempt against the attempt cap only when that unit, item or slot has made an attempt earlier in the thread, as a retry or in a visit begun by a trip back (CMP-B12) or a rewind ([RRN-B16](reruns-and-feedback.spec.md)).
+
+- GIVEN a workflow of thirty units, among them a council, a sub-workflow and a map of twenty items, each attempt passing at its first try WHEN it runs under the default cap THEN no attempt is counted and the run finishes with exit 0
+- GIVEN a step whose gate retries it twice before it passes WHEN it runs THEN two attempts are counted
+- GIVEN units `a` and `b` that have passed and a gate that sends the run back to `a` WHEN `a` and `b` run their next visits THEN two attempts are counted
+
+### CMP-B20 The exit at the attempt cap says what repeated
+
+WHEN a run stops at the attempt cap THE engine SHALL give its `run_exit` record, and the `payload` of the JSON document `run` or `resume` prints with `--json`, the keys `attempts_counted` and `trips_back` (the attempts counted and the trips back made in the invocation) and `repeated` (for each unit, map item or contest slot with a counted attempt: `unit`, `item`, the `attempts` it started in the invocation and the `trips_back` that entered it).
+
+- GIVEN a unit `b` with a loop budget of 5 whose gate sends the run back to unit `a` each time, and an attempt cap of 3 WHEN the run stops at the cap THEN `attempts_counted` is 3, `trips_back` is 2, and `repeated` holds `a` with `attempts` 3 and `trips_back` 2 and `b` with `attempts` 2 and `trips_back` 0
+- GIVEN a step with a retry budget of 5 whose gate retries it every time, and an attempt cap of 2 WHEN the run stops at the cap THEN `repeated` holds the step with `attempts` 3 and `trips_back` 0
+- GIVEN either stop WHEN `run --json` prints it THEN its `payload` holds the same three keys with the same values as the `run_exit` record
 
 ### CMP-B6 Diagram equals graph
 
@@ -134,6 +152,10 @@ WHEN a gate writes a routing token that has no edge THE engine SHALL write an en
 - CMP-AC5 (CMP-B9, CMP-B10, CMP-B11): No routing decision calls a model or an executor, by a source scan of route, gate, join, select, tally and pick code
 - CMP-AC6 (CMP-B16): Every unit kind of [CON-B5](contracts.spec.md) compiles to exactly four nodes, and the diagram draws a council or contest as one unit with its member or slot count
 - CMP-AC7 (CMP-B7): An operator arm override is taken and recorded, and an undeclared arm exits 2 before spend
-- CMP-AC8 (CMP-B5): A run at its attempt cap stops cleanly before the next attempt
+- CMP-AC8 (CMP-B5): A fixture run at its attempt cap stops before the next attempt with exit 4 and reason `attempt_cap`, writes one `run_exit` record and no engine-error record, never reaches the graph's recursion limit, and its resume counts from none
 - CMP-AC9 (CMP-B17): A test fails if any state channel two units can write in one superstep lacks a two-writer reducer
 - CMP-AC10 (CMP-B18): A gate's unknown routing token ends the run with exit 1 and an engine-error record
+- CMP-AC11 (CMP-B19): A fixture run of one step, a map of twenty items and three further steps, each passing at its first attempt, ends with exit 0 under the default settings and counts no attempt
+- CMP-AC12 (CMP-B19, CMP-B5): A fixture in which a unit sends the run back to an earlier unit until the cap, and a fixture whose step fails its gate until the cap under a retry budget above it, each stop before the next attempt with exit 4 and reason `attempt_cap`, with as many attempts counted as the cap
+- CMP-AC13 (CMP-B19): A fixture council and a fixture sub-workflow whose child units pass at their first attempt count no attempt at their own first attempt, and a retry of either counts one attempt, however many member sessions or child units it runs
+- CMP-AC14 (CMP-B20): The `run_exit` record and the `payload` of `run --json` of each stop of CMP-AC12 hold equal `attempts_counted`, `trips_back` and `repeated`, whose `attempts` and `trips_back` for each listed unit equal what the run log shows

@@ -153,10 +153,18 @@ def _identity(workdir: Path) -> list[str]:
     return ["-c", "commit.gpgsign=false", "-c", "user.name=tempergraph", "-c", "user.email=tempergraph@localhost.invalid"]
 
 
+def stage_all_args(workdir: Path) -> list[str]:
+    """The `git add` words that stage every change in `workdir` outside the state root. The state root is left out by
+    an exclude pathspec only when git does not already ignore it: git 2.39 refuses an exclude pathspec that names an
+    ignored path (exit 1, "paths are ignored by one of your .gitignore files") after staging the rest."""
+    ignored = git(["check-ignore", ".tempergraph/"], workdir, check=False).strip()
+    return ["add", "-A", "--", ".", *([] if ignored else [":(exclude).tempergraph"])]
+
+
 def commit_all(workdir: Path, message: str) -> str:
     """WSP-B19: commit every uncommitted change in `workdir`, new files included, outside the state root. Returns the
     new commit, or an empty string when there was nothing to commit (no commit is made)."""
-    git(["add", "-A", "--", ".", ":(exclude).tempergraph"], workdir)
+    git(stage_all_args(workdir), workdir)
     if not git(["status", "--porcelain=v1", "--untracked-files=no"], workdir).strip():
         return ""
     git([*_identity(workdir), "commit", "--no-verify", "--quiet", "-m", message], workdir)
@@ -229,6 +237,18 @@ def folder_in_commit(workdir: Path, commit: str, folder: str) -> bool:
     if not path:
         return True
     return git(["cat-file", "-t", f"{commit}:{path}"], workdir, check=False).strip() == "tree"
+
+
+def changed_between(workdir: Path, base: str, end: str, limit: int = 500) -> list[str]:
+    """OUT-B28: the paths that differ between the commits `base` and `end`, sorted, never one under `.tempergraph/`,
+    at most `limit`. Empty when either is not a full commit id or git fails."""
+    if not is_commit_id(base) or not is_commit_id(end):
+        return []
+    try:
+        out = git(["diff", "--name-only", base, end, "--"], workdir, check=False)
+    except GitError:
+        return []
+    return sorted(p for p in out.splitlines() if p and not p.startswith(".tempergraph/"))[:limit]
 
 
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:

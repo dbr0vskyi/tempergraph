@@ -198,6 +198,7 @@ def run_child(parent: EngineNodes, unit: str, state: Mapping[str, Any], config: 
         fp = fingerprint(Path(((state.get("workspace") or {}).get("path")) or ctx.state_root.parent))
         ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                       entered_from=_entered(state, unit))
+    ctx.count_attempt(unit, None, attempt, visit)
     built = build(ctx, unit, declared, found, (state.get("run") or {}).get("options") or {})
     note = subworkflow.workspace_note(found)
     if note and last_record(root_log(ctx.log).path, "note", child=built.path) is None:

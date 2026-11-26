@@ -14,12 +14,13 @@ WHEN a gate's check, the callable `check(ctx: CheckContext) -> CheckResult` name
 
 ### CHK-B24 The session record a check receives
 
-WHEN a gate's check runs after an attempt whose step session reported the capability of at least one tool call and whose activity journal kept every tool line THE engine SHALL give the check `session`, the calls the session made since it last started (an infra try starts it again, [BUD-B1](budgets-and-failures.spec.md)) in call order, each with `name`, `capability` (`read`, `search`, `list`, `edit`, `write`, `shell` or another capability of [EVT-B21](run-events.spec.md), null for an unknown tool), `target` (the call's input summary of EVT-B21: the path relative to the workspace for `read`, `list`, `edit` and `write`, `<outside workspace>` for a path outside it, the pattern for `search`; null for a call that names none and for every call under `observe.tool_inputs = off`, [EVT-B6](run-events.spec.md)) and `ok` (true when the call finished without an error), as a copy that no run-log record, ledger row, stats row, export or filed text carries ([decision](../adr/a-check-is-given-the-tool-calls-of-the-attempts-session.adr.md)).
+WHEN a gate's check runs after an attempt whose step session reported the capability of at least one tool call and whose activity journal kept every tool line THE engine SHALL give the check `session`, the calls the session made since it last started (an infra try starts it again, [BUD-B1](budgets-and-failures.spec.md); a session woken after it ended its turn keeps its session id and continues) in call order, each with `name`, `capability` (`read`, `search`, `list`, `edit`, `write`, `shell` or another capability of [EVT-B21](run-events.spec.md), null for an unknown tool), `target` (the call's input summary of EVT-B21: the path relative to the workspace for `read`, `list`, `edit` and `write`, `<outside workspace>` for a path outside it, the pattern for `search`; null for a call that names none and for every call under `observe.tool_inputs = off`, [EVT-B6](run-events.spec.md)) and `ok` (true when the call finished without an error), as a copy that no run-log record, ledger row, stats row, export or filed text carries ([decision](../adr/a-check-is-given-the-tool-calls-of-the-attempts-session.adr.md)).
 
 - GIVEN a session that opened `docs/a.md`, searched for `plan`, edited `src/b.py` and wrote `tests/c.py` WHEN its check runs THEN `session` lists the four calls in that order with the capabilities `read`, `search`, `edit` and `write` and the targets `docs/a.md`, `plan`, `src/b.py` and `tests/c.py`
 - GIVEN a call that ended with an error WHEN its check runs THEN that call reads `ok` false
 - GIVEN attempt 1 that opened `docs/a.md` and a retry attempt of the same visit that opened `docs/b.md` WHEN the check runs after the retry THEN `session` lists the one call on `docs/b.md`
 - GIVEN a session that ended with `broken_pipe` after one call and started again WHEN the check runs THEN `session` lists the calls since the second start only
+- GIVEN a session that made one call, ended its turn while a background command ran, was woken with the same session id and made a second call WHEN the check runs THEN `session` lists both calls
 - GIVEN `observe.tool_inputs = off` WHEN the check runs THEN every call has its `capability` and a null `target`
 - GIVEN a read of a file outside the workspace WHEN the check runs THEN its `target` is `<outside workspace>`
 
@@ -171,9 +172,9 @@ WHEN a resolver picks an interpreter outside the workspace THE engine SHALL show
 
 ### CHK-B9 Same on every executor
 
-WHEN a gate's check runs on the same workspace in workflows whose steps use different executors THE engine SHALL give the same context, `session` apart, which follows what each executor's session did (CHK-B24), and the same runs and result, since checks never run through an executor.
+WHEN a gate's check runs on the same workspace in workflows whose steps use different executors THE engine SHALL give the same context, `session` and `visit_session` apart, which follow what each executor's session did (CHK-B24, [VSR-B1](visit-session-record.spec.md)), and the same runs and result, since checks never run through an executor.
 
-- GIVEN steps on `claude` and on `antigravity` WHEN the same check, one that does not read `session`, runs on one workspace THEN the context other than `session`, the runs and the result are identical
+- GIVEN steps on `claude` and on `antigravity` WHEN the same check, one that reads neither `session` nor `visit_session`, runs on one workspace THEN the context other than those two, the runs and the result are identical
 
 ## Acceptance criteria
 
@@ -191,10 +192,11 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC12 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
 - CHK-AC13 (CHK-B22): In a scratch git repository with a worktree run started at a commit of `main`, a commit added to `main` afterwards is `git.base_head` while `git.base` is still the starting commit; a run in place has an empty `git.base_head`; with only `origin/main` present it is that remote-tracking branch's commit (offline)
 - CHK-AC14 (CHK-B10, CHK-B24): A check run after a stand-in session that reported a read, a search, an edit and a write, in that order, sees `session` with those four calls in that order, each with its name, capability, target and `ok`
-- CHK-AC15 (CHK-B24): A call that ended with an error reads `ok` false; the check run after a retry attempt sees only the retry session's calls; the check run after a session that started twice sees only the calls since the second start
+- CHK-AC15 (CHK-B24): A call that ended with an error reads `ok` false; the check run after a retry attempt sees only the retry session's calls in `session`; the check run after a session that started twice sees only the calls since the second start in `session`
 - CHK-AC16 (CHK-B24): Under `observe.tool_inputs = off` every call the check sees has its capability and a null target; a read outside the workspace has the target `<outside workspace>`; and the canary test of [SEC-B2](security.spec.md) finds a planted tool input, which the check saw as a target, only in activity journals and live files
 - CHK-AC17 (CHK-B25): A check that reads `session` sees `None` after a stand-in session that reported tool names only, after a session that made no tool call, after a session whose journal dropped a tool line, and as a preview
-- CHK-AC18 (CHK-B9): The same check, one that does not read `session`, run on one workspace after steps of two executors gets the same context other than `session`, the same runs and the same result
+- CHK-AC18 (CHK-B9): The same check, one that reads neither `session` nor `visit_session`, run on one workspace after steps of two executors gets the same context other than those two, the same runs and the same result
+- CHK-AC19 (CHK-B24): The check run after a session that reported a second start with the session id of its first sees the calls made before and after that second start, in call order; with a different session id on the second start it sees only the calls since it
 
 ## Open questions
 

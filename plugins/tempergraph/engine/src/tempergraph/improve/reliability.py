@@ -6,8 +6,8 @@ request, output or feedback text (FBK-AC3). The `explicit` kind is written by `l
 every other kind is derived here from the run log and the ledger, at each exit, with a deterministic id so a
 second derivation of the same judgement writes nothing new.
 
-Release 1: `pr_state` is not derived, because no run records the pull request it led to; harvest (FBK-B6)
-is release 2. Audit labels come from `audit_judge` records when a run has them.
+A run's ledger row holds the pull request it led to (FIN-B11) and the loop reads it into `later[]`; `pr_state`
+labels are still not derived here; harvest (FBK-B6) is release 2. Audit labels come from `audit_judge` records when a run has them.
 """
 
 from __future__ import annotations

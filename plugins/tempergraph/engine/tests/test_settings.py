@@ -502,6 +502,37 @@ def test_rst_ac1_an_out_of_range_value_is_refused(key: str, value: Any) -> None:
     assert [f.code for f in findings] == ["setting_value"], findings
 
 
+@pytest.mark.parametrize("level", ["record", "file", "propose", "trial"])
+def test_rst_ac1_loop_autonomy_is_accepted_from_every_layer(level: str) -> None:  # RST-AC1 (PRP-B31, RST-B20)
+    from tempergraph.settings import CATALOG, run_values
+
+    assert "loop_autonomy" in CATALOG and CATALOG["loop_autonomy"].default is None  # no default: unset lowers nothing
+    assert CATALOG["loop_autonomy"].scopes == CATALOG["loop_model"].scopes  # a run-scope key
+    res, findings = go(spec(), {"run.loop_autonomy": level})
+    assert findings == [] and run_values(res)["loop_autonomy"] == level and row(res, "run.loop_autonomy")["layer"] == "flag"
+    project = ConfigFiles(project={"schema_version": 1, "overrides": [{"workflow": "demo", "set": {
+        "run.loop_autonomy": level}}]}, project_path=Path("/p/settings.json"))
+    res, findings = go(spec(), files=project)
+    assert findings == [] and run_values(res)["loop_autonomy"] == level
+    user = ConfigFiles(user={"schema_version": 1, "defaults": {"run.loop_autonomy": level}},
+                       user_path=Path("/u/settings.json"))
+    res, findings = go(spec(), files=user)
+    assert findings == [] and run_values(res)["loop_autonomy"] == level
+    profile = ConfigFiles(user={"schema_version": 1, "profiles": {"held": {"run.loop_autonomy": level}}},
+                          user_path=Path("/u/settings.json"))
+    res, findings = go(spec(), profiles=("held",), files=profile)
+    assert findings == [] and run_values(res)["loop_autonomy"] == level and row(res, "run.loop_autonomy")["layer"] == "profile"
+
+
+def test_rst_ac1_loop_autonomy_refuses_any_other_value_and_is_unset_by_default() -> None:  # RST-AC1 (PRP-B31)
+    from tempergraph.settings import run_values
+
+    _, findings = go(spec(), {"run.loop_autonomy": "always"})
+    assert [f.code for f in findings] == ["setting_value"], findings
+    res, findings = go(spec())
+    assert findings == [] and run_values(res).get("loop_autonomy") is None
+
+
 def test_a_slot_scope_key_stays_refused_and_its_message_no_longer_says_release_3() -> None:  # RST-AC1 (RST-B17, RST-B18)
     _, findings = go(contested(), {"pick.slot:s1.model": "small"})
     assert [f.code for f in findings] == ["setting_not_for_kind"], findings

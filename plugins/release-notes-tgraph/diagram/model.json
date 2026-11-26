@@ -73,6 +73,11 @@
       "decision"
     ],
     [
+      "draft.human",
+      "draft.judge",
+      "decision"
+    ],
+    [
       "outcome.step",
       "outcome.judge",
       "next"
@@ -128,6 +133,11 @@
       "decision"
     ],
     [
+      "outcome.human",
+      "outcome.judge",
+      "decision"
+    ],
+    [
       "finalizer",
       "__end__",
       "next"
@@ -138,5 +148,5 @@
       "next"
     ]
   ],
-  "digest": "10ebe7b340b9a76158ada4c12436484c5f01dbb51f94160e7142fff0fcb6eac4"
+  "digest": "dd47c0756461e8284e8055e3f01992bd722ea911dede81c7e58cfbf548be5361"
 }

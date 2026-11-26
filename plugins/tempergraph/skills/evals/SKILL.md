@@ -40,7 +40,8 @@ workflow: read the catalog with `tempergraph list`.
    `--kind workflow`. Add `--role regression` to run only what must keep passing. Report `pass^k` (every
    trial of a case passed) beside the plain pass rate: a step that passes once in three is not working.
 5. **Misses.** When a run showed a judge was wrong, `tempergraph evals harvest <workflow> <gate>` writes a
-   local case candidate for each recorded disagreement. A candidate holds no request text and is not in the
+   local case candidate for each recorded disagreement. For the `outcome` gate it also writes one for each
+   escape (a `met` run a person sent back), holding the pull request's identity and counts and no text. A candidate holds no request text and is not in the
    package: the person reviews it, copies it into the package's calibration cases and labels it.
 6. **Drift.** `tempergraph evals replay <workflow> --cap <usd>` reruns the judges on the kept cases and shows
    where today's statuses differ from the recorded score. A change means the judge moved: re-score it.

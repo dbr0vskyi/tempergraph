@@ -23,7 +23,10 @@ or when the switch cannot decide; the operator names the arm with `--arm code_mo
 `expand`, the sequential map `phase` runs one item for each phase of the plan, one after another, each in a session of
 its own that builds only that phase's rows, tests first, and is checked and committed on its own; `code` then runs as
 the join on the whole change and holds the lines back to `plan`, `discovery` and `triage`. On `single`, `code` builds the
-whole plan in one session. `code_join` is where both arms meet. The engine commits after every step and the last stage
+whole plan in one session. `code_join` is where both arms meet: a route that sends a quick-lane run to the outcome gate and every other run to
+`independent_review`, a read-only reader that sees the change, the task's criteria and the repository and writes numbered
+findings to `<task id>.review.md`; its gate sends a blocking finding back once, to `code` for a file the change touches
+and to `plan` for any other, and a second blocking review pauses the run (spec independent-review). The engine commits after every step and the last stage
 pushes.
 
 The setting `conversation` (`never`, `blocking` or `always`, default `blocking`) says how much a run may ask the
@@ -65,11 +68,11 @@ from .checks import (
     owner_answers_check,
     phase_check,
     plan_check,
+    review_check,
     setup_check,
     triage_check,
 )
 from .routing import (
-    code_join,
     commit_step,
     finalize,
     gap_items,
@@ -77,7 +80,10 @@ from .routing import (
     owner_questions,
     phase_items,
     prepare,
+    review_after,
+    review_before,
     route_ask,
+    route_code_join,
     route_discovery,
     route_setup,
     route_short,
@@ -121,6 +127,10 @@ SIZING = {
               ("medium", "It reads the rows of one phase against the files they name, and the check has read the marks")),
     "code": (("high", "It is a long session that builds test first; the tests and the code check catch slips that more effort would not"),
             ("high", "It reads the diff, the report and the proof of every criterion, and a miss ships a defect")),
+    "independent_review": (("high", "It reads a whole change with no account of how it was built and must find what the "
+                                    "build's own gates missed; a missed defect ships"),
+                           ("medium", "It reads one findings document against the check's finding and lists the blocking "
+                                      "findings; the reader's judgement is not redone")),
 }
 
 
@@ -143,7 +153,7 @@ def workflow() -> Any:
     return Workflow(
         order=["prepare", "setup_route", "list_components", "read_component", "setup", "triage", "discovery_short",
                "owner_questions", "ask_route", "ask_owner", "read_gap", "discovery", "plan", "code_mode",
-               "expand", "phase", "code", "code_join"],
+               "expand", "phase", "code", "code_join", "independent_review"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -264,8 +274,25 @@ def workflow() -> Any:
                           judge=_judge("code", {"code_report": "required", "triage_note": "required",
                                                 "plan": "optional"}, timeout_s=1800),
                           back_targets=["plan", "discovery", "triage"])),
-            "code_join": Script(call=code_join, name="code_join", side_effects="none",
-                                summary="Where both arms meet after the code step", gate=Gate()),
+            # IRV-B1, IRV-B2: both arms meet here; a run in the quick lane goes on to the outcome gate, every other run
+            # to the review.
+            "code_join": Route(select=route_code_join, targets=["independent_review", "finalizer"]),
+            # IRV-B3 to IRV-B14: a reader that sees the change, the task's criteria and the repository and nothing of the
+            # run's other outputs; the `before` script writes its two inputs, the `after` script builds the committed
+            # findings document. One trip back for each target (`loop_budget` 1); the judge names the step the first trip
+            # used on a second review, so the second blocking review pauses (`on_budget_spent` ask).
+            "independent_review": Step(
+                prompt=text("prompts/independent_review.md"),
+                summary="Read the change as an independent reader; write findings",
+                **_sized("independent_review"), tools=["read", "search", "list", "write"], timeout_s=1800,
+                produces={"findings": "file"},
+                before=[Script(call=review_before, name="review_before", side_effects="workspace",
+                               summary="Write the change and the task's criteria for the reader")],
+                after=[Script(call=review_after, name="review_after", side_effects="workspace",
+                              summary="Build the committed findings document", produces={"findings": "file"}),
+                       _commit()],
+                gate=Gate(check=review_check, judge=_judge("independent_review", ["findings"]),
+                          back_targets=["plan", "code"], loop_budget=1)),
         },
         finalizer=finalize,
         finalizer_outcomes=["opened", "reused", "pushed", "skipped"],

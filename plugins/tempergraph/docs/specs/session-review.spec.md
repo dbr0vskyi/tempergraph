@@ -8,7 +8,7 @@ How the self-improvement loop reads what step and judge sessions actually did, f
 
 ### SRV-B11 Session digest
 
-WHEN a segment exits THE recorder SHALL write, after `run_exit` and before findings are derived, one `sessions/<session_key>/digest.json` per session of the segment from `activity.jsonl`, `meta.json` and the run log (reading `raw.jsonl` only for usage per turn and turn boundaries), holding no text, only names from the tool catalog and the workflow, enums, counts, sizes, durations and keyed digests of paths and targets: `schema_version`, `session_key`, `kind`, `unit`, `attempt`, `executor`, `alias`, `model`; `capture` (`full`, `activity_only` when `observe.raw = off`, `not_captured`, `pruned`); `turns`, `peak_context`, `turns_over_200k`, `tokens_before_first_write` (the context size at the first write turn) and `files_reread`; `tools{}` per capability and tool name (calls, failures, refused calls by refusal class, [TSA](tool-surface-audit.spec.md), total duration); `declared_unused[]` and `undeclared_used[]`; `skills[]` and `subagents{}` (calls by type with count and token share); `repeats[]` (runs of K or more identical tool, target digest and error class calls, with first and last turn); `idle_spans[]` (N or more minutes with tokens spent and no workspace write); the counts `shell_for_files`, `cd_before_git` and `outside_workspace`; for a judge `reads[]` (digests of the paths it opened) with `changed_read` and `changed_total`; `end` (`ok`, `timed_out`, `stalled`, `partial`, and for a timeout `timeout_shape` `hung` when one call was open past half the limit, `slow_host` when tool share is at least 60 % with many calls, `model_silent` when no tool is open and the last event is older than the idle limit, or `mixed`); and for a retry `prior_overlap`, the share of attempt n−1's commands and changed paths repeated; K (3), N (10 minutes) and the shares being parameters with provenance `default_no_data` ([IMD-B23](improvement-data.spec.md)).
+WHEN a segment exits THE recorder SHALL write, after `run_exit` and before findings are derived, one `sessions/<session_key>/digest.json` per session of the segment from `activity.jsonl`, `meta.json` and the run log (reading `raw.jsonl` only for usage per turn and turn boundaries), holding no text, only names from the tool catalog and the workflow, enums, counts, sizes, durations and keyed digests of paths and targets: `schema_version`, `session_key`, `kind`, `unit`, `attempt`, `executor`, `alias`, `model`; `capture` (`full`, `activity_only` when `observe.raw = off`, `not_captured`, `pruned`); `turns`, `peak_context`, `turns_over_200k`, `tokens_before_first_write` (the context size at the first write turn) and `files_reread`; `tools{}` per capability and tool name (calls, failures, refused calls by refusal class, [TSA](tool-surface-audit.spec.md), total duration); `declared_unused[]` and `undeclared_used[]`; `skills[]` and `subagents{}` (calls by type with count and token share); `repeats[]` (runs of K or more identical tool, target digest and error class calls, with first and last turn); `idle_spans[]` (N or more minutes with tokens spent and no workspace write); the counts `shell_for_files`, `cd_before_git` and `outside_workspace`; for a judge `reads[]` (digests of the paths it opened) with `changed_total`, the number of paths that differ between the commit at which the judged visit was entered (the item's own for an item of a map, the unit's own for a gate whose unit has no step session of its own) and the workspace when the judge started, committed or not (SRV-B34 to SRV-B36), and `changed_read`, how many of them it opened; `end` (`ok`, `timed_out`, `stalled`, `partial`, and for a timeout `timeout_shape` `hung` when one call was open past half the limit, `slow_host` when tool share is at least 60 % with many calls, `model_silent` when no tool is open and the last event is older than the idle limit, or `mixed`); and for a retry `prior_overlap`, the share of attempt n−1's commands and changed paths repeated; K (3), N (10 minutes) and the shares being parameters with provenance `default_no_data` ([IMD-B23](improvement-data.spec.md)).
 
 - GIVEN a digest of a canary session WHEN read THEN it holds no canary string and no path in clear
 
@@ -20,15 +20,16 @@ WHEN recording runs at any run exit in either mode THE recorder SHALL give every
 
 ### SRV-B12 Digest causes
 
-WHEN findings are derived THE engine SHALL add from digest fields only: `tool_repeat` (a `repeats[]` entry in a step session; fault, workflow); `idle_burn` (an `idle_spans[]` entry; fault, workflow); `shell_for_files` (at least 3 on a step that declares file tools; fault, workflow); `context_bloat` (`turns_over_200k` at least 1, or `peak_context` above the version's p90 for the unit; fault, workflow); `declared_unused:<name>` (a declared skill or subagent type never called on any attempt of the unit in 5 runs of one version; designed, workflow, filed only by the proposer's pattern); `subagent_heavy` (subagents carry over half the session's tokens; designed, recorded); `timeout:<shape>` (fault, workflow, or infra on the host side for `slow_host`); `judge_unread_pass` (the unit's last judgement of the segment passed every blocker with `changed_read = 0` while `changed_total > 0`; fault, workflow); and `retry_same_path` (a retry with `prior_overlap` at least 0.8 after a judge send-back; fault, workflow), each filing through [SIL](self-improvement.spec.md) like any cause and carrying no text.
+WHEN findings are derived THE engine SHALL add from digest fields only: `tool_repeat` (a `repeats[]` entry of failed calls in a step session; fault, workflow); `idle_burn` (an `idle_spans[]` entry; fault, workflow); `shell_for_files` (at least 3 on a step that declares file tools; fault, workflow); `context_bloat` (`turns_over_200k` at least 1, or `peak_context` above the version's p90 for the unit; fault, workflow); `declared_unused:<name>` (a declared skill or subagent type never called on any attempt of the unit in 5 runs of one version; designed, workflow, filed only by the proposer's pattern); `subagent_heavy` (subagents carry over half the session's tokens; designed, recorded); `timeout:<shape>` (fault, workflow, or infra on the host side for `slow_host`); `judge_unread_pass` (the unit's last judgement of the segment passed every blocker with `changed_read = 0` while `changed_total > 0`; fault, workflow); and `retry_same_path` (a retry with `prior_overlap` at least 0.8 after a judge send-back; fault, workflow), each filing through [SIL](self-improvement.spec.md) like any cause and carrying no text.
 
 - GIVEN a judge that passed every blocker having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass`
 
 ### SRV-B2 Repeats become a cause
 
-WHEN the digest runs on a step session that called `Bash` with the same command digest four times, each failing with the same error class THE recorder SHALL write one `repeats[]` entry, and the unit's findings SHALL carry `tool_repeat`.
+WHEN the digest runs on a step session that called one tool on one target K or more times in a row (SRV-B11) THE recorder SHALL write one `repeats[]` entry, and the unit's findings SHALL carry `tool_repeat` only when those calls failed.
 
 - GIVEN four identical failing calls WHEN digested THEN `repeats[]` has one entry and the cause is `tool_repeat`
+- GIVEN four edits of one file, none failing WHEN digested THEN `repeats[]` has one entry and no finding carries `tool_repeat`
 
 ### SRV-B13 Review setting
 
@@ -145,7 +146,15 @@ WHEN a review is about to start THE engine SHALL start it when the run's review 
 
 - GIVEN a cap of 3.46 USD, 18 targets and 12 finished reviews that reported 0.66 USD together WHEN the next review is decided THEN it starts, and the 5 after it start in turn, with none `skipped: budget`
 - GIVEN a cap of 1.00 USD, 6 targets and 4 finished reviews that reported 0.25 USD each WHEN the fifth is decided THEN the fifth and the sixth are `skipped: budget`, whatever the sixth's view size
-- GIVEN no finished review and a first view priced at 0.30 USD against a cap of 0.20 USD WHEN it is decided THEN it and every later target are `skipped: budget`
+- GIVEN a stable run with no finished review, a first view priced at 0.30 USD and 0.20 USD left under SIL's daily cap WHEN it is decided THEN it and every later target are `skipped: budget`
+
+### SRV-B33 The cap lifts to one review
+
+WHEN the cap that the run share and the per-run cap of SRV-B21 give a plan is under the estimate of SRV-B25 for the review of its first target (SRV-B24) THE engine SHALL set the plan's `cap_usd` at that estimate, or in stable mode at what SIL's daily cap leaves ([SIL-B20](self-improvement.spec.md)) when that is lower.
+
+- GIVEN no review spend yet, a cap of 0.02 USD from the run share and a first target estimated at 0.05 USD WHEN the plan runs THEN `cap_usd` is 0.05 and the first target's review starts
+- GIVEN a cap of 0.50 USD from the run share and a first target estimated at 0.05 USD WHEN the plan runs THEN `cap_usd` is 0.50
+- GIVEN a stable run with a cap of 0.02 USD from the run share, 0.03 USD left under SIL's daily cap and a first target estimated at 0.05 USD WHEN the plan runs THEN `cap_usd` is 0.03 and the first target is `skipped: budget`
 
 ### SRV-B22 Records and readers
 
@@ -182,7 +191,7 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 
 ## Acceptance criteria
 
-- SRV-AC1 (SRV-B11, SRV-B12, SRV-B1, SRV-B2): Fixture sessions reproduce every digest cause, and the digest of a canary session holds no canary string and no path in clear
+- SRV-AC1 (SRV-B11, SRV-B12, SRV-B1, SRV-B2): Fixture sessions reproduce every digest cause and give no `tool_repeat` for repeated calls that did not fail, and the digest of a canary session holds no canary string and no path in clear
 - SRV-AC2 (SRV-B3, SRV-B4, SRV-B5, SRV-B9, SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B21): Fixture runs reproduce the plans of SRV-B3, SRV-B4 and SRV-B5, the slices each signal of SRV-B16 reads and the stable-mode money caps of SRV-B21, including `skipped` reasons, with no model call
 - SRV-AC3 (SRV-B6, SRV-B19, SRV-B20): The citation check reproduces SRV-B6 and rejects a remedy class from the other side of the producer and grader split
 - SRV-AC4 (SRV-B22): A source test fails if any module other than the review writer, the review report and the proposer names the review evidence folder
@@ -194,6 +203,8 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - SRV-AC12 (SRV-B29, SRV-B30): Fixture reviewer sessions that end each way of SRV-B29 leave a `review_failed` record with that class, and a fixture plan of 16 targets whose sessions return `usage_limit` true runs 16 reviewer sessions and records `resets_at` as reported
 - SRV-AC15 (SRV-B7): A fixture loop child whose run has the finding `tool_repeat` and one kept `tool_thrash` observation on `a` leaves the finding carrying `review:tool_thrash` and a `review_weight` of 1 and files one issue whose body names `tool_thrash` and no note text; with no kept observation, or one of an earlier run only, the finding carries neither and its issue names no review category; a kept observation on a unit with no finding files no issue and no comment
 - SRV-AC16 (SRV-B10): The input of a proposer run for a cluster on `a` holds the kept observations of `a` from the runs its findings name, with their notes datamarked as untrusted, and holds no observation of another unit and none the citation check rejected
+- SRV-AC19 (SRV-B33): A fixture whose cap from the run share is under the estimate for its first target sets `cap_usd` at that estimate and starts that target's review, and the same fixture with a cap above that estimate sets `cap_usd` at that cap and selects the sessions SRV-B25 selects under it
+- SRV-AC20 (SRV-B33): A stable fixture whose day leaves less under SIL's daily cap than the estimate for its first target sets `cap_usd` at what the day leaves and starts no review
 
 ## Open questions
 
