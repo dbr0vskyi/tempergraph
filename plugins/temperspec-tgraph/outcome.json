@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 25,
+  "revision": 26,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -46,7 +46,7 @@
       "severity": "blocker",
       "verified_by": "check",
       "text": "Every spec the run edited passes the spec rule's structure check",
-      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour",
+      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour; and the spec rule's `Depends on` and `Does not own`: each behaviour or criterion the run added or changed that links another spec, by its path or by an id only that spec defines, has that spec under `## Depends on`; each `Depends on` row names an existing spec or is `Outside:`; each `Does not own` row names an existing spec other than this one; no `Responsibilities`, `Used by` or `Out of scope` section, and the sections in the rule's order",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -922,6 +922,17 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-dis-depends",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "A spec that discovery edited and lists under `Depends on` a spec that none of its behaviours or criteria links reaches the judge as a lead",
+          "check_method": "For each edited spec in the current layout, resolve each `Depends on` row's spec path and each spec its behaviours and criteria link, by path or by an id only that spec defines; report each listed spec that nothing links as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
         },
         {
           "id": "ts-dis-adrform",
@@ -2065,6 +2076,12 @@
       "origin": "authored",
       "at": "2026-11-26T20:00:00.000Z",
       "note": "decision records gain the sections Current state, Forces (constraints first, each with its source), Decision rationale (answers every force by id), Risks, Assumptions (each with its cost if wrong) and a required Revisit when, options run before the decision and each says how it works; the discovery check reads the form of every decision record a run creates or changes (ts-dis-adrform) and reports an oversized record or a vague Revisit when as a lead (ts-dis-adrlead)"
+    },
+    {
+      "revision": 26,
+      "origin": "authored",
+      "at": "2026-11-26T21:00:00.000Z",
+      "note": "spec format: a spec's `Depends on` (outgoing only, held to the links of the behaviours and criteria a run adds or changes) and `Does not own` (each row names the owning spec) are part of the structure check (ts-spec-form, ts-dis-form, ts-set-form); a listed spec nothing links is a lead (ts-dis-depends); the capability list prints who uses each spec; no Responsibilities, Used by or Out of scope section"
     }
   ]
 }

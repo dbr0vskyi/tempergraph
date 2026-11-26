@@ -373,6 +373,71 @@ def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None,
     return found
 
 
+def _passes_after_failures(found: list[CheckFinding], criterion: str) -> list[CheckFinding]:
+    """The findings without the pass of `criterion` when a later part of the check failed it."""
+    if any(f.criterion == criterion and f.status == "fail" for f in found):
+        return [f for f in found if not (f.criterion == criterion and f.status == "pass")]
+    return found
+
+
+def _ownership(ctx: Any, specs: list[str], criterion: str, lead: str | None = None) -> list[CheckFinding]:
+    """The spec rule's `Depends on` and `Does not own`, on each edited spec in the current layout. A failure under
+    `criterion`: a behaviour or criterion the run added or changed links another spec (by its path, or by an id
+    only that spec defines) that `## Depends on` does not name; a `Depends on` row that names no existing spec and
+    is not `Outside:`; a `Does not own` row that names no existing spec other than this one. A lead under `lead`: a
+    listed spec that no behaviour or criterion links. Behaviours the run left alone are not read, so an old spec
+    gains the list as tasks change it."""
+    texts = {p: _read_path(ctx, p) for p in specs}
+    current = [p for p, t in texts.items() if t is not None and not fmt.LEGACY.search(t)]
+    if not current:
+        return [] if lead is None else [_find("n_a", lead, message="the run edited no spec in the current layout")]
+    index = _definitions(ctx, current)
+    known = {f for files in index.values() for f in files} | {p for p in _walk(ctx) if p.endswith(".spec.md")}
+    found: list[CheckFinding] = []
+    leads: list[CheckFinding] = []
+    for path in current:
+        text = texts[path] or ""
+        own = set(fmt.defined_ids(text))
+        prefixes = {i.rsplit("-", 1)[0] for i in own}
+        base = _at_base(ctx, path) if getattr(ctx.git, "base", None) else None
+        before = fmt.linking_blocks(base) if base is not None else {}
+        listed: dict[str, int] = {}
+        for row in fmt.spec_rows(text, fmt.DEPENDS):
+            hits = [h for t in row.paths if (h := fmt.resolve_spec(path, t, known))]
+            if not hits and not row.outside:
+                found.append(_find("fail", criterion, f"{path}:{row.line}", "a `Depends on` row names no existing "
+                                   "spec and is not `Outside:`", "name the spec by its path, or write `- Outside: …`"))
+            for h in hits:
+                listed.setdefault(h, row.line)
+        for row in fmt.spec_rows(text, fmt.NOT_OWNED):
+            hits = [h for t in row.paths if (h := fmt.resolve_spec(path, t, known)) and h != path]
+            if not hits:
+                found.append(_find("fail", criterion, f"{path}:{row.line}", "a `Does not own` row names no other "
+                                   "existing spec as the owner", "name the spec that owns the rule, or drop the row "
+                                   "(work nobody has built is an issue, not a spec line)"))
+        linked: set[str] = set()
+        lines = text.splitlines()
+        for key, block in fmt.linking_blocks(text).items():
+            targets = {h for t in fmt.spec_paths(block) if (h := fmt.resolve_spec(path, t, known))}
+            for ref in fmt.linked_ids(block) - own:
+                homes = set(index.get(ref, []))
+                if len(homes) == 1 and ref.rsplit("-", 1)[0] not in prefixes:
+                    targets |= homes
+            targets.discard(path)
+            linked |= targets
+            if before.get(key) == block:
+                continue
+            line = next((n for n, ln in enumerate(lines, 1) if ln.lstrip("#- ").startswith(key)), 1)
+            found += [_find("fail", criterion, f"{path}:{line}", f"{key} links `{t}`, which `## Depends on` does "
+                            "not name", f"add `- `{t}`: what this capability uses of it` under `## Depends on`")
+                      for t in sorted(targets) if t not in listed]
+        if lead is not None:
+            leads += [_find("maybe", lead, f"{path}:{n}", f"`{t}` is listed under `Depends on` but no behaviour or "
+                            "criterion links it", "link it where a behaviour uses it, or drop the row")
+                      for t, n in sorted(listed.items()) if t not in linked and t != path]
+    return found[:12] + ([] if lead is None else (leads[:8] or [_ok(lead)]))
+
+
 def _related(ctx: Any, specs: list[str], index: dict[str, list[str]], plan: fmt.Plan | None) -> list[str]:
     """Specs the run did not edit that an edited spec links by id, plus the specs the plan references."""
     out: list[str] = []
@@ -580,6 +645,7 @@ def setup_check(ctx: Any) -> Any:
         if path != overview_path and path not in overview:
             listed.append(_find("fail", "ts-set-listed", overview_path, f"the overview does not name `{path}`",
                                 "name each component spec by its path in the overview's Purpose"))
+    found += _ownership(ctx, [p for p in specs if _read_path(ctx, p) is not None], "ts-set-form")
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-set-form", overview_path))
     found += listed or [_ok("ts-set-listed", note_path)]
@@ -794,7 +860,7 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def discovery_check(ctx: Any) -> Any:
     """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-named, ts-dis-literal,
-    ts-dis-wording, ts-dis-specname, ts-dis-adrform, ts-dis-adrlead, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread,
+    ts-dis-wording, ts-dis-specname, ts-dis-depends, ts-dis-adrform, ts-dis-adrlead, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread,
     ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
@@ -806,6 +872,7 @@ def discovery_check(ctx: Any) -> Any:
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
     specs, _ = _edited_specs(ctx)
+    found = _passes_after_failures(found + _ownership(ctx, specs, "ts-dis-form", "ts-dis-depends"), "ts-dis-form")
     found += _general(ctx, specs, "ts-dis-named", "ts-dis-literal", "ts-dis-wording")
     found += _spec_names(ctx, specs, "ts-dis-specname")
     found += _decisions(ctx, "ts-dis-adrform", "ts-dis-adrlead")
@@ -1834,6 +1901,7 @@ def outcome_check(ctx: Any) -> Any:
     # Only the edited specs: a task note or a plan names ids the task retired on purpose, and is history.
     found += _links(ctx, "ts-spec-links", specs) if specs else [
         _find("n_a", "ts-spec-links", message="the run edited no spec")]
+    found = _passes_after_failures(found + _ownership(ctx, specs, "ts-spec-form"), "ts-spec-form")
     found += _fresh(ctx, specs)
     if _docs_only(ctx):
         found += [_find("n_a", c, message="the run delivers documents only") for c in ("ts-traced", "ts-verify")]
