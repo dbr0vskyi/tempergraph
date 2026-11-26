@@ -82,10 +82,11 @@ WHEN an `outcome_escape` finding would file THE loop SHALL apply the pattern rul
 
 ### SIL-B14 Tool access and grants
 
-WHEN a run had a `tool_access` pause or a tool grant ([RST-B28, RST-B29, RST-B30](run-settings-and-overrides.spec.md)) THE loop SHALL make a friction finding `tool_access:<refusal class>` ([TSA-B7](tool-surface-audit.spec.md)), write each grant and allowed command as one entry of the ledger row's `grants[]` (unit, capability or prefix, the refusal class it answered, `via` `cli`, `orchestration` or `profile`, whether a later attempt called it, the unit's outcome after it), make a grant a passing attempt used a workflow finding `grant_missing` whose remedy is the declaration, record a grant never called as `grant_unused` without filing, and cluster both by workflow, unit and capability.
+WHEN a run had a pause on cause `tool_access` or a tool grant ([RST-B28, RST-B29, RST-B30](run-settings-and-overrides.spec.md)) THE loop SHALL make a friction finding `tool_access:<refusal class>` ([TSA-B7](tool-surface-audit.spec.md)), write each grant and allowed command as one entry of the ledger row's `grants[]` (unit, capability or prefix, the refusal class it answered, `via` `cli`, `orchestration` or `profile`, whether a later attempt called it, the unit's outcome after it), make a grant a passing attempt used a workflow finding `grant_missing` whose remedy is the declaration, record a grant never called as `grant_unused` without filing, and cluster both by workflow, unit and capability.
 
 - GIVEN `--grant code=shell` used by a passing attempt WHEN the loop runs THEN a `grant_missing` finding is made for `code`
 - GIVEN the same grant on five runs on three machines WHEN the pattern rule runs THEN one issue is filed
+- GIVEN stable mode and a gate that paused the run on cause `tool_access` after a step was refused a tool WHEN the run exits THEN its findings hold `tool_access:<refusal class>` of the refused call and the friction lens fires
 
 ### SIL-B15 Agent rescues and supervision
 
@@ -193,7 +194,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC4 (SIL-B4, SIL-B11): An executor-attributed cause is filed with the executor label and CLI version, never against the workflow
 - SIL-AC5 (SIL-B1, SIL-B17): A loop child that fails leaves the parent's exit code unchanged, and a child that runs writes its loop records and one `loop` ledger row
 - SIL-AC6 (SIL-B9, SIL-B10): Each lens runs on the exits its triggers name and on no others
-- SIL-AC7 (SIL-B12, SIL-B13, SIL-B14, SIL-B15): Each named cause is produced by a fixture run that shows it
+- SIL-AC7 (SIL-B12, SIL-B13, SIL-B14, SIL-B15): Each named cause is produced by a fixture run that shows it, from the records that run wrote
 - SIL-AC8 (SIL-B16, SIL-B7): No issue is filed from a review observation alone or from an uncalibrated judge
 - SIL-AC9 (SIL-B3): A workflow-side outcome gap files only at three runs with three distinct requests in 30 days
 - SIL-AC10 (SIL-B19, SIL-B20, SIL-B6): A refused payload is redelivered, the daily cap skips judges with `loop_skipped`, and a dry run files nothing
