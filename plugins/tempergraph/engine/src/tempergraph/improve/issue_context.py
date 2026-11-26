@@ -61,9 +61,10 @@ def segment(records: Sequence[Mapping[str, Any]], started: str | None = None) ->
 
 
 def log_lines(records: Sequence[Mapping[str, Any]], units: Sequence[str], *,
-              segment_started: str | None = None) -> tuple[list[str], int]:
-    """ISS-B10: the last segment's records of the finding's units and its start and exit, one line each, at most
-    `LOG_LINES`; returns the lines and how many earlier matching records were left out."""
+              segment_started: str | None = None, facts: Mapping[str, str] | None = None) -> tuple[list[str], int]:
+    """ISS-B10: the segment's records of the finding's units and its start and exit, one line each, at most
+    `LOG_LINES`; returns the lines and how many earlier matching records were left out. `facts` is accepted for the
+    same call shape as `run_facts`; the log lines never show it."""
     want = set(units)
     rows: list[str] = []
     for r in segment(records, segment_started):
@@ -98,8 +99,10 @@ def log_lines(records: Sequence[Mapping[str, Any]], units: Sequence[str], *,
 
 
 def environment(records: Sequence[Mapping[str, Any]], units: Sequence[str], mode: str | None = None,
-                judge_executor: str | None = None, *, segment_started: str | None = None) -> dict[str, Any]:
-    """ISS-B8: the versions and machine behind a finding, as names and numbers."""
+                judge_executor: str | None = None, *, segment_started: str | None = None,
+                facts: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """ISS-B8: the versions and machine behind a finding, as names and numbers. `facts` is accepted for the same
+    call shape as `run_facts`; the environment never shows it."""
     seg = segment(records, segment_started)
     started: Mapping[str, Any] = next((r for r in seg if r.get("kind") == "run_started"), {})
     want = set(units)
@@ -171,7 +174,8 @@ def build(records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, 
     first = findings[0]
     units = [u for u in dict.fromkeys(
         (f"{f['child']}/{f.get('unit') or '-'}" if f.get("child") else str(f.get("unit") or "")) for f in findings) if u]
-    lines, left = log_lines(records, units, segment_started=segment_started)
-    return {"environment": environment(records, units, mode, judge_executor, segment_started=segment_started),
+    lines, left = log_lines(records, units, segment_started=segment_started, facts=facts)
+    return {"environment": environment(records, units, mode, judge_executor, segment_started=segment_started,
+                                       facts=facts),
             "run": run_facts(records, first, units, segment_started=segment_started, facts=facts),
             "log": lines, "log_left_out": left}
