@@ -84,6 +84,7 @@ def _status(repo: Path) -> str:
 
 
 def test_rgn_ac3_a_declaration_of_two_regenerations_is_read_in_file_order(tmp_path: Path) -> None:
+    # RGN-AC3
     repo = _repo(tmp_path, _declaration(_entry("one", "python3 tools/gen.py", ["src"], ["out.txt"]),
                                         _entry("two", "make docs --quiet", ["docs", "x.json"], ["d/site.md"])))
     got = regeneration.load_declaration(repo)
@@ -101,6 +102,7 @@ def test_rgn_ac3_a_declaration_of_two_regenerations_is_read_in_file_order(tmp_pa
 ])
 def test_rgn_ac4_an_unusable_declaration_fails_the_check_environmentally_and_names_the_file(
         tmp_path: Path, text: str) -> None:
+    # RGN-AC4
     repo = _repo(tmp_path, text)
     ctx = _ctx(repo)
     regeneration.regenerate(ctx)
@@ -125,6 +127,7 @@ def _regs(*entries: dict[str, Any]) -> list[Any]:
 
 
 def test_rgn_ac6_a_regeneration_is_due_for_a_changed_input_and_not_for_another_path() -> None:
+    # RGN-AC6
     folder = _regs(_entry("a", "x", ["plugins/a"], ["plugins/a/stamp.json"]))
     assert regeneration.due(folder, ["plugins/a/blueprint.json"]) == folder
     assert regeneration.due(folder, ["plugins/b/blueprint.json"]) == []
@@ -135,6 +138,7 @@ def test_rgn_ac6_a_regeneration_is_due_for_a_changed_input_and_not_for_another_p
 
 
 def test_rgn_ac7_a_changed_output_alone_makes_nothing_due_and_an_input_beside_it_does() -> None:
+    # RGN-AC7
     regs = _regs(_entry("a", "x", ["plugins/a"], ["plugins/a/stamp.json"]))
     assert regeneration.due(regs, ["plugins/a/stamp.json"]) == []
     assert regeneration.due(regs, ["plugins/a/stamp.json", "plugins/a/blueprint.json"]) == regs
@@ -150,6 +154,7 @@ def test_rgn_ac7_a_changed_output_alone_makes_nothing_due_and_an_input_beside_it
 ])
 def test_rgn_ac8_nothing_due_starts_nothing_changes_nothing_and_adds_no_commit(
         tmp_path: Path, declaration: str | None, code: bool) -> None:
+    # RGN-AC8
     repo = _repo(tmp_path, declaration, code=code)
     before = _count(repo)
     regeneration.regenerate(_ctx(repo))
@@ -158,6 +163,7 @@ def test_rgn_ac8_nothing_due_starts_nothing_changes_nothing_and_adds_no_commit(
 
 
 def test_rgn_ac9_a_command_starts_with_its_words_as_a_list_and_no_shell_in_the_workspace(tmp_path: Path) -> None:
+    # RGN-AC9
     repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/gen.py --quiet docs")))
     regeneration.regenerate(_ctx(repo))
     words, _, where = (repo / "out.txt").read_text().strip().partition("|")
@@ -169,6 +175,7 @@ def test_rgn_ac9_a_command_starts_with_its_words_as_a_list_and_no_shell_in_the_w
                                      "python3 ../gen.py"])
 def test_rgn_ac10_a_command_with_a_shell_an_absolute_path_or_a_parent_path_is_refused(
         tmp_path: Path, command: str) -> None:
+    # RGN-AC10
     repo = _repo(tmp_path, _declaration(_entry("a", command)))
     before = _count(repo)
     regeneration.regenerate(_ctx(repo))
@@ -179,6 +186,7 @@ def test_rgn_ac10_a_command_with_a_shell_an_absolute_path_or_a_parent_path_is_re
 
 
 def test_rgn_ac16_the_declaration_alone_names_the_commands(tmp_path: Path) -> None:
+    # RGN-AC16
     repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/gen.py")),
                  extra={"tempergraph.commands.json": json.dumps({"schema_version": 1,
                                                                   "commands": ["python3 tools/other.py"]})})
@@ -193,6 +201,7 @@ def test_rgn_ac16_the_declaration_alone_names_the_commands(tmp_path: Path) -> No
 
 
 def test_rgn_ac11_a_passing_regeneration_leaves_one_commit_of_the_step_and_a_clean_tree(tmp_path: Path) -> None:
+    # RGN-AC11
     repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/gen.py")))
     before = _count(repo)
     got = regeneration.regenerate(_ctx(repo))
@@ -204,6 +213,7 @@ def test_rgn_ac11_a_passing_regeneration_leaves_one_commit_of_the_step_and_a_cle
 
 
 def test_rgn_ac11_a_regeneration_that_writes_the_same_bytes_adds_no_commit(tmp_path: Path) -> None:
+    # RGN-AC11
     repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/same.py")), extra={"out.txt": "same\n"})
     before = _count(repo)
     regeneration.regenerate(_ctx(repo))
@@ -211,6 +221,7 @@ def test_rgn_ac11_a_regeneration_that_writes_the_same_bytes_adds_no_commit(tmp_p
 
 
 def test_rgn_ac12_a_failed_pass_puts_every_written_file_back_and_commits_nothing(tmp_path: Path) -> None:
+    # RGN-AC12
     repo = _repo(tmp_path, _declaration(_entry("one", "python3 tools/gen.py"),
                                         _entry("two", "python3 tools/fail.py", ["src"], ["made.txt"])))
     before = _count(repo)

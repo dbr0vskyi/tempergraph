@@ -72,7 +72,7 @@ def _gate_units(repo: Path) -> list[str]:
 
 
 def test_rgn_ac1_the_unit_is_entered_after_the_code_step_on_each_arm(repo: Path) -> None:
-    # AC 1
+    # RGN-AC1, AC 1
     for steps, task in ((modes.SINGLE, "S-1"), (modes.PHASES, "P-1")):
         out = modes._run(repo, steps, task=task)
         assert out.exit_code is ExitCode.FINISHED, json.dumps(out.payload, default=str)[:1500]
@@ -80,7 +80,7 @@ def test_rgn_ac1_the_unit_is_entered_after_the_code_step_on_each_arm(repo: Path)
 
 
 def test_rgn_ac1_the_quick_lane_enters_the_unit_before_the_outcome_gate_and_no_review(repo: Path) -> None:
-    # AC 1
+    # RGN-AC1, AC 1
     stand = irv.Stand(route="quick")
     out = irv._go(repo, stand)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -90,7 +90,7 @@ def test_rgn_ac1_the_quick_lane_enters_the_unit_before_the_outcome_gate_and_no_r
 
 
 def test_rgn_ac2_a_due_regeneration_starts_no_session_and_its_files_are_committed(repo: Path) -> None:
-    # AC 1, RGN-B2, RGN-B11
+    # RGN-AC2, AC 1, RGN-B2, RGN-B11
     _declare(repo, _entry())
     stand = irv.Stand()
     out = irv._go(repo, stand)
