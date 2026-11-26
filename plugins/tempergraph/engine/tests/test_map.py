@@ -161,7 +161,7 @@ def test_a_trip_back_reruns_every_item(repo: Path) -> None:  # MAP-B3
     assert [r["ids"] for r in recs(repo, "map_items")] == [["p1", "p2"], ["p1", "p3"]]
 
 
-def test_a_drained_run_resumes_at_the_pending_item(repo: Path) -> None:  # MAP-B4, MAP-AC3
+def test_a_drained_run_resumes_at_the_pending_item(repo: Path) -> None:  # MAP-B4, MAP-AC3, AC 4, CMP-AC8
     spec = mapped(check=p1_fails_once)  # p1's retry is the one counted attempt, with the cap at 1
     out, ex = run(repo, spec, [planner(THREE), item_ok(), item_ok()], [judge(), judge()],
                   flags={"run.attempt_cap": 1})
