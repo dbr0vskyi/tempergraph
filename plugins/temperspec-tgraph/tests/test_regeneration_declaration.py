@@ -34,7 +34,7 @@ def test_ac3_this_repositorys_declaration_holds_the_stamp_diagram_and_record_of_
     packages = sorted(p.parent.relative_to(REPO).as_posix() for p in (REPO / "plugins").glob("*/tempergraph.json"))
     assert packages
     for folder in packages:
-        entry = got.get(f"tempergraph author verify {folder}")
+        entry = got.get(f"tempergraph author verify {folder} --json")  # --json: a failure comes back as findings
         assert entry is not None, folder
         assert folder in entry.inputs and "plugins/tempergraph/engine/src" in entry.inputs
         assert set(entry.outputs) == {f"{folder}/{name}" for name in OUTPUTS}
@@ -71,7 +71,7 @@ def test_ac3_a_run_in_a_linked_worktree_regenerates_the_package_files_and_leaves
     shutil.copytree(REPO / folder, main / folder,
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache", ".ruff_cache", ".mypy_cache"))
     (main / "tempergraph.regenerations.json").write_text(json.dumps({"schema_version": 1, "regenerations": [{
-        "name": "release-notes", "command": f"python -m tempergraph author verify {folder}",
+        "name": "release-notes", "command": f"python -m tempergraph author verify {folder} --json",
         "inputs": [folder], "outputs": [f"{folder}/{name}" for name in OUTPUTS]}]}), encoding="utf-8")
     _commit(main, "start")
     _git(main, "commit", "-q", "--allow-empty", "-m", f"docs(temperspec): prepare for {TASK}")

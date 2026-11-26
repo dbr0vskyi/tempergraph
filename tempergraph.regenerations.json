@@ -3,7 +3,7 @@
   "regenerations": [
     {
       "name": "doc-refresh-tgraph",
-      "command": "tempergraph author verify plugins/doc-refresh-tgraph",
+      "command": "tempergraph author verify plugins/doc-refresh-tgraph --json",
       "inputs": ["plugins/doc-refresh-tgraph", "plugins/tempergraph/engine/src"],
       "outputs": [
         "plugins/doc-refresh-tgraph/stamp.json",
@@ -14,7 +14,7 @@
     },
     {
       "name": "release-notes-tgraph",
-      "command": "tempergraph author verify plugins/release-notes-tgraph",
+      "command": "tempergraph author verify plugins/release-notes-tgraph --json",
       "inputs": ["plugins/release-notes-tgraph", "plugins/tempergraph/engine/src"],
       "outputs": [
         "plugins/release-notes-tgraph/stamp.json",
@@ -25,7 +25,7 @@
     },
     {
       "name": "temperspec-tgraph",
-      "command": "tempergraph author verify plugins/temperspec-tgraph",
+      "command": "tempergraph author verify plugins/temperspec-tgraph --json",
       "inputs": ["plugins/temperspec-tgraph", "plugins/tempergraph/engine/src"],
       "outputs": [
         "plugins/temperspec-tgraph/stamp.json",

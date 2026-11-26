@@ -280,6 +280,38 @@ def test_rgf_ac4_a_command_that_exits_3_is_a_plain_failure_naming_the_passed_cri
     assert result.findings and {f.criterion for f in result.findings} == {"ts-rgn-passed"}
 
 
+# What `tempergraph author verify <path> --json` prints for a failed package: an indented report of ten rungs, far
+# longer than the 40 lines a command's tail keeps.
+VERIFY = ("import json, sys\n"
+          "rungs = [{'rung': n, 'name': f'rung-{n}', 'state': 'passed', 'note': 'ok', 'findings': []} for n in range(1, 11)]\n"
+          "rungs[2].update(state='failed', findings=[\n"
+          "    {'code': 'summary-long', 'unit': 'code', 'message': 'the summary is over 60 characters', 'remedy': 'shorten it'},\n"
+          "    {'code': 'no-case', 'unit': 'plan', 'message': 'a check has no fail case', 'remedy': 'add one'}])\n"
+          "print(json.dumps({'schema_version': 1, 'workflow': 'w', 'ok': False, 'rungs': rungs}, indent=2))\n"
+          "sys.exit(2)\n")
+
+
+def test_rgf_ac3_a_report_longer_than_the_tail_gives_one_finding_for_each_finding_of_a_failed_rung(tmp_path: Path) -> None:
+    # RGF-AC3 (RGF-B3), AC 5: the repository's declared commands print their report with `--json`
+    repo = _repo(tmp_path, _declaration(_entry("pkg", "python3 tools/verify.py --json", ["src"], ["made.txt"])),
+                 extra={"tools/verify.py": VERIFY})
+    regeneration.regenerate(_ctx(repo))
+    result = regeneration.regeneration_check(_ctx(repo))
+    assert result.result == "FAIL" and not result.environmental
+    assert [f.message for f in result.findings] == [
+        "rung-3: summary-long: the summary is over 60 characters", "rung-3: no-case: a check has no fail case"]
+    assert [f.place for f in result.findings] == ["code", "plan"] and [f.fix for f in result.findings] == [
+        "shorten it", "add one"]
+    assert {f.criterion for f in result.findings} == {"ts-rgn-passed"}
+
+
+def test_rgf_ac3_the_repositorys_own_commands_ask_for_the_json_report() -> None:
+    # RGF-AC3 (RGF-B3), AC 5: without `--json`, `author verify` prints text that holds no report to read findings from
+    declared = regeneration.load_declaration(ROOT.parents[1])
+    assert declared and all(r.command.startswith("tempergraph author verify ") and r.command.endswith(" --json")
+                            for r in declared)
+
+
 def test_rgf_ac4_the_check_reads_the_report_the_artifact_names_and_the_fixed_path_without_one(tmp_path: Path) -> None:
     # RGF-AC4, AC 10
     repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/fail.py", ["src"], ["made.txt"])))

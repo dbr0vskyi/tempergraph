@@ -152,7 +152,18 @@ def _run_one(ctx: Any, r: Regeneration) -> dict[str, Any]:
         row["state"] = "signal"
     elif done.exit_code != 0:
         row["state"] = "failed"
+        report = _report_of(_output(done))  # the tail keeps 40 lines; an engine report is longer (RGF-B3)
+        if report is not None:
+            row["report"] = report
     return row
+
+
+def _output(done: Any) -> str:
+    """The whole output the command printed, from the file the runner wrote it to; its tail when there is none."""
+    try:
+        return Path(str(done.output_path)).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return str(done.tail or "")
 
 
 ENVIRONMENT = {"refused", "not_started", "signal", "timeout"}
@@ -232,7 +243,7 @@ def _reported(doc: dict[str, Any]) -> list[CheckFinding]:
 def findings_of(row: dict[str, Any]) -> list[CheckFinding]:
     """The findings of one failed command, in the order it reported them (RGF-B3); one for the command when its
     output holds no report of the engine's two commands or the report lists no failure (RGF-B4)."""
-    doc = _report_of(str(row.get("tail") or ""))
+    doc = row.get("report") if isinstance(row.get("report"), dict) else _report_of(str(row.get("tail") or ""))
     return (_reported(doc) if doc else []) or [_finding(row)]
 
 
