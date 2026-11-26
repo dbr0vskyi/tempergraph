@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 24,
+  "revision": 25,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -922,6 +922,31 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-dis-adrform",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every decision record the discovery step created or changed has every section of the decision rule, filled: a `Current state` whose every sentence cites a path, a link or an id, constraints that name their source, at least two options each with how it works, a rationale that answers every force by its id, risks with what limits them and how they are noticed, and assumptions with what they cost if wrong",
+          "check_method": "Read each `.adr.md` the step created or changed (the changed paths and the hand-off's `Changed documents`): the ten sections `Context`, `Current state`, `Forces`, `Options considered`, `Decision`, `Decision rationale`, `Consequences`, `Risks`, `Assumptions`, `Revisit when` present and not empty in any order; each `Current state` sentence holds a code span, a link or an id unless the section is `Nothing exists yet.`; each `C<n>` force has `Source:`; two or more `###` options, each with `How it works:`; each `C<n>` and `F<n>` id appears in `Decision rationale`; each risk bullet has `Limited by:` and `Noticed by:` unless the section is `None known.`; each `A<n>` assumption has `If wrong:` unless the section is `None.`. Records the step did not touch are not read",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-adrlead",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "A decision record the discovery step created or changed that is over about 10 KB, or whose `Revisit when` names nothing observable, reaches the judge as a lead",
+          "check_method": "Read each `.adr.md` the step created or changed: its size over 10,240 bytes, and a `Revisit when` line with `if needs change`, `when requirements change`, `as needed`, `if necessary` or `when appropriate`; report each as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
         },
         {
           "id": "ts-dis-general",
@@ -2034,6 +2059,12 @@
       "origin": "authored",
       "at": "2026-11-26T18:00:00.000Z",
       "note": "issue 173: the unit independent_review after code_join, a read-only reader that sees the change, the task's criteria and the repository, with numbered findings checked model-free and one trip back (ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step, ts-rev-blockers; specs independent-review, review-findings)"
+    },
+    {
+      "revision": 25,
+      "origin": "authored",
+      "at": "2026-11-26T20:00:00.000Z",
+      "note": "decision records gain the sections Current state, Forces (constraints first, each with its source), Decision rationale (answers every force by id), Risks, Assumptions (each with its cost if wrong) and a required Revisit when, options run before the decision and each says how it works; the discovery check reads the form of every decision record a run creates or changes (ts-dis-adrform) and reports an oversized record or a vague Revisit when as a lead (ts-dis-adrlead)"
     }
   ]
 }
