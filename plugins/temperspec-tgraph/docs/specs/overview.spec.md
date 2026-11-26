@@ -23,7 +23,7 @@ Units:
 - [expand](expand.spec.md): Write task rows and verification for a complex plan
 - [phase](phase.spec.md): Build one phase of the plan, tests first, and commit it
 - [code](code.spec.md): Build the plan test first in one session
-- [regenerate](regeneration.spec.md): Refresh the generated files the repository declares when their inputs changed, and commit them; send a failure back to the code step once
+- [regeneration](regeneration.spec.md): Refresh the generated files the repository declares when their inputs changed, and commit them; send a failure back to the code step once
 - [code_join](code-join.spec.md): Where both arms meet after the code step
 - [independent_review](independent-review.spec.md): Read the change and the task's criteria with no sight of the run's reasoning; send a blocking finding back once; a quick-lane run skips it
 
