@@ -1,1 +1,1 @@
-{"declaration_error": "", "runs": [{"name": "gen", "command": "python3 tools/gen.py", "state": "passed", "exit_code": 0, "tail": ""}]}
+{"proves": "EVS-AC7", "declaration_error": "", "runs": [{"name": "gen", "command": "python3 tools/gen.py", "state": "passed", "exit_code": 0, "tail": ""}]}

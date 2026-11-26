@@ -294,7 +294,7 @@ def test_each_rule_file_criterion_is_a_blocker_checked_by_its_gate_and_names_its
     assert names and all(n in row["text"] for n in names)
 
 
-def test_the_outcome_record_has_the_revision_entry_of_issue_150() -> None:  # AC 6
+def test_the_outcome_record_has_the_revision_entry_of_issue_150() -> None:  # AC 6, AC 10, WUP-AC7 (the stamp's refresh belongs to the unit, row 3.5)
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
     entry = next(r for r in o["revisions"] if "issue 150" in r.get("note", ""))
     assert entry["origin"] == "authored" and entry["revision"] >= 23
