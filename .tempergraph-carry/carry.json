@@ -7,8 +7,12 @@
   "task_id": "i148",
   "workflow_version": "0.1.0+b1320bb6cfb4",
   "seq": 231,
-  "lease": null,
-  "pushed_at": "2026-11-26T00:50:55.337Z",
+  "lease": {
+    "machine": "15f7edd4-bb6f-48aa-bac7-f9aec1a01082",
+    "process": 3095200,
+    "since": "2026-11-26T00:51:50.509Z"
+  },
+  "pushed_at": "2026-11-26T00:51:51.801Z",
   "scrubbed": {},
   "files": {
     "checkpoint.sqlite": "9c825b077d9edc551a2849ce8e508a4958f02ccc1bfa7248bf8b5eb7d79ad8b2",
