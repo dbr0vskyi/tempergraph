@@ -1,5 +1,5 @@
 {
   "schema_version": 1,
   "exit_code": 4,
-  "reason": "stopped_by_request"
+  "reason": "stopped"
 }
