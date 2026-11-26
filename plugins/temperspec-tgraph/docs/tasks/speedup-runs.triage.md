@@ -2,7 +2,7 @@
 
 ## Task
 
-Source: `/tmp/claude-0/-home-user/7c14c8c3-1c91-5442-84b5-7299cd971103/scratchpad/task-speedup.md`. Make temperspec runs faster: run the engine's suite in parallel, run the full suite once per code visit, reuse a full-suite result for an unchanged tree, size discovery to the gap (backlog B21), and make discovery and plan read narrowly through a reading list in the hand-off.
+Source: a task file (`task-speedup.md`) kept outside the repository. Make temperspec runs faster: run the engine's suite in parallel, run the full suite once per code visit, reuse a full-suite result for an unchanged tree, size discovery to the gap (backlog B21), and make discovery and plan read narrowly through a reading list in the hand-off.
 
 ## Acceptance criteria
 

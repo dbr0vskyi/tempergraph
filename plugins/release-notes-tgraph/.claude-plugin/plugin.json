@@ -5,6 +5,7 @@
   "author": {
     "name": "Yevhenii Dubrovskyi"
   },
+  "license": "Apache-2.0",
   "dependencies": [
     "tempergraph"
   ]

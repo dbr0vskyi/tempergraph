@@ -51,8 +51,7 @@ Use the `plugin-authoring` skill when making mods or hooks.
 ## Notes
 
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`. Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`, `revert`. The scope is optional, e.g. a plugin name (`docs(tempergraph): …`). Mark breaking changes with `!` or a `BREAKING CHANGE:` footer.
-- Repo: github.com/dbr0vskyi/tempergraph (private), default branch `main`.
-- `.vscode/settings.json` holds only an `airun.settings` workspace ID; it is untracked editor config.
+- Repo: github.com/dbr0vskyi/tempergraph, default branch `main`. Community files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
 
 <!-- temperspec:start -->
 ## temperspec

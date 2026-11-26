@@ -75,12 +75,12 @@ Six skills serve the person outside a run; no step of a run loads one. The `task
 
 ## State of verification
 
-`tempergraph author verify plugins/temperspec-tgraph` passes its model-free rungs (1 to 7 and 10). Two rungs need a signed-in `claude` and have not run:
+`tempergraph author verify plugins/temperspec-tgraph` passes its model-free rungs (1 to 7 and 10). The two rungs that need a signed-in `claude` have run:
 
-- Rung 8, `--judge-seeds`: grades the 34 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
-- Rung 9, `--trial`: one capped trial run of a case from `evals/cases.json`. The trial run that shows the route after the plan, the switch `code_mode` with its `route` record, is row TS-L3 of the live checks.
+- Rung 8, `--judge-seeds`, grades the seed cases under `evals/calibration/` with the real judges (live check TS-L1). Its last run graded every seed as expected.
+- Rung 9, `--trial`, makes one capped trial run of a case from `evals/cases.json` (TS-L2 trial and TS-L3). Both trial runs reached the outcome gate with verdict `met` and no pause.
 
-No real run has been made yet. The commands and pass criteria are in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
+Real runs, including runs on this repository's own issues, have passed in part: they finished with every gate passed and, where the repository had a remote, pushed the run's branch, but opening the draft pull request has not been shown yet. Every result, with its date, cost and what it did not show, is in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
 
 ## What comes next
 

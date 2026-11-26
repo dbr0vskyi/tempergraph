@@ -9,20 +9,18 @@ This guide takes you from nothing to a first run of an example workflow.
 - git, and a git repository to run workflows in
 - [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and signed in (`claude --version` prints a version)
 
-Releases 1 and 2 run every step on Claude Code. The other executors are designed but not built yet.
+Every step runs on Claude Code. The other executors are designed but not built yet.
 
 ## 1. Add the plugin marketplace
 
 This repository is a Claude Code plugin marketplace named `tempergraph`.
 
 ```sh
-git clone https://github.com/dbr0vskyi/tempergraph.git
-claude plugin marketplace add ./tempergraph
+claude plugin marketplace add dbr0vskyi/tempergraph
 claude plugin install tempergraph@tempergraph
 ```
 
-> [!NOTE]
-> Installing from the plugin is live check L-16 and is not confirmed yet.
+To work from a clone instead, run `git clone https://github.com/dbr0vskyi/tempergraph.git` and add the marketplace with `claude plugin marketplace add ./tempergraph`. Step 4 registers an example from such a clone.
 
 Optional plugins from the same marketplace:
 
@@ -61,7 +59,7 @@ The `bootstrap` skill adds the ignore rule to `.gitignore` and tells you to revi
 Register an example workflow, look at it, then run it:
 
 ```sh
-tempergraph workflows register <clone>/plugins/release-notes-tgraph
+tempergraph workflows register <clone>/plugins/release-notes-tgraph   # <clone>: your clone of this repository
 tempergraph list                          # the catalog
 tempergraph graph release-notes           # what it will do
 tempergraph run release-notes --check v1.2   # preflight: spends nothing
