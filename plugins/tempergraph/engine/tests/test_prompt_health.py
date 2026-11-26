@@ -86,4 +86,5 @@ def test_pra_ac8_a_sentence_in_three_files_is_repeated_text(tmp_path: Path) -> N
 def test_pra_ac8_thresholds_are_parameters_without_data() -> None:  # PRA-AC8 (PRA-B13)
     for name in ("prompt_prohibitions_per_reason", "prompt_repeat_files"):
         assert cat.PARAMS[name].source.startswith("default_no_data")
-    assert all(cat.rule(r).severity == "warning" for r in ("prompt-constraint-heavy", "prompt-repeated-text"))
+    assert cat.rule("prompt-constraint-heavy").severity == "warning"
+    assert cat.rule("prompt-repeated-text").severity == "info"  # advisory: it never blocks a stamp

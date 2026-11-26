@@ -304,7 +304,7 @@ RULES: tuple[Rule, ...] = (
     _r("prompt-constraint-heavy", "definition", "C7", "warning / medium", "prompt_structure",
        "Give each rule that is not mechanical its reason in half a line, or replace a list of prohibitions with "
        "what the step owns and where the rest goes", spec="PRA"),
-    _r("prompt-repeated-text", "definition", "C7", "warning / medium", "prompt_structure",
+    _r("prompt-repeated-text", "definition", "C7", "info / medium", "prompt_structure",
        "Keep the sentence in one file that the others name, so a fix lands in one place", spec="PRA"),
     _r("skill-frontmatter-nonstandard", "definition", "C7", "info / high", "skill_nonportable",
        "Keep to name, description, license, compatibility, metadata, allowed-tools, or ship a second form",

@@ -4,6 +4,15 @@
 
 The part of the [workflow audit](workflow-audit.spec.md) that reads every piece of model-facing text a workflow sends and asks four questions of it: does everything it names exist, is anything it names out of date, does it agree with what the step declares and produces, and does it fit. [research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) found each costing runs: references to a skill, an agent, a prompt file and two tool names that did not exist (F7.2), newer tracker and wiki tool names the judge catalog did not know (F4.6), a step told to change directory before a command the CLI refuses (F4.2), a tracker tool the prompt relied on but the step was not granted (F4.4), and a whole plan written in one response that stalled (F3.3). Prompt lint ([LIF-B12](lifecycle-and-evals.spec.md)) keeps the text-style rules that need only the package; this spec adds names resolved against the executor, the view catalog and the installed plugins on this host, staleness against the last stamp, consistency with the step's declarations, and from history the rendered size and how a prompt change moved its gate ([ADR `audit-joins-existing-checks-and-files-nothing`](../adr/audit-joins-existing-checks-and-files-nothing.adr.md)). Every rule resolves a name or measures how the text is built (its size, what a session must read with it, prohibitions against reasons, sentences repeated across files), never what the text means; the measures are advisory, and staleness is only ever measured against a recorded baseline, never guessed from a name's shape. Workflow authors and the audit depend on it.
 
+## Depends on
+
+- `improvement-proposals.spec.md`: improvement proposals and trials
+- `prompt-rendering.spec.md`: prompt rendering and output contract
+- `self-improvement.spec.md`: self-improvement loop
+- `tool-surface-audit.spec.md`: tool surface audit
+- `workflow-lessons.spec.md`: workflow lessons
+- `workflow-package.spec.md`: engine manifest (PKG-B13)
+
 ## Behaviours
 
 ### PRA-B5 Model-facing text
@@ -83,7 +92,7 @@ WHEN `audit prompts` measures a model-facing file THE audit SHALL report its cha
 
 ### PRA-B13 Structure rules
 
-WHEN the definition layer reads the model-facing files THE audit SHALL fire `prompt-constraint-heavy` (warning/medium, `prompt_structure`) on a file whose prohibitions per reason are at or above `prompt_prohibitions_per_reason` (default 20) and `prompt-repeated-text` (warning/medium, `prompt_structure`) on a sentence found in `prompt_repeat_files` (default 3) or more files, both thresholds marked `default_no_data`, and no rule of them refuses a start.
+WHEN the definition layer reads the model-facing files THE audit SHALL fire `prompt-constraint-heavy` (warning/medium, `prompt_structure`) on a file whose prohibitions per reason are at or above `prompt_prohibitions_per_reason` (default 20) and `prompt-repeated-text` (info/medium, `prompt_structure`; shared boilerplate is often deliberate, so it does not block a stamp) on a sentence found in `prompt_repeat_files` (default 3) or more files, both thresholds marked `default_no_data`, and no rule of them refuses a start.
 
 - GIVEN a template with 22 prohibitions and no reason WHEN audited THEN `prompt-constraint-heavy` fires on its step
 - GIVEN a sentence in two files WHEN audited THEN `prompt-repeated-text` does not fire
