@@ -18,9 +18,10 @@ flowchart TD
   u14["expand<br/>Write task rows and verification for a complex plan"]
   u15["phase<br/>Build one phase of the plan, tests first, and commit it"]
   u16["code<br/>Build the plan test first in one session"]
-  u17["code_join"]
-  u18["independent_review<br/>Read the change as an independent reader; write findings"]
-  u19["outcome<br/>outcome gate"]
+  u17["regeneration"]
+  u18["code_join"]
+  u19["independent_review<br/>Read the change as an independent reader; write findings"]
+  u20["outcome<br/>outcome gate"]
   fin([finalizer])
   stop((end))
   start --> u0
@@ -42,7 +43,7 @@ flowchart TD
   u9 --> u10
   u10 --> u11
   u11 --> u12
-  u11 --> u19
+  u11 --> u20
   u12 --> u13
   u12 -.->|back| u11
   u13 --> u16
@@ -56,22 +57,25 @@ flowchart TD
   u16 -.->|back| u11
   u16 -.->|back| u5
   u17 --> u18
-  u17 --> u19
+  u17 -.->|back| u16
   u18 --> u19
-  u18 -.->|back| u12
-  u18 -.->|back| u16
-  u19 --> fin
-  u19 -.->|back| u3
-  u19 -.->|back| u4
-  u19 -.->|back| u5
-  u19 -.->|back| u6
-  u19 -.->|back| u10
-  u19 -.->|back| u11
+  u18 --> u20
+  u19 --> u20
   u19 -.->|back| u12
-  u19 -.->|back| u14
-  u19 -.->|back| u15
   u19 -.->|back| u16
-  u19 -.->|back| u18
+  u20 --> fin
+  u20 -.->|back| u3
+  u20 -.->|back| u4
+  u20 -.->|back| u5
+  u20 -.->|back| u6
+  u20 -.->|back| u10
+  u20 -.->|back| u11
+  u20 -.->|back| u12
+  u20 -.->|back| u14
+  u20 -.->|back| u15
+  u20 -.->|back| u16
+  u20 -.->|back| u17
+  u20 -.->|back| u19
   fin --> stop
 
 ```
