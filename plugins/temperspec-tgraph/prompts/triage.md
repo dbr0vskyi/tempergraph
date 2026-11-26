@@ -38,7 +38,7 @@ The format of the triage note is in `task-notes.rule.md`, and the folders and na
 5. Write `## Uncertainties`. Go through the categories of the rule one by one and ask, for each, what the task leaves open: a category you skip is a question nobody asks until the code is written. Write one row for each question whose answer you do not have from the task or from a document you read.
    - State the impact honestly. `Blocks`: no spec can be written without the answer. `Shapes`: the answer changes which behaviours are written. `Detail`: the plan can settle it.
    - State the route: `code` or `docs` when the repository can answer, `source` for a public source, `owner` when only the owner can, `plan` for a `Detail` row.
-   - An acceptance criterion two readers could measure differently gets a row. Never rewrite the criterion to make it clear.
+   - An acceptance criterion two readers could measure differently gets a row: one that says `fast`, `safe` or `easy` where a number or a result someone can observe is needed, or that says what must not happen without saying how that is seen. Never rewrite the criterion to make it clear.
    - When nothing is open, write `None`.
 6. Write `## Gaps`. For each concept the task needs, decide whether a spec covers it completely: a concept is covered only when a behaviour and an acceptance criterion in a spec state it. Otherwise it is a gap, with its kind, the spec that owns the mechanism and the search that found nothing, as the rule says.
    - The kind is `existing behaviour` when the code the task touches already does something no spec states: search the code for each concept the task changes, and read the lines the search finds, far enough to tell.

@@ -523,7 +523,7 @@
           "severity": "warning",
           "verified_by": "judge",
           "text": "Every question the task leaves open about its own intent that would change which behaviours are written is an uncertainty row, and no row's impact is lower than what rests on its answer",
-          "check_method": "Read the task against each category of the rule's scan (goal, scope, actors, data, names, side effects, failures, limits, dependencies, existing behaviour, terms); compare what it leaves open with the rows and their impacts",
+          "check_method": "Read the task against each category of the rule's scan (goal, scope, actors, data, names, side effects, failures, limits, life cycle, dependencies, existing behaviour, terms); compare what it leaves open with the rows and their impacts",
           "source": "interview",
           "verifier": {
             "references": [

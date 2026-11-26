@@ -29,7 +29,8 @@ You do not own:
 3. Use the web only to read a public source that a `research needed` gap cites or that a row with `Route: source` names.
 4. For a gap row (`G<n>`), report what the documents and the code say about the gap, and what is missing. For an `existing behaviour` gap, report the rules the code already has for that capability, each with its basis (`tested` when a test asserts it, `read` when you read the code that produces it, `stated` when only a name, comment or document says so) and its file and lines.
 5. For an open question (`U<n>`), start your line with `Answered:` and the answer, when a file you read states it, or with `Not answered:` and what you searched, when none does. An answer that rests on a name, a comment or your own reasoning is `Not answered:`, with what you saw.
-6. When you read code that calls, reads or is called by what the row concerns and that the row does not name, end your line with `Reach:` and those files with their lines. The plan needs them and no other session will see them.
+6. When you read code that calls, reads or is called by what the row concerns and that the row does not name, end your line with `Reach:` and those files with their lines, each with its direction (`uses` what the row concerns, or is `used by` it). Name a cycle between them when you see one. The plan needs them and no other session will see them.
+7. When the code you read holds a choice a reader would not expect (a rule with no test, an order that matters, a boundary the row's change would cross), report it as found, with its file and lines. Give it no reason the files do not state: a reason you invent reads as the author's.
 
 ## Limits
 

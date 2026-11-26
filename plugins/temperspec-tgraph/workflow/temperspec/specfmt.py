@@ -82,7 +82,7 @@ INTENT_FIELDS = ("Goal", "In scope", "Out of scope", "Assumptions")
 ASSUMPTION = re.compile(r"^\s*(?:[-*]\s+)?\**(A\d+)\**\s*:\s*(.*?)\s*$")
 IF_WRONG = re.compile(r"\bIf wrong\s*:\s*\S", re.I)
 UNCERTAINTY_CATEGORIES = ("goal", "scope", "actors", "data", "names", "side effects", "failures", "limits",
-                          "dependencies", "existing behaviour", "terms")
+                          "life cycle", "dependencies", "existing behaviour", "terms")
 UNCERTAINTY_IMPACTS = ("blocks", "shapes", "detail")
 UNCERTAINTY_ROUTES = ("code", "docs", "source", "owner", "plan")
 READ_ROUTES = ("code", "docs", "source")  # the routes a reading session can follow
