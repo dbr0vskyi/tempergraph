@@ -61,6 +61,7 @@ from tempergraph.workspace import (
     WorkspaceRecord,
     WorkspaceRefused,
     attach_workspace,
+    file_missing_at_base,
     prepare_workspace,
     release_workspace,
     resolve_workspace,
@@ -744,6 +745,10 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
                                  root=str(rv.get("worktree.root") or "sibling"))
     except WorkspaceRefused as exc:
         return _refuse(exc.word, str(exc), tid=tid)
+    if spec.input.kind == "file" and plan.base_ref not in ("head", "") and plan.main is not None:
+        err = file_missing_at_base(plan.main, plan.base_commit, plan.base_ref, inputs.get("file", ""))
+        if err:
+            return _refuse("request_missing_at_base", err, tid=tid)
     if plan.main is None:  # WSP-B15 to WSP-B18: what needs git is refused before anything is created
         needs = needs_git(spec, settings)
         if needs:

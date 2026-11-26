@@ -15,6 +15,7 @@ WHEN `run --check <workflow> <request…>` is given THE engine CLI SHALL resolve
 - GIVEN a workflow whose resolver does not load WHEN `run --check` runs THEN it prints `broken` and exits 1
 - GIVEN a request the check refuses with `error` WHEN `run` is given the same request THEN `run` refuses it with the same reason and exits 2
 - GIVEN a workflow package with authoring findings and a valid request WHEN `run --check` returns `ok` THEN the JSON carries `authoring_warnings` with counts by code and the `validate` command to view them, and `warnings` holds only run-dependent findings
+- GIVEN a file input that exists at HEAD but not at the worktree base ref WHEN `run --check --worktree --worktree-base ref:<b>` is given THEN it refuses with status `error` and code `request_missing_at_base`, naming the path and the ref, and `run` refuses with the same message
 
 ### CLI-B2 Reserved verbs
 
@@ -159,6 +160,7 @@ WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B2
 - CLI-AC10 (CLI-B20): After a fixture loop child has ended, `attention` shows the summary of the newest loop child of each workflow with its counts and at most three observations and no note text, carries it as `loop[]` and not as an item in `--json`, and leaves the state root unchanged
 - CLI-AC11 (CLI-B20): After a fixture loop child that recorded no finding and no observation and whose reviews all failed as `usage_limit` has ended, `attention` shows its thread with the failed reviews counted by error class and `--json` carries `review_failed` in its `loop[]` entry, and a fixture summary with no finding, no observation and no failed review shows nothing
 - CLI-AC12 (CLI-B1): A `run --check` with status `ok` on a workflow package that has N findings of an authoring-warning code carries that code's count as N in `authoring_warnings.counts` and no full text for that code in `warnings`
+- CLI-AC13 (CLI-B1): `run --check` and `run` both refuse a file request missing at the worktree base ref with code `request_missing_at_base`, naming the path and the ref
 
 ## Open questions
 

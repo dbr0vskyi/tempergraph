@@ -352,6 +352,32 @@ def test_drop_deletes_the_branch(world: World) -> None:
     assert "carry" not in st["threads"][0] or st["threads"][0]["carry"] == "dropped"
 
 
+def test_attention_lists_carry_delete_failed(repo: Path) -> None:  # CAR-B11
+    from tempergraph.observe.attention import attention, items, line
+    from tempergraph.store.layout import state_root_path
+
+    from .fixtures.workflows import two_step
+    from .test_cli import cli, happy
+
+    root = state_root_path(repo)
+    code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "t1")
+    assert code == 0, err
+    carry.set_marker(root, "demo", "t1", state="delete_failed")
+    specs = {"demo": two_step()}
+    found = items(root, specs)
+    assert len(found) == 1
+    item = found[0]
+    assert item["kind"] == "carry_delete_failed"
+    assert item["thread_id"] == "demo/t1"
+    assert "tempergraph/state" in item["reason"]
+    assert item["command"] == "tempergraph carry drop demo t1"
+    assert item["unit"] is None
+    rendered = line(item)
+    assert "carry_delete_failed" in rendered and "carry drop demo t1" in rendered
+    doc = attention([root], specs)
+    assert any(i["kind"] == "carry_delete_failed" for i in doc["items"])
+
+
 def test_resume_can_turn_carrying_on(world: World) -> None:
     a = world.on("a")
     ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])

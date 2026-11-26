@@ -10,9 +10,13 @@ from typing import Any
 
 import pytest
 
+import dataclasses
+import subprocess
+
 from tempergraph.catalog import Catalog, from_registry, resolve_request
 from tempergraph.cli.main import VERBS, main
 from tempergraph.constants import ExitCode
+from tempergraph.contracts import InputDeclaration
 from tempergraph.executors.registry import Registry
 from tempergraph.executors.standins import ScriptedExecutor, standin
 from tempergraph.run.runner import RunSettings
@@ -272,3 +276,31 @@ def test_authoring_warnings_aggregated_on_check_ok(repo: Path, tmp_path: Path,
     aw = doc["authoring_warnings"]
     assert aw["counts"].get("criterion-overlap") == 2
     assert aw["command"] == "tempergraph validate release-notes"
+
+
+def _git(cwd: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+
+def test_check_and_run_refuse_file_missing_at_base(repo: Path) -> None:  # CLI-AC13
+    # Branch `b` exists and has README.md but not task.md; task.md is added on the current branch.
+    _git(repo, "checkout", "-q", "-b", "b")
+    _git(repo, "checkout", "-q", "main")
+    task = repo / "task.md"
+    task.write_text("do the thing\n")
+    _git(repo, "add", "task.md")
+    _git(repo, "commit", "-q", "-m", "add task")
+
+    file_wf = dataclasses.replace(two_step(), input=InputDeclaration(kind="file"))
+    cat = Catalog(specs={"demo": file_wf})
+    args_check = ["run", "demo", str(task), "--check", "--worktree", "--worktree-base", "ref:b"]
+    args_run = ["run", "demo", str(task), "--worktree", "--worktree-base", "ref:b"]
+
+    code, doc, _ = cli(repo, happy(), *args_check, catalog=cat)
+    assert code == ExitCode.USAGE and doc["status"] == "error"
+    assert any(r["code"] == "request_missing_at_base" for r in doc.get("refusals", []))
+    assert "task.md" in doc["refusals"][0]["message"] and "ref:b" in doc["refusals"][0]["message"]
+
+    code2, out2, err2 = cli(repo, happy(), *args_run, catalog=cat)
+    assert code2 == ExitCode.USAGE and err2
+    assert "request_missing_at_base" in err2 or "task.md" in err2

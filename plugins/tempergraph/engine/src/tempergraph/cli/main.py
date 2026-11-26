@@ -501,6 +501,7 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
             else:  # the refusal `run` gives after validation: a child that needs git
                 from tempergraph.model import subworkflow
                 from tempergraph.store.layout import outside_git
+                from tempergraph.workspace import WorkspaceRefused, file_missing_at_base, resolve_workspace
 
                 needs = (subworkflow.unit_reasons(settled.spec) + subworkflow.needs_git(settled.spec)  # WSP-B18
                          if outside_git(env.cwd) else [])
@@ -508,6 +509,22 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
                     doc["refusals"] = [{"code": "needs_git", "unit": None, "message": f"outside a git repository this "
                                                                                        f"run cannot use {n}"} for n in needs]
                     doc["status"] = "error"
+                elif settled.spec.input.kind == "file":  # CLI-B21: refuse a file request missing at the base ref
+                    base_str = str(rv.get("worktree.base") or "head")
+                    if base_str != "head":
+                        try:
+                            plan = resolve_workspace(settled.spec, env.cwd, rv["workspace"],
+                                                     prefix=str(rv["worktree.branch_prefix"]),
+                                                     base=base_str, root=str(rv.get("worktree.root") or "sibling"))
+                            if plan.main is not None and plan.base_commit:
+                                err = file_missing_at_base(plan.main, plan.base_commit, plan.base_ref,
+                                                           res.inputs.get("file", ""))
+                                if err:
+                                    doc["refusals"] = [{"code": "request_missing_at_base", "unit": None,
+                                                        "message": err}]
+                                    doc["status"] = "error"
+                        except WorkspaceRefused:
+                            pass
         elif res.status == "needs":
             doc["questions"] = [{"name": q.name, "question": q.question, "choices": list(q.choices or [])}
                                 for q in res.questions]
