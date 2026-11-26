@@ -72,9 +72,10 @@ def _ts(text: Any) -> datetime | None:
 
 # -- autonomy (PRP-B11) -------------------------------------------------------------------------------------
 
-def autonomy(spec: WorkflowSpec, machine: str | None = None) -> str:
+def autonomy(spec: WorkflowSpec, machine: str | None = None, setting: str | None = None) -> str:
     """The declared level (`improvement.autonomy` in the package's `tempergraph.json`, default `file`),
-    lowered, never raised, by the machine's `TEMPERGRAPH_AUTONOMY`."""
+    lowered, never raised, by the machine's `TEMPERGRAPH_AUTONOMY` and the run setting `loop_autonomy`:
+    the lowest of the three (PRP-B31)."""
     declared = "file"
     if spec.package_root is not None:
         try:
@@ -84,8 +85,9 @@ def autonomy(spec: WorkflowSpec, machine: str | None = None) -> str:
                 declared = str(got)
         except (OSError, ValueError):
             pass
-    if machine in AUTONOMY and AUTONOMY.index(str(machine)) < AUTONOMY.index(declared):
-        return str(machine)
+    for other in (machine, setting):
+        if other in AUTONOMY and AUTONOMY.index(str(other)) < AUTONOMY.index(declared):
+            declared = str(other)
     return declared
 
 

@@ -509,7 +509,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                              operator_review=settled.run.get("session_review"),
                              run_cost_usd=cost.reported + cost.estimated_only,
                              daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
-                             loop_effort=settled.run.get("loop_effort"))
+                             loop_effort=settled.run.get("loop_effort"), options=settled.options)
         except Exception as exc:  # noqa: BLE001
             log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
@@ -524,13 +524,25 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
 def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
                  settings: RunSettings | None, registry: Registry, judges: Mapping[str, str], *,
                  operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None,
-                 loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None) -> None:
+                 loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None,
+                 options: RunOptions | None = None) -> None:
     """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests.
-    `settings` is None for an exit no run of this process made (SIL-B29): not a trial, `--dry-run` read from the log."""
+    `settings` is None for an exit no run of this process made (SIL-B29): not a trial, `--dry-run` read from the log.
+    `options` is the thread's snapshot: resolved again against the settings files now, it gives the operator's
+    `loop_autonomy` (PRP-B31)."""
     from tempergraph.improve import child
 
     if child.mode() == "off" or spec.builtin:
         return
+    held: str | None = None
+    if options is not None:
+        try:  # as `status` resolves a snapshot (RST-B27): a files error or any failure leaves the setting unread
+            files = rst.load_files(root, (settings.home if settings else None) or home_path())
+            if not files.errors:
+                got = rst.run_values(rst.resolve(spec, options, files)).get("loop_autonomy")
+                held = str(got) if got else None
+        except Exception:  # noqa: BLE001 - the hold is best effort; the loop never stops a run
+            held = None
     names = list(judges.values())
     executor = max(set(names), key=names.count) if names else spec.default_executor
     # `--dry-run` holds for the thread: any segment that started with it
@@ -539,7 +551,7 @@ def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary
     if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor,
                       operator_review=operator_review, run_cost_usd=run_cost_usd,
                       trial=settings is not None and settings.origin == "trial", daily_cap_usd=daily_cap_usd,
-                      loop_model=loop_model, loop_effort=loop_effort, trigger=trigger) is None:
+                      loop_model=loop_model, loop_effort=loop_effort, trigger=trigger, loop_autonomy=held) is None:
         return
     if child.mode() == "inline":
         child.drain(registry=registry)
@@ -583,7 +595,7 @@ def _record_stop(root: Path, spec: WorkflowSpec, task_id: str, log: RunLog, valu
                          operator_review=settled.run.get("session_review"),
                          run_cost_usd=cost.reported + cost.estimated_only,
                          daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
-                         loop_effort=settled.run.get("loop_effort"))
+                         loop_effort=settled.run.get("loop_effort"), options=settled.options)
     except Exception as exc:  # noqa: BLE001
         log.write("engine_error", scope="improve", error=type(exc).__name__)
 

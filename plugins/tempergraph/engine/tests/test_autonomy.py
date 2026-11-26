@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 
+from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import standin
 from tempergraph.improve import autonomy, child
 from tempergraph.improve import proposals as prp
@@ -16,7 +17,7 @@ from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.store.layout import now_iso
 
 from .test_loop_child import blocked_run, judge_says, tickets
-from .test_run import registry
+from .test_run import DRAFT, REVIEW, judge, registry
 
 
 def ledger(root: Path, *rows: dict[str, Any]) -> None:
@@ -114,6 +115,109 @@ def test_autonomy_record_files_nothing(repo: Path, monkeypatch: pytest.MonkeyPat
     host = MemoryCodeHost(down=True)  # any call would raise
     (out,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.9)])), host=lambda: host)
     assert out["results"] and {r["reason"] for r in out["results"]} == {"autonomy_record"} and not host.issues
+
+
+def test_prp_ac16_the_level_is_the_lowest_of_the_declared_the_machine_and_the_setting() -> None:
+    # PRP-AC16 (PRP-B31): `prp.autonomy(spec, machine, setting)`
+    from .fixtures.workflows import two_step
+
+    spec = two_step()  # declares nothing: `file`
+    assert prp.autonomy(spec) == "file" and prp.autonomy(spec, "record") == "record"
+    assert prp.autonomy(spec, None, "record") == "record"
+    assert prp.autonomy(spec, "record", "trial") == "record" and prp.autonomy(spec, "trial", "record") == "record"
+    assert prp.autonomy(spec, None, "trial") == "file"  # a setting never raises the level
+    assert prp.autonomy(spec, "bogus", "nonsense") == "file" and prp.autonomy(spec, None, None) == "file"
+
+
+def paused_then_resumed(repo: Path, monkeypatch: pytest.MonkeyPatch, task: str, between: Any = None,
+                        *argv: str, catalog: Any = None) -> dict[str, Any]:
+    """A thread with one blocked attempt, paused at the next judge; `between` runs before it is resumed to its final
+    exit. Returns the ticket the final exit wrote."""
+    from .test_cli import cli
+    from .test_run import verdict_block
+
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    monkeypatch.setattr("tempergraph.detach.start", lambda *a, **k: True)
+    ex = standin("claude", steps=[DRAFT, DRAFT], judges=[judge(verdict_block("UNMET")),
+                                                         judge(verdict_block("UNVERIFIABLE"))])
+    code, _, err = cli(repo, ex, "run", "demo", "notes", "--task-id", task, catalog=catalog)
+    assert code == ExitCode.PAUSED, err
+    assert not tickets()  # no final exit yet
+    if between is not None:
+        between()
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", task, "--decision", "proceed", *argv, catalog=catalog)
+    assert code == 0, err
+    (t,) = tickets()
+    return json.loads(t.read_text())
+
+
+def write_setting(repo: Path, **values: str) -> None:
+    from tempergraph.settings import config_paths
+    from tempergraph.store.layout import home_path, state_root_path
+
+    path = config_paths(state_root_path(repo), home_path())[0]
+    assert path is not None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema_version": 1, "defaults": {f"run.{k}": v for k, v in values.items()}}))
+
+
+def test_prp_ac16_a_setting_written_while_the_thread_is_paused_holds_its_final_exit(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # PRP-AC16 (PRP-B31), RST-AC1 (RST-B20): the thread started without the setting; the file is written before the exit
+    t = paused_then_resumed(repo, monkeypatch, "H-1", lambda: write_setting(repo, loop_autonomy="record"))
+    assert t["autonomy"] == "record" and t["lenses"]["friction"]
+    t_path = tickets()[0]
+    t_path.write_text(json.dumps({**t, "issue_repository": "team/notes", "review": "off"}))
+    host = MemoryCodeHost(down=True)  # any call would raise
+    (out,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.9)])), host=lambda: host)
+    assert out["results"] and {r["reason"] for r in out["results"]} == {"autonomy_record"}
+    assert not host.issues and not host.comments
+
+
+def test_prp_ac16_the_setting_is_read_again_so_a_removed_one_leaves_the_declared_level(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # PRP-AC16 (PRP-B31): written at the start of the thread, removed before the exit
+    from tempergraph.settings import config_paths
+    from tempergraph.store.layout import home_path, state_root_path
+
+    def remove() -> None:
+        path = config_paths(state_root_path(repo), home_path())[0]
+        assert path is not None
+        path.unlink()
+
+    write_setting(repo, loop_autonomy="record")
+    t = paused_then_resumed(repo, monkeypatch, "H-2", remove)
+    assert t["autonomy"] == "file"
+
+
+def test_prp_ac16_a_setting_never_raises_a_workflow_declared_at_record(repo: Path,
+                                                                        monkeypatch: pytest.MonkeyPatch) -> None:
+    # PRP-AC16 (PRP-B31): `trial` leaves a workflow declared at `record` at `record`
+    import dataclasses
+
+    pkg = repo / "pkg"
+    pkg.mkdir()
+    (pkg / "tempergraph.json").write_text(json.dumps({"improvement": {"autonomy": "record"}}))
+    real = prp.autonomy  # the run's spec is no package (the preflight would refuse a bare one): only the declared level is
+    monkeypatch.setattr(prp, "autonomy", lambda spec, machine=None, setting=None: real(
+        dataclasses.replace(spec, package_root=pkg), machine, setting))
+    t = paused_then_resumed(repo, monkeypatch, "H-3", lambda: write_setting(repo, loop_autonomy="trial"))
+    assert t["autonomy"] == "record"
+
+
+def test_prp_ac16_a_lost_runners_exit_reads_the_setting_too(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # PRP-AC16 (PRP-B31, SIL-B30): the exit recorded for a lost runner has no settings of its own
+    from .test_lost_runner import kill, loop_on, verb
+    from .test_lost_runner import tickets as lost_tickets
+
+    loop_on(monkeypatch)
+    kill(repo, "T-9")
+    write_setting(repo, loop_autonomy="record")
+    code, _, err = verb(repo, "status")
+    assert code == 0, err
+    (t,) = [x for x in lost_tickets() if x["thread"] == "demo/T-9"]
+    assert t["trigger"] == "runner_lost" and t["autonomy"] == "record"
 
 
 def test_the_loop_proposes_only_in_stable_mode_and_once_a_day(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
