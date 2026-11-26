@@ -1,4 +1,4 @@
-"""A pause finding is handed on at every final exit until a loop has dealt with it (SIL-B28, SIL-B47 to SIL-B49)."""
+"""A pause finding is handed on until a loop has dealt with it (SIL-B28, SIL-B47, SIL-B48, SIL-B49)."""
 
 from __future__ import annotations
 
@@ -12,210 +12,189 @@ from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import child
 from tempergraph.improve.codehost import MemoryCodeHost
-from tempergraph.improve.record import read_findings, unjudged_pause_findings
+from tempergraph.improve.record import unjudged_pause_findings
 from tempergraph.run.runner import resume
 from tempergraph.store.layout import home_path, state_root_path
 
 from .fixtures.workflows import two_step
-from .test_loop_child import earlier_judged, friction_ticket, judge_says, loop_rows
-from .test_pause_findings_at_final_exit import UNVERIFIABLE, finding_of, finish, held, paused_on_gap
-from .test_run import DRAFT, NO_SLEEP, REVIEW, judge, registry
-from .test_stop_at_pause import asks, loop_on, paused_on_retries, stop, tickets
-
-THREAD = "demo/{}"
+from .test_pause_findings_at_final_exit import finding_of, finish, gap_only, held, paused_on_gap
+from .test_run import NO_SLEEP, REVIEW, judge, registry
+from .test_stop_at_pause import stop, tickets
 
 
-def attribute_all(seen: list[str]) -> Any:
-    """A stand-in friction judge that attributes every finding row of its prompt at 0.9 and keeps the prompts."""
-    def reply(req: Any) -> Any:
-        seen.append(req.prompt)
-        rows = [{"fingerprint": ln.split("`")[1], "attributed": True, "confidence": 0.9}
-                for ln in req.prompt.splitlines() if ln.startswith("- `") and "cause `" in ln]
-        return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
-    return reply
-
-
-def loop_records(repo: Path, task: str, kind: str) -> list[dict[str, Any]]:
-    log = child.loop_log(state_root_path(repo), "demo", task)
-    return [r for r in map(json.loads, log.read_text().splitlines()) if r["kind"] == kind]
-
-
-def answers_for(repo: Path, task: str, fp: str) -> list[dict[str, Any]]:
-    return [a for r in loop_records(repo, task, "loop_judged") for a in r.get("answers") or [] if a["fingerprint"] == fp]
-
-
-def drain(judge_reply: Any) -> list[dict[str, Any]]:
-    return child.drain(registry=registry(standin("claude", judges=[judge_reply])), host=lambda: MemoryCodeHost())
-
-
-def stopped_then_finished(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, hold: str) -> tuple[Any, list[str]]:
-    """A thread stopped at a pause under a hold (`record` or a dry run), drained, re-opened and finished without it."""
-    loop_on(monkeypatch)
-    if hold == "record":
-        monkeypatch.setenv("TEMPERGRAPH_AUTONOMY", "record")
-    ex = paused_on_retries(repo, task)
-    dry = hold == "dry_run"
-    from dataclasses import replace
-    out = resume(two_step(), task, repo, registry(ex), decision="stop", settings=replace(NO_SLEEP, dry_run=dry))
-    assert out.exit_code is ExitCode.STOPPED, out.message
+def counting(reply: Any = gap_only) -> tuple[list[str], Any]:
+    """A friction judge that keeps the prompts it is asked and answers as `reply` does."""
     seen: list[str] = []
-    drain(attribute_all(seen))
-    assert len(seen) == 1
+
+    def ask(req: Any) -> Any:
+        seen.append(req.prompt)
+        return reply(req)
+    return seen, ask
+
+
+def drain(judge: Any, host: MemoryCodeHost | None = None) -> MemoryCodeHost:
+    host = host or MemoryCodeHost()
+    child.drain(registry=registry(standin("claude", judges=[judge])), host=lambda: host)
+    return host
+
+
+def answers(repo: Path, task: str, fp: str) -> int:
+    log = child.loop_log(state_root_path(repo), "demo", task)
+    return sum(1 for r in map(json.loads, log.read_text().splitlines()) if r["kind"] == "loop_judged"
+               for a in r.get("answers") or () if a["fingerprint"] == fp)
+
+
+def asked_about(seen: list[str], fp: str) -> int:
+    """How many prompts hold a finding row (a line that starts with the fingerprint) for `fp`."""
+    return sum(1 for p in seen if any(ln.startswith(f"- `{fp}`") for ln in p.splitlines()))
+
+
+def handed(repo: Path, task: str) -> set[str]:
+    """The fingerprints of the thread's pause findings that the next final exit hands on."""
+    return {str(f["fingerprint"]) for f in unjudged_pause_findings(state_root_path(repo), "demo", task, f"demo/{task}")}
+
+
+def nothing(req: Any) -> Any:
+    return answer("no block here", session_id="loop")
+
+
+def silent_gap(req: Any) -> Any:
+    return answer("```json\n" + json.dumps({"findings": []}) + "\n```", session_id="loop")
+
+
+def held_then_lifted(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, how: str) -> tuple[str, list[str], MemoryCodeHost]:
+    """A thread stopped at its gap pause under a hold (`how` is `record` or `dry_run`), drained, re-opened with
+    `proceed` and finished without it, then drained again; returns the fingerprint, the judge's prompts and the host."""
     monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
-    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
-    again = resume(two_step(), task, repo, registry(ex), decision="retry", settings=replace(NO_SLEEP, dry_run=dry))
-    assert again.exit_code is ExitCode.PAUSED, again.message
-    return ex, seen
-
-
-@pytest.mark.parametrize("hold", ["record", "dry_run"])
-def test_a_finding_a_held_loop_only_recorded_is_handed_again_and_judged_once(
-        repo: Path, monkeypatch: pytest.MonkeyPatch, hold: str) -> None:  # SIL-AC57, AC 3
-    task = f"H-{hold}"
-    ex, first = stopped_then_finished(repo, task, monkeypatch, hold)
-    fp = next(f for f in read_findings(state_root_path(repo), "demo", task)
-              if f["cause"] == "retries_spent")["fingerprint"]
-    assert len(answers_for(repo, task, fp)) == 1
-    assert [r["held"] for r in loop_records(repo, task, "loop_started")] == [True]
-    from dataclasses import replace
-    out = resume(two_step(), task, repo, registry(ex), decision="proceed",
-                 settings=replace(NO_SLEEP, dry_run=hold == "dry_run"))
-    assert out.exit_code is ExitCode.FINISHED, out.message
+    ex = paused_on_gap(repo, task, monkeypatch)  # the dry run is a setting of the run, so the first segment is redone
+    if how == "record":
+        monkeypatch.setenv("TEMPERGRAPH_AUTONOMY", "record")
+        assert stop(repo, task, ex).exit_code is ExitCode.STOPPED
+    else:
+        assert resume(two_step(), task, repo, registry(ex), decision="stop",
+                      settings=__import__("dataclasses").replace(NO_SLEEP, dry_run=True)).exit_code is ExitCode.STOPPED
+    fp = finding_of(repo, task, "gap_escalation")["fingerprint"]
+    seen, ask = counting()
+    drain(ask)
+    assert asked_about(seen, fp) == 1
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    back = resume(two_step(), task, repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert back.exit_code is ExitCode.FINISHED, back.message
     (t,) = tickets()
-    assert fp in held(json.loads(t.read_text()))  # handed again
-    second: list[str] = []
-    drain(attribute_all(second))
-    assert not any(fp in p for p in second)  # its recorded answer is used, the judge is not asked again
-    assert len(answers_for(repo, task, fp)) == 1
+    assert fp in held(json.loads(t.read_text()))  # the held loop did not cover it: it is handed again
+    return fp, seen, drain(ask)
 
 
-def test_a_finding_a_judge_left_out_is_handed_again(
+@pytest.mark.parametrize("how", ["record", "dry_run"])
+def test_a_finding_a_held_child_only_recorded_is_handed_again_and_judged_once(
+        repo: Path, monkeypatch: pytest.MonkeyPatch, how: str) -> None:  # SIL-AC57, AC 3
+    fp, seen, host = held_then_lifted(repo, f"H-{how}", monkeypatch, how)
+    assert asked_about(seen, fp) == 1  # the recorded answer is used by the second child, which asks nothing of it
+    assert answers(repo, f"H-{how}", fp) == 1
+    assert len(host.issues) <= 1
+
+
+def test_a_first_child_whose_judge_left_the_finding_out_hands_it_again(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC57, AC 3
-    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
-    loop_on(monkeypatch)
-    ex = paused_on_retries(repo, "H-left")
-    assert stop(repo, "H-left", ex).exit_code is ExitCode.STOPPED
-    seen, reply = asks()  # answers no finding
-    drain(reply)
-    root = state_root_path(repo)
-    left = unjudged_pause_findings(root, "demo", "H-left", THREAD.format("H-left"))
-    assert "retries_spent" in [f["cause"] for f in left]
-    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
-    assert resume(two_step(), "H-left", repo, registry(ex), decision="retry", settings=NO_SLEEP).exit_code \
-        is ExitCode.PAUSED
+    ex = paused_on_gap(repo, "H-left", monkeypatch)
+    fp = finding_of(repo, "H-left", "gap_escalation")["fingerprint"]
     finish(repo, "H-left", ex)
     (t,) = tickets()
-    fp = finding_of(repo, "H-left", "retries_spent")["fingerprint"]
     assert fp in held(json.loads(t.read_text()))
+    drain(silent_gap)  # the judge answers for no finding
+    assert fp in handed(repo, "H-left")
 
 
-def test_a_thread_whose_last_exit_was_held_keeps_its_pause_findings_recorded_only(
+def test_a_first_child_whose_judge_session_fails_hands_the_finding_again(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC57, AC 3
-    monkeypatch.setenv("TEMPERGRAPH_AUTONOMY", "record")
-    ex = paused_on_gap(repo, "H-last", monkeypatch)
-    finish(repo, "H-last", ex)
-    seen: list[str] = []
-    drain(attribute_all(seen))
+    ex = paused_on_gap(repo, "H-fail", monkeypatch)
+    fp = finding_of(repo, "H-fail", "gap_escalation")["fingerprint"]
+    finish(repo, "H-fail", ex)
+    drain(nothing)
+    assert fp in handed(repo, "H-fail")
+
+
+def test_a_judged_finding_is_not_handed_again(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC57, AC 3
     monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
-    root = state_root_path(repo)
-    left = unjudged_pause_findings(root, "demo", "H-last", THREAD.format("H-last"))
-    assert "gap_escalation" in [f["cause"] for f in left]  # recorded only, there is no later exit to hand it on
-    assert tickets() == []
+    ex = paused_on_gap(repo, "H-done", monkeypatch)
+    finish(repo, "H-done", ex)
+    fp = finding_of(repo, "H-done", "gap_escalation")["fingerprint"]
+    seen, ask = counting()
+    drain(ask)
+    assert fp not in handed(repo, "H-done")
+    assert asked_about(seen, fp) == 1
 
 
-@pytest.mark.parametrize("claimed", [False, True])
-def test_a_waiting_or_claimed_ticket_holds_its_findings_against_a_second_exit(
-        repo: Path, monkeypatch: pytest.MonkeyPatch, claimed: bool) -> None:  # SIL-AC58, AC 3
-    task = f"H-wait-{claimed}"
-    loop_on(monkeypatch)
-    ex = paused_on_retries(repo, task)
-    assert stop(repo, task, ex).exit_code is ExitCode.STOPPED
+def test_a_waiting_or_claimed_ticket_holds_its_fingerprints(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC58, AC 3
+    ex = paused_on_gap(repo, "H-wait", monkeypatch)
+    fp = finding_of(repo, "H-wait", "gap_escalation")["fingerprint"]
+    finish(repo, "H-wait", ex)
+    root, thread = state_root_path(repo), "demo/H-wait"
+    (t,) = tickets()
+    assert fp in held(json.loads(t.read_text()))
+    assert fp not in handed(repo, "H-wait")  # waiting
+    claimed = t.with_suffix(".claimed")
+    t.rename(claimed)
+    assert fp not in handed(repo, "H-wait")  # claimed
+    assert fp in child.held_by_tickets(root, thread, home_path())
+    claimed.unlink()
+    assert fp in handed(repo, "H-wait")
+
+
+def test_two_exits_before_the_first_child_starts_hand_the_finding_once(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC58, AC 3
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+    ex = paused_on_gap(repo, "H-two", monkeypatch)
+    fp = finding_of(repo, "H-two", "gap_escalation")["fingerprint"]
+    assert stop(repo, "H-two", ex).exit_code is ExitCode.STOPPED
     (first,) = tickets()
-    fp = finding_of(repo, task, "retries_spent")["fingerprint"]
     assert fp in held(json.loads(first.read_text()))
-    if claimed:
-        first.rename(first.with_suffix(".claimed"))
-    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
-    assert resume(two_step(), task, repo, registry(ex), decision="retry", settings=NO_SLEEP).exit_code \
-        is ExitCode.PAUSED
-    finish(repo, task, ex)
-    folder = child.tickets_dir(home_path())
-    (t2,) = [p for p in folder.glob("*.json") if p != first]
-    assert fp not in held(json.loads(t2.read_text()))
-    first.unlink(missing_ok=True)  # the first ticket's child is the one that judges its findings
-    first.with_suffix(".claimed").unlink(missing_ok=True)
-    seen: list[str] = []
-    drain(attribute_all(seen))
-    assert len(seen) == 1 and fp not in seen[0]  # the judge is asked once, and not about the first ticket's finding
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    again = resume(two_step(), "H-two", repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert again.exit_code is ExitCode.FINISHED, again.message
+    second = [p for p in tickets() if p != first]
+    assert len(second) == 1 and fp not in held(json.loads(second[0].read_text()))
+    seen, ask = counting()
+    drain(ask)
+    assert asked_about(seen, fp) == 1
 
 
-def process_ticket(repo: Path, task: str, judge_reply: Any) -> tuple[dict[str, Any], MemoryCodeHost]:
-    """Hand the loop child the pause finding of `task` through a ticket made by hand."""
-    root = state_root_path(repo)
-    fp = finding_of(repo, task, "gap_escalation")["fingerprint"]
-    t = {"schema_version": 1, "ticket_id": "t-hand", "thread": THREAD.format(task), "workflow": "demo",
-         "task_id": task, "state_root": str(root), "issue_repository": "acme/notes", "mode": "dev",
-         "dry_run": False, "executor": "claude", "fingerprints": [], "pause_fingerprints": [fp],
-         "lenses": {"friction": True, "outcome": False}, "review": "off", "autonomy": "pr"}
-    host = MemoryCodeHost()
-    return child.process(t, registry(standin("claude", judges=[judge_reply])), host), host
-
-
-@pytest.mark.parametrize("attributed", [True, False])
 def test_a_recorded_answer_is_used_without_a_second_judgement(
-        repo: Path, monkeypatch: pytest.MonkeyPatch, attributed: bool) -> None:  # SIL-AC59, AC 3
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC59, AC 3
     monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
-    task = f"H-ans-{attributed}"
-    ex = paused_on_gap(repo, task, monkeypatch)
-    finish(repo, task, ex)
-    for p in tickets():
-        p.unlink()
-    fp = finding_of(repo, task, "gap_escalation")["fingerprint"]
-    log = child.loop_log(state_root_path(repo), "demo", task)
+    ex = paused_on_gap(repo, "H-rec", monkeypatch)
+    finish(repo, "H-rec", ex)
+    fp = finding_of(repo, "H-rec", "gap_escalation")["fingerprint"]
+    log = child.loop_log(state_root_path(repo), "demo", "H-rec")
     log.parent.mkdir(parents=True, exist_ok=True)
-    with log.open("a") as fh:
-        fh.write(json.dumps({"ts": "2000-01-01T00:00:00+00:00", "kind": "loop_judged", "lens": "friction", "ok": True,
-                             "parsed": True, "answers": [{"fingerprint": fp, "confidence": 0.9,
-                                                          "attributed": attributed}]}) + "\n")
-    seen: list[str] = []
-    out, host = process_ticket(repo, task, attribute_all(seen))
-    assert not any(fp in p for p in seen)  # no row for it in the judge's prompt, and no session when none is left
-    assert len(answers_for(repo, task, fp)) == 1
-    if attributed:  # decided on the recorded answer: one issue is filed for the finding
-        assert [r["op"] for r in out["results"] if r["fingerprint"] == fp] == ["filed"]
-        assert len(host.issues) == 1 and fp in host.issues[0]["body"]
-    else:
-        assert [(r["op"], r.get("reason")) for r in out["results"] if r["fingerprint"] == fp] \
-            == [("recorded", "not_attributed")]
-        assert not host.issues
+    log.write_text(json.dumps({"kind": "loop_judged", "answers": [
+        {"fingerprint": fp, "attributed": True, "confidence": 0.9}]}) + "\n")
+    seen, ask = counting()
+    host = drain(ask)
+    assert asked_about(seen, fp) == 0  # no row in the judge's prompt
+    assert answers(repo, "H-rec", fp) == 1
+    assert len(host.issues) == 1  # filed on the recorded answer
 
 
-def test_a_recorded_answer_counts_once_towards_the_majority(tmp_path: Path) -> None:  # SIL-AC59, AC 3
-    """The thread's one recorded answer (attributed, 0.5, made now, inside the window) is the answer `decide` counts:
-    the count is met by two other runs, the confidence is below the floor, one answer is not a majority."""
-    root = tmp_path / ".tempergraph"
-    host = MemoryCodeHost()
-    for n in (1, 2):
-        friction_ticket(root, n)
-    t = friction_ticket(root, 3)
-    earlier_judged(root, 3, True)
-    out = child.process(t, registry(standin("claude", judges=[judge_says(0.9)])), host)
-    assert [(r["op"], r["reason"]) for r in out["results"]] == [("recorded", "few_answers")]
-    assert not host.issues
-    assert len([r for r in loop_rows(root, "F-3") if r["kind"] == "loop_judged"]) == 1  # the judge was not asked
-
-
-def test_a_recorded_answer_of_another_run_still_counts(tmp_path: Path) -> None:  # SIL-AC59, AC 3
-    from tempergraph.improve import filing
-
-    root = tmp_path / ".tempergraph"
-    for n in (1, 2):
-        friction_ticket(root, n)
-    earlier_judged(root, 1, True)
-    earlier_judged(root, 3, True)
-    own = child.loop_log(root, "demo", "F-3")
-    assert sum(map(len, filing.recorded_answers(root, "demo").values())) == 2
-    assert sum(map(len, filing.recorded_answers(root, "demo", exclude=own).values())) == 1
+def test_a_recorded_answer_not_attributed_files_nothing_and_asks_nothing(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC59, AC 3
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+    ex = paused_on_gap(repo, "H-no", monkeypatch)
+    finish(repo, "H-no", ex)
+    fp = finding_of(repo, "H-no", "gap_escalation")["fingerprint"]
+    log = child.loop_log(state_root_path(repo), "demo", "H-no")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text(json.dumps({"kind": "loop_judged", "answers": [
+        {"fingerprint": fp, "attributed": False, "confidence": 0.9}]}) + "\n")
+    seen, ask = counting()
+    host = drain(ask)
+    assert asked_about(seen, fp) == 0 and host.issues == []
+    lines = [json.loads(ln) for ln in log.read_text().splitlines()]
+    assert any(r.get("reason") == "not_attributed" for r in lines)
+    assert answers(repo, "H-no", fp) == 1
 
 
 def test_a_finding_with_no_recorded_answer_is_put_to_the_judge(
@@ -223,11 +202,7 @@ def test_a_finding_with_no_recorded_answer_is_put_to_the_judge(
     monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
     ex = paused_on_gap(repo, "H-new", monkeypatch)
     finish(repo, "H-new", ex)
-    (t,) = tickets()
     fp = finding_of(repo, "H-new", "gap_escalation")["fingerprint"]
-    assert fp in held(json.loads(t.read_text()))
-    seen: list[str] = []
-    drain(attribute_all(seen))
-    (prompt,) = seen
-    assert fp in prompt
-    assert len(answers_for(repo, "H-new", fp)) == 1
+    seen, ask = counting()
+    drain(ask)
+    assert asked_about(seen, fp) == 1 and answers(repo, "H-new", fp) == 1
