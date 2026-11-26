@@ -498,7 +498,8 @@ def test_irv_ac1_a_run_that_passes_the_code_step_enters_the_review_on_both_arms(
     for steps, task in ((modes.SINGLE, "S-1"), (modes.PHASES, "P-1")):
         out = modes._run(repo, steps, task=task)
         assert out.exit_code is ExitCode.FINISHED, json.dumps(out.payload, default=str)[:1500]
-        assert modes._entered(repo, task)[-3:] == ["code", "code_join", "independent_review"], task
+        # RGN-AC1 (RGN-B1): the regeneration unit follows the code step and the join follows it
+        assert modes._entered(repo, task)[-4:] == ["code", "regeneration", "code_join", "independent_review"], task
 
 
 def test_irv_ac1_a_documents_only_run_enters_no_review(repo: Path) -> None:
@@ -519,12 +520,14 @@ def test_irv_ac1_a_run_outside_the_quick_lane_enters_the_review_and_then_the_out
 
 # IRV-AC2 (IRV-B2), AC 7
 def test_irv_ac2_a_quick_lane_run_starts_no_reader_session_and_enters_the_outcome_gate_next(repo: Path) -> None:
+    """The outcome gate runs after the regeneration unit (RGN-B1)."""
     stand = Stand(route="quick")
     out = _go(repo, stand)
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert "independent_review" not in stand.units() and "independent_review" not in stand.units("judge")
     steps = [r["unit"] for r in _records(repo, "gate")]
     assert steps[-1] == "outcome" and "independent_review" not in steps
+    assert steps.index("regeneration") < steps.index("outcome")  # RGN-AC1: the unit's gate comes before the outcome gate
 
 
 def test_irv_ac2_a_run_sent_back_to_triage_and_routed_to_the_plan_step_takes_the_review(repo: Path) -> None:

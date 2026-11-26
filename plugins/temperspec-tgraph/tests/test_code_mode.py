@@ -204,7 +204,8 @@ def test_the_workflow_validates_and_declares_the_switch() -> None:
     here = SPEC.order.index("plan")
     # CDM-AC11, CDM-AC12 (CDM-B6, CDM-B7): the map `phase` sits between expand and the code step, which is the join
     # IRV-AC1 (IRV-B1): the review follows the join
-    assert SPEC.order[here:here + 7] == ("plan", "code_mode", "expand", "phase", "code", "code_join",
+    # RGN-AC1 (RGN-B1): the regeneration unit sits between the code step and the join
+    assert SPEC.order[here:here + 8] == ("plan", "code_mode", "expand", "phase", "code", "regeneration", "code_join",
                                          "independent_review")
     assert SPEC.units["plan"].route is None and SPEC.units["plan"].route_targets == ()
     blueprint = json.loads((ROOT / "blueprint.json").read_text(encoding="utf-8"))
@@ -213,6 +214,7 @@ def test_the_workflow_validates_and_declares_the_switch() -> None:
                                                         "default": "phases"}
     kinds = {u["name"]: u["kind"] for u in blueprint["units"]}
     assert kinds["code_mode"] == "switch" and kinds["code_join"] == "route" and kinds["phase"] == "map"
+    assert kinds["regeneration"] == "script"
     # AC 6: the new map unit validates, runs its phases one after another, has no line back, and leaves the join as it was
     phase = SPEC.units["phase"]
     assert phase.kind == "map" and phase.map is not None and phase.map.mode == "sequential"
@@ -253,7 +255,7 @@ def silent_check(ctx: Any) -> CheckResult:
     return CheckResult(result="PASS", evidence="counted")
 
 
-UNITS = ("triage", "plan", "code_mode", "expand", "phase", "code", "code_join", "independent_review")
+UNITS = ("triage", "plan", "code_mode", "expand", "phase", "code", "regeneration", "code_join", "independent_review")
 
 
 def _scripted(check: Callable[..., Any]) -> Any:
@@ -339,9 +341,11 @@ def _entered(repo: Path, task: str = "C-1") -> list[str]:
     """The units entered, with the join unit `code_join` (a route unit, which the engine records as a `route` pick)
     where it ran: after `code` and before the review, when the run went on to it."""
     entered = [r["unit"] for r in _records(repo, "unit_entered", task)]
+    if any(r["unit"] == "regeneration" for r in _records(repo, "gate", task)):  # a script unit logs no entry, its gate
+        entered.insert(entered.index("code") + 1, "regeneration")
     if any(r["unit"] == "code_join" for r in _records(repo, "route", task)):
-        entered.insert(entered.index("code") + 1 if "independent_review" not in entered
-                       else entered.index("independent_review"), "code_join")
+        entered.insert(entered.index("independent_review") if "independent_review" in entered
+                       else entered.index("regeneration") + 1, "code_join")
     return entered
 
 
@@ -353,7 +357,7 @@ SIMPLE = _plan([("One", "light", [("test", "tests/a.py"), ("code", "src/a.py")])
 FIVE = _plan([(f"Part {i}", "light", []) for i in range(1, 6)])
 SINGLE = [_triage(), _planner(SIMPLE), _coder, _reader]
 PHASES = [_triage(), _planner(FIVE), _expander, _phaser, _coder, _reader]
-ENTERED_ON_PHASES = ["triage", "plan", "expand", "phase", "code", "code_join", "independent_review"]
+ENTERED_ON_PHASES = ["triage", "plan", "expand", "phase", "code", "regeneration", "code_join", "independent_review"]
 
 
 def test_a_run_records_one_route_with_the_switch_the_arm_the_zone_and_the_seven_measures(repo: Path) -> None:
@@ -374,7 +378,7 @@ def test_a_simple_plan_takes_single_and_a_complex_plan_takes_phases(repo: Path) 
     (route,) = _routes(repo, "S-1")
     assert (route["arm"], route["zone"]) == ("single", "simple")
     # no expand step, no phase item; the review follows the join (IRV-AC1)
-    assert _entered(repo, "S-1") == ["triage", "plan", "code", "code_join", "independent_review"]
+    assert _entered(repo, "S-1") == ["triage", "plan", "code", "regeneration", "code_join", "independent_review"]
 
     assert _run(repo, PHASES, task="P-1").exit_code is ExitCode.FINISHED
     (route,) = _routes(repo, "P-1")
@@ -460,7 +464,7 @@ def test_the_operator_names_single_for_a_plan_of_five_phases(repo: Path) -> None
     (route,) = _routes(repo)
     assert (route["arm"], route["chosen_by"], route["would_choose"]) == ("single", "operator", "phases")
     # the expand step is never entered
-    assert _entered(repo) == ["triage", "plan", "code", "code_join", "independent_review"]
+    assert _entered(repo) == ["triage", "plan", "code", "regeneration", "code_join", "independent_review"]
 
 
 # -- the report by arm ---------------------------------------------------------------------------------------------
@@ -520,7 +524,7 @@ def test_a_quick_lane_run_takes_no_arm_and_enters_no_expand_step(repo: Path) -> 
     # AC 1, CDM-AC15 (CDM-B9)
     out = _run(repo, [_triage("quick"), _coder])
     assert out.exit_code is ExitCode.FINISHED, out.message
-    assert _entered(repo) == ["triage", "code", "code_join"]  # IRV-AC2 (IRV-B2): the quick lane takes no review
+    assert _entered(repo) == ["triage", "code", "regeneration", "code_join"]  # IRV-AC2 (IRV-B2): the quick lane takes no review
     assert _routes(repo) == []
 
 

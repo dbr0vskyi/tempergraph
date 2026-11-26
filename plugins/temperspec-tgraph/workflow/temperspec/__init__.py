@@ -16,6 +16,9 @@ with `owner_questions` and `ask_route`: a run whose list of questions holds one 
 owner-questions). `read_gap` is one read-only reading session for each gap of two or more, three at a time on the
 engine's concurrent map, and then the one writing session `discovery`, briefed with their findings and the owner's
 answers (spec parallel-reading).
+After `code`, and before `code_join`, the script unit `regeneration` starts no session: it runs the commands the repository
+declares in `tempergraph.regenerations.json` for the generated files whose inputs the run changed and commits what they
+wrote (spec regeneration).
 The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. After `plan` the
 switch `code_mode` chooses: `single` goes straight to `code` when the facts the plan check records are inside the
 limits of `routing/code_mode.json`, and `phases` goes through `expand`, which writes the plan's task rows, otherwise
@@ -72,6 +75,7 @@ from .checks import (
     setup_check,
     triage_check,
 )
+from .regeneration import regenerate, regeneration_check
 from .routing import (
     commit_step,
     finalize,
@@ -153,7 +157,7 @@ def workflow() -> Any:
     return Workflow(
         order=["prepare", "setup_route", "list_components", "read_component", "setup", "triage", "discovery_short",
                "owner_questions", "ask_route", "ask_owner", "read_gap", "discovery", "plan", "code_mode",
-               "expand", "phase", "code", "code_join", "independent_review"],
+               "expand", "phase", "code", "regeneration", "code_join", "independent_review"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -274,6 +278,13 @@ def workflow() -> Any:
                           judge=_judge("code", {"code_report": "required", "triage_note": "required",
                                                 "plan": "optional"}, timeout_s=1800),
                           back_targets=["plan", "discovery", "triage"])),
+            # RGN-B1 to RGN-B12: after the code step on both arms, before the join, a script unit with no session runs the
+            # regenerations the repository declares in `tempergraph.regenerations.json` for the files whose inputs the run
+            # changed, and commits what they wrote; its gate's check turns what the call recorded into a verdict.
+            "regeneration": Script(
+                call=regenerate, name="regeneration", side_effects="workspace",
+                summary="Regenerate declared files that changed", produces={"regeneration_report": "file"},
+                gate=Gate(check=regeneration_check)),
             # IRV-B1, IRV-B2: both arms meet here; a run in the quick lane goes on to the outcome gate, every other run
             # to the review.
             "code_join": Route(select=route_code_join, targets=["independent_review", "finalizer"]),
