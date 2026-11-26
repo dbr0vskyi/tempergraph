@@ -283,7 +283,7 @@ def workflow() -> Any:
             # used on a second review, so the second blocking review pauses (`on_budget_spent` ask).
             "independent_review": Step(
                 prompt=text("prompts/independent_review.md"),
-                summary="Read the change as an independent reader; write numbered findings",
+                summary="Read the change as an independent reader; write findings",
                 **_sized("independent_review"), tools=["read", "search", "list", "write"], timeout_s=1800,
                 produces={"findings": "file"},
                 before=[Script(call=review_before, name="review_before", side_effects="workspace",

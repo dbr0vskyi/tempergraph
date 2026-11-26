@@ -19,7 +19,7 @@ flowchart TD
   u15["phase<br/>Build one phase of the plan, tests first, and commit it"]
   u16["code<br/>Build the plan test first in one session"]
   u17["code_join"]
-  u18["independent_review<br/>Read the change as an independent reader; write numbered findings"]
+  u18["independent_review<br/>Read the change as an independent reader; write findings"]
   u19["outcome<br/>outcome gate"]
   fin([finalizer])
   stop((end))

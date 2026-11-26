@@ -332,7 +332,7 @@
     {
       "name": "independent_review",
       "kind": "step",
-      "summary": "Read the change as an independent reader; write numbered findings",
+      "summary": "Read the change as an independent reader; write findings",
       "produces": [
         "findings"
       ],
