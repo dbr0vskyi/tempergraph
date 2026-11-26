@@ -383,7 +383,60 @@ def test_a_close_as_completed_links_a_possible_regression(tmp_path: Path, days: 
     assert [c["number"] for c in host.comments] == [2]
 
 
-@pytest.mark.parametrize("reason", ["duplicate", ""])
+def test_a_close_as_duplicate_mutes_as_not_planned_does(tmp_path: Path) -> None:  # ISS-AC3, ISS-AC5; AC 4
+    host = closed_issue(tmp_path, "duplicate", 10)
+    res = again(host, tmp_path)
+    assert res == {"op": "muted", "url": host.issues[0]["url"], "fingerprint": FP}
+    assert len(host.issues) == 1 and not host.comments
+    old = closed_issue(tmp_path / "old", "duplicate", 40)
+    assert again(old, tmp_path / "old")["op"] == "filed" and len(old.issues) == 2
+
+
+def _day(n: int) -> datetime:
+    return NOW + timedelta(days=n)
+
+
+def _count(day: datetime, results: list[dict[str, Any]]) -> dict[tuple[str, int], int]:
+    """The comments among `results` (each tagged `_day`) that were sent on `day`'s UTC date."""
+    out: dict[tuple[str, int], int] = {}
+    for r in results:
+        if r.get("op") == "commented" and r["_day"] == day.date():
+            key = (str(r["repo"]), int(r["number"]))
+            out[key] = out.get(key, 0) + 1
+    return out
+
+
+def test_seen_again_comments_are_bounded_per_issue_per_day(  # ISS-AC12; AC 3
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    host = MemoryCodeHost()
+    filed(host, tmp_path, now=NOW)
+    sent: list[dict[str, Any]] = []
+
+    def step(now: datetime, dry_run: bool = False) -> dict[str, Any]:
+        (res,) = filed(host, tmp_path, now=now, dry_run=dry_run, comments_today=_count(now, sent))
+        sent.append({**res, "_day": now.date()})
+        return res
+
+    first = step(NOW)
+    assert first["op"] == "commented"
+    for _ in range(2):
+        capped = step(NOW)
+        assert capped["op"] == "comment_capped" and capped["number"] == 1 and capped["repo"] == REPO
+        assert "body" not in capped and "text" not in capped and "url" not in capped
+    assert len(host.comments) == 1 and len(host.issues) == 1  # no issue opens in place of a comment
+    assert step(_day(1))["op"] == "commented" and len(host.comments) == 2  # the next UTC day
+    monkeypatch.setitem(params.PARAMS, "seen_again.max_per_issue_per_day",
+                        params.Param(name="seen_again.max_per_issue_per_day", value=2, source="ISS-B13"))
+    sent.clear()
+    assert [step(_day(2))["op"] for _ in range(3)] == ["commented", "commented", "comment_capped"]
+    (dry,) = filed(host, tmp_path, now=NOW, dry_run=True, comments_today={(REPO, 1): 9})
+    assert dry["op"] == "would_file"  # a dry run is never capped
+    fresh = MemoryCodeHost()
+    (new,) = filed(fresh, tmp_path / "fresh", now=NOW, comments_today={(REPO, 1): 9})
+    assert new["op"] == "filed"  # a new issue is never capped
+
+
+@pytest.mark.parametrize("reason", ["reopened", ""])
 def test_a_reason_the_loop_does_not_read_changes_nothing(tmp_path: Path, reason: str) -> None:  # ISS-AC5; AC 1, AC 3
     host = closed_issue(tmp_path, reason, 3)
     res = again(host, tmp_path)

@@ -299,6 +299,27 @@ def test_the_pattern_files_on_a_majority_of_recorded_answers(tmp_path: Path) -> 
     assert [r["op"] for r in out["results"]] == ["filed"] and len(host.issues) == 1
 
 
+def test_seen_again_comments_are_bounded_by_the_records_of_the_day(tmp_path: Path) -> None:  # ISS-AC12
+    from datetime import timedelta
+
+    root = tmp_path / ".tempergraph"
+    host = MemoryCodeHost()
+    reg = registry(standin("claude", judges=[judge_says(0.5) for _ in range(6)]))
+    for n in (1, 2, 3):  # the third exit files the one issue
+        child.process(friction_ticket(root, n), reg, host)
+    assert len(host.issues) == 1
+    outs = [child.process(friction_ticket(root, n), reg, host) for n in (4, 5, 6)]  # three more exits on the day
+    assert [[r["op"] for r in o["results"]] for o in outs] == [["commented"], ["comment_capped"], ["comment_capped"]]
+    assert len(host.issues) == 1 and len(host.comments) == 1
+    rows = [r for n in range(1, 7) for r in loop_rows(root, f"F-{n}")]
+    assert len([r for r in rows if r["kind"] == "issue_commented"]) == 1
+    capped = [r for r in rows if r["kind"] == "loop_result" and r["op"] == "comment_capped"]
+    assert len(capped) == 2 and all(r["number"] == 1 and "body" not in r and "text" not in r for r in capped)
+    today = datetime.now(UTC)
+    assert filing.comments_by_day(root, "demo", today) == {("team/notes", 1): 1}  # read by the record's UTC day
+    assert filing.comments_by_day(root, "demo", today + timedelta(days=1)) == {}  # the next day starts at none
+
+
 def test_each_reason_of_a_finding_that_does_not_file_is_named_once(tmp_path: Path) -> None:  # FFD-AC2, FFD-AC3, SIL-AC35
     failed = SessionResult(ok=False, usage=Usage(reported_cost_usd=0.01))
     cases = {

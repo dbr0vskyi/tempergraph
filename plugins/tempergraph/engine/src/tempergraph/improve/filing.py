@@ -401,12 +401,41 @@ def _match_open(issues: Sequence[Mapping[str, Any]], fps: Sequence[str], key: st
     return next((i for i in order if _holds(i, [_cause_line(key)])), None)
 
 
+def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> dict[tuple[str, int], int]:
+    """ISS-B13: the `issue_commented` records of the workflow's runs in the state root dated on `now`'s UTC day,
+    counted per (repo, issue number). An unreadable file or line is skipped."""
+    day = (now or datetime.now(UTC)).astimezone(UTC).date()
+    out: dict[tuple[str, int], int] = {}
+    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for ln in lines:
+            try:
+                rec = json.loads(ln)
+                if rec.get("kind") != "issue_commented":
+                    continue
+                at = datetime.fromisoformat(str(rec.get("ts")).replace("Z", "+00:00"))
+                at = at if at.tzinfo else at.replace(tzinfo=UTC)
+                if at.astimezone(UTC).date() != day:
+                    continue
+                key = (str(rec["repo"]), int(rec["number"]))
+                out[key] = out.get(key, 0) + 1
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+    return out
+
+
 def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False,
-         now: datetime | None = None) -> list[dict[str, Any]]:
+         now: datetime | None = None, comments_today: Mapping[tuple[str, int], int] | None = None
+         ) -> list[dict[str, Any]]:
     """SIL-B2, ISS-B7: the findings of one cause key go to one issue: a comment on the open issue that holds one of
-    their fingerprints or the cause key, else (ISS-B3 to ISS-B6: not planned mutes, completed links a possible
-    regression) one new issue for all of them; ISS-B9: issues are read from the label list, once per repository and
-    state; a dry run makes no call (SIL-B6)."""
+    their fingerprints or the cause key, else (ISS-B3 to ISS-B6: not planned or duplicate mutes, completed links a
+    possible regression) one new issue for all of them; ISS-B13: a comment over `seen_again.max_per_issue_per_day`
+    (with `comments_today`, the comments each (repo, number) got on `now`'s UTC day) is not sent and leaves one
+    `comment_capped` result; ISS-B9: issues are read from the label list, once per repository and state; a dry run
+    makes no call (SIL-B6)."""
     results: list[dict[str, Any]] = []
     now = now or datetime.now(UTC)
     if not dry_run:
@@ -427,6 +456,7 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             continue
         groups.setdefault((d.repo, cause_key(f)), []).append(d)
     listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]] = {}
+    sent_now: dict[tuple[str, int], int] = {}  # the comments this call has sent, by (repo, issue number)
     for (repo, key), ds in groups.items():
         fps = list(dict.fromkeys(str(x.candidate.finding.get("fingerprint")) for x in ds))
         note = None
@@ -448,12 +478,18 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             elif last is not None:
                 reason = str(last.get("state_reason") or "")
                 days = float(params.value("mute.days"))
-                if reason == "not_planned" and now - _closed_at(last) < timedelta(days=days):
+                if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
                     results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
                     continue
                 if reason == "completed" and last.get("number") is not None:
                     regression = int(last["number"])  # ISS-B4
         f = ds[0].candidate.finding
+        if match is not None:  # ISS-B13: at most the bound of "seen again" comments to one issue in one UTC day
+            ident = (repo, int(match["number"]))
+            if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+                    params.value("seen_again.max_per_issue_per_day")):
+                results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fps[0]})
+                continue
         if match is not None:
             p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0],
                  "body": comment_body(ds)}
@@ -467,6 +503,8 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             results += [{"op": "queued", "fingerprint": fp} for fp in fps]
             continue
         op = "commented" if p["op"] == "comment" else "filed"
+        if op == "commented":
+            sent_now[(repo, int(p["number"]))] = sent_now.get((repo, int(p["number"])), 0) + 1
         where = {"repo": repo, **({"number": int(p["number"])} if op == "commented" else {})}  # FFD-B5
         results.append({"op": op, "url": url, "fingerprint": fps[0], **where, **({"note": note} if note else {})})
         results += [{"op": "grouped", "url": url, "fingerprint": fp, "with": fps[0]} for fp in fps[1:]]

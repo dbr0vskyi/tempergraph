@@ -444,7 +444,12 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         results = [{"op": "recorded", "fingerprint": d.candidate.finding.get("fingerprint"), "reason": "autonomy_record"}
                    for d in decisions]
     else:
-        results = filing.file(decisions, host, filing.Outbox.at(root), dry_run=bool(t.get("dry_run")))
+        try:  # ISS-B13: the "seen again" comments each issue got today; a failed read passes none
+            today: dict[tuple[str, int], int] | None = filing.comments_by_day(root, wf)
+        except Exception:  # noqa: BLE001 - best effort (SIL-B1)
+            today = None
+        results = filing.file(decisions, host, filing.Outbox.at(root), dry_run=bool(t.get("dry_run")),
+                              comments_today=today)
     by_fp = {str(d.candidate.finding.get("fingerprint")): d for d in decisions}
     for r in results:  # IMD-B21 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")
