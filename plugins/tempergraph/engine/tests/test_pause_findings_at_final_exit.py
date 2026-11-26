@@ -11,7 +11,7 @@ import pytest
 
 from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import answer, standin
-from tempergraph.improve import child, filing, review
+from tempergraph.improve import child, filing, pause_facts, review
 from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.improve.record import read_findings
 from tempergraph.run.runner import resume, start
@@ -144,7 +144,7 @@ def test_a_final_exit_that_is_not_a_stop_plans_no_review_from_the_pauses(
 
 SECTION = "## What answered each pause"
 CANARY = {"request": "canary-request-aardvark", "feedback": "canary-feedback-zebra",
-          "output": "canary-output-heron", "file": "canary-file-ibis"}
+          "output": "canary-output-heron", "file": "canary-file-ibis", "ruling": "canary-ruling-lemur"}
 
 
 def judged_prompts() -> list[str]:
@@ -249,3 +249,108 @@ def test_no_text_of_the_run_reaches_the_judge_or_the_loop_log(
         assert (f"- `{f['fingerprint']}` cause `{f['cause']}` class {f['class']} side `{f['side']}` "
                 f"unit `{f['unit']}` count {f['count']}") in prompt
     assert "reason `unresolved_gap`" in facts_of(prompt, finding_of(repo, "F-12", "gap_escalation")["fingerprint"])
+
+
+def run_log(repo: Path, task: str) -> list[dict[str, Any]]:
+    p = state_root_path(repo) / "runs" / "demo" / task / "run.jsonl"
+    return [json.loads(ln) for ln in p.read_text().splitlines()]
+
+
+def facts_by_finding(repo: Path, task: str) -> list[tuple[dict[str, Any], dict[str, str]]]:
+    """Each finding of a paused segment of the thread with its facts from `pause_facts.of` (None-free: rows only)."""
+    found = [f for f in read_findings(state_root_path(repo), "demo", task) if f.get("segment_exit") == 3]
+    facts = pause_facts.of(state_root_path(repo), "demo", task, found)
+    return [(f, facts[f["fingerprint"]]) for f in found if f["fingerprint"] in facts]
+
+
+def test_a_finding_is_told_the_pause_of_its_own_segment(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC49, AC 1
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, "F-20")  # segment 1 pauses at `draft`
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
+    again = resume(two_step(), "F-20", repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert again.exit_code is ExitCode.PAUSED and again.payload["unit"] == "review", again.message  # segment 2: `review`
+    starts = [r["ts"] for r in run_log(repo, "F-20") if r["kind"] == "run_started"]
+    assert len(starts) == 2
+    lines = [f for f in read_findings(state_root_path(repo), "demo", "F-20") if f.get("segment_exit") == 3]
+    assert {f["segment_started"] for f in lines} == set(starts)
+    rows = facts_by_finding(repo, "F-20")
+    by_segment = {f["segment_started"]: row for f, row in rows}
+    assert by_segment[starts[0]]["unit"] == "draft" and by_segment[starts[0]]["reason"] != "unresolved_gap"
+    assert by_segment[starts[1]]["unit"] == "review" and by_segment[starts[1]]["reason"] == "unresolved_gap"
+    # a finding of the first unit told in the second segment names the pause at `review`, not the earlier one
+    stray = dict(next(f for f in lines if f["segment_started"] == starts[1]), unit="draft", fingerprint="stray")
+    row = pause_facts.of(state_root_path(repo), "demo", "F-20", [stray])["stray"]
+    assert row["unit"] == "review" and row["reason"] == "unresolved_gap"
+
+
+def test_a_finding_with_nothing_recorded_gets_no_row(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC50, AC 1
+    paused_on_gap(repo, "F-21", monkeypatch)  # one pause, no answer yet
+    ((f, row),) = [x for x in facts_by_finding(repo, "F-21") if x[0]["cause"] == "gap_escalation"]
+    assert row["reason"] == "unresolved_gap" and row["decision"] == pause_facts.UNKNOWN and row["unit"] == "review"
+    nothing = {"kind": "finding", "thread": "demo/F-22", "segment_exit": 3, "unit": "ghost", "fingerprint": "ghost",
+               "segment_started": "2000-01-01T00:00:00+00:00", "at": "2000-01-01T00:00:01+00:00"}
+    assert pause_facts.of(state_root_path(repo), "demo", "F-22", [nothing]) == {}  # no pause, decision or gate
+
+
+def mapped_pause(repo: Path, task: str) -> tuple[Any, Any]:
+    """A map whose first item spends its retry and pauses; returns the spec and the first segment's stand-in."""
+    from .test_map import FAIL, THREE, item_ok, mapped, planner, run
+
+    spec = mapped(check=None)
+    out, ex = run(repo, spec, [planner(THREE[:2]), item_ok(), item_ok()], [judge(), judge(FAIL), judge(FAIL)], task=task)
+    assert out.exit_code is ExitCode.PAUSED and out.payload["item"] == "p1", out.message
+    return spec, ex
+
+
+def test_the_next_gate_is_that_of_the_paused_item(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC51, AC 3
+    from .test_map import FAIL, item_ok
+
+    loop_on(monkeypatch)
+    spec, _ = mapped_pause(repo, "F-23")
+    ex = standin("claude", steps=[item_ok(), item_ok(), answer("Joined.", session_id="join")],
+                 judges=[judge(FAIL), judge(), judge()])  # p2's first gate is RETRY
+    done = resume(spec, "F-23", repo, registry(ex), decision="proceed", settings=NO_SLEEP)
+    assert done.exit_code is ExitCode.FINISHED, done.message
+    log = run_log(repo, "F-23")
+    later = next(r for r in log[max(i for i, r in enumerate(log) if r["kind"] == "pause"):]
+                 if r["kind"] == "gate" and r.get("item") == "p2")
+    assert later["token"] == "RETRY"
+    rows = [row for f, row in facts_by_finding(repo, "F-23") if row["unit"] == "phase"]
+    assert rows and all(row["item"] == "p1" and row["next_gate"] == "none" for row in rows), rows
+
+
+def test_the_next_gate_of_the_same_item_is_read(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC51, AC 3
+    from .test_map import item_ok
+
+    loop_on(monkeypatch)
+    spec, _ = mapped_pause(repo, "F-24")
+    ex = standin("claude", steps=[item_ok(), item_ok(), answer("Joined.", session_id="join")],
+                 judges=[judge(), judge(), judge()])
+    done = resume(spec, "F-24", repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert done.exit_code is ExitCode.FINISHED, done.message
+    log = run_log(repo, "F-24")
+    gate = next(r for r in log[max(i for i, r in enumerate(log) if r["kind"] == "pause"):]
+                if r["kind"] == "gate" and r.get("item") == "p1")
+    rows = [row for f, row in facts_by_finding(repo, "F-24") if row["unit"] == "phase"]
+    assert rows and all(row["next_gate"] == gate["verdict"] != "none" for row in rows), rows
+
+
+def test_the_facts_say_a_ruling_was_given_and_never_its_words(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC52, SIL-AC53, SIL-AC44, AC 4
+    ex = paused_on_gap(repo, "F-25", monkeypatch)
+    finish(repo, "F-25", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})
+    (prompt,) = judged_prompts()
+    ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    (decision,) = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == "demo/F-25"
+                   and r.get("ruling")]
+    classes = [t.get("class") for t in decision.get("touches") or []]
+    want = next((c for c in ("designed", "rescue", "steer", "engine") if c in classes), pause_facts.UNKNOWN)
+    (row,) = [r for f, r in facts_by_finding(repo, "F-25") if f["cause"] == "gap_escalation"]
+    assert row["ruling"] == "given" and row["feedback"] == "not given" and row["touch"] == want, row
+    assert CANARY["ruling"] not in prompt
+    assert CANARY["ruling"] not in child.loop_log(state_root_path(repo), "demo", "F-25").read_text()
+    assert "feedback not given" in facts_of(prompt, finding_of(repo, "F-25", "gap_escalation")["fingerprint"])

@@ -267,6 +267,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
         side = _side(f["cause"], f.get("executor"))
         owner = _child_owner(spec, f.get("child"), kids)  # SWF-B9: a child's unit is the child workflow's
         lines.append({"kind": "finding", "thread": thread, **keys, **owner, "segment_exit": row.get("exit_code"),
+                      "segment_started": seg_start,
                       "unit": f["unit"], "cause": f["cause"], "class": c.klass, "side": side, "count": f["count"],
                       "remedy": c.remedy,
                       "fingerprint": fingerprint(side, str(owner.get("workflow") or spec.name), f["cause"], f["unit"]),
