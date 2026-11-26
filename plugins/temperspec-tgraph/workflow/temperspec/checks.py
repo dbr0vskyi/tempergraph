@@ -14,7 +14,7 @@ from typing import Any
 
 from tempergraph.api import CheckFinding, checks
 
-from . import routing
+from . import review, routing
 from . import specfmt as fmt
 
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "__pycache__", "evals", "fixtures", "dist",
@@ -1822,6 +1822,79 @@ def outcome_check(ctx: Any) -> Any:
     found += _collateral(ctx, specs)
     push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
     return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
+
+
+# ---------------------------------------------------------------------------------------------
+# the independent review (IRV-B6, IRV-B7, IRV-B9, IRV-B10; RVF-B2 to RVF-B5)
+
+HAND_OVER_KIND = {"triage": "triage note", "setup": "setup note", "handoff": "hand-off", "report": "code report",
+                  "review": "findings document", "plan": "plan"}
+
+
+def _first_trip(ctx: Any) -> str:
+    """The step the first trip back of the run went to: the first step of the run's commits after the first review's
+    commit, `plan` or `code`; empty when the history shows none."""
+    steps = [_step_of(subject) for _, subject, _ in _history(ctx) or []]
+    if "independent_review" not in steps:
+        return ""
+    after = [s for s in steps[steps.index("independent_review") + 1:] if s not in ("", "independent_review")]
+    return after[0] if after and after[0] in ("plan", "code") else ""
+
+
+def _review_session(ctx: Any, criterion: str) -> list[CheckFinding]:
+    """IRV-B6, IRV-B7: no hand-over document was opened and nothing but the draft was written; no record, no verdict."""
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    found: list[CheckFinding] = []
+    for c in calls:
+        target = _norm(str(c.get("target") or ""))
+        if not target or c.get("ok") is False:
+            continue
+        m = review.HAND_OVER.search(target)
+        if c.get("capability") == "read" and m:
+            kind = HAND_OVER_KIND[m.group(0).split(".")[1]]
+            found.append(_find("fail", criterion, target, f"the reader opened the {kind}",
+                               f"do not open the {kind}; read the change, the criteria and the repository only"))
+        elif c.get("capability") in WRITES and not (target == review.DRAFT or target.endswith("/" + review.DRAFT)):
+            found.append(_find("fail", criterion, target, f"the reader wrote `{target}`, not its findings document",
+                               f"change no file but `{review.DRAFT}`"))
+    seen: set[tuple[str, str]] = set()
+    unique = [f for f in found if (f.place, f.message) not in seen and not seen.add((f.place, f.message))]
+    return unique or [_ok(criterion)]
+
+
+def review_check(ctx: Any) -> Any:
+    """ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step: the form of the findings document, the session record,
+    commit state, and the step a blocking finding goes back to, as a finding the judge reads (IRV-B9, IRV-B10, IRV-B12)."""
+    found: list[CheckFinding] = []
+    text, path = _read(ctx, "findings")
+    evidence: list[str] = []
+    if text is None:
+        found.append(_find("fail", "ts-rev-form", path, "the findings document cannot be read",
+                           "write the findings document at its path"))
+    else:
+        problems = review.form_problems(text, Path(ctx.workdir))
+        found += [_find("fail", "ts-rev-form", place, message, "write each finding as ``N. `file:line` mark: text`` "
+                        "with a file of the branch, a line inside it and the mark `blocking` or `not blocking`")
+                  for place, message in problems] or [_ok("ts-rev-form", path)]
+        if not problems:
+            doc = review.parse_document(text)
+            task = str((ctx.request or {}).get("task_id") or "task")
+            prepared = review.run_base(Path(ctx.workdir), task)[1]
+            changed = [p for p in (ctx.git.changed_paths if ctx.git is not None else ())
+                       if not review.HAND_OVER.search(p) and p not in prepared and not p.startswith(".tempergraph/")]
+            step = review.choose_step(doc.findings, changed)
+            if step and doc.earlier:
+                step = _first_trip(ctx) or step
+            if step:
+                found.append(_find("pass", "ts-rev-step", step, f"a blocking finding goes back to the `{step}` step"))
+                evidence = [f"Blocking findings, go back to the `{step}` step:", review.reason_text(doc.findings)]
+            else:
+                found.append(_find("pass", "ts-rev-step", message="no finding blocks"))
+    found += _review_session(ctx, "ts-rev-session")
+    found.append(_committed(ctx, "ts-rev-commit"))
+    return checks.result(found, evidence="\n".join(evidence))
 
 
 def owner_answers_check(answers: dict[str, Any]) -> list[str]:
