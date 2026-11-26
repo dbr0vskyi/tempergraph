@@ -48,4 +48,5 @@ def test_a_canary_in_an_artifact_path_and_a_gate_pattern_reaches_nothing_the_loo
     for f in findings:
         filing.file([decide(Candidate(finding=f, confidence=0.9, attributed=True), [], "team/notes")], host,
                     Outbox.at(tmp_path))
+    assert host.issues, "the findings became no issue"
     assert all(CANARY not in str(i["body"]) for i in host.issues)
