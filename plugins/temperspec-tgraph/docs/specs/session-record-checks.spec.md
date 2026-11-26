@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What the gates of the temperspec steps confirm from the record of the step's session, so that what a prompt asks for is held by what the session did and not by what it reported: a session opens the rule files its prompt names, the expand step opens the files its task rows name, and the code step writes each phase's tests before its source. The record is the tool calls of the attempt's session that the engine gives a check ([CHK-B24](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)); where the engine gives none ([CHK-B25](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)), the criterion does not apply. "Opening" a file means a call of the read tool that ended without an error; lines printed by a search of a file never count. The seven steps are setup, triage, the short discovery, the full discovery, plan, expand and code, and a rule file is one of the `*.rule.md` files in the repository's `.claude/rules/temperspec/` folder. The reasons are in [the decision on rule files](../adr/a-step-check-confirms-that-each-rule-file-its-prompt-names-was-opened.adr.md) and [the decision on phases](../adr/a-phases-tests-and-source-are-the-files-of-its-test-and-code-rows.adr.md). The owner who reads a retry's findings and the maintainers of the step prompts depend on it. Part of the [overview](overview.spec.md).
+What the gates of the temperspec steps confirm from the record of the step's session, so that what a prompt asks for is held by what the session did and not by what it reported: a session opens the rule files its prompt names, the expand step opens the files its task rows name, and the code step writes each phase's tests before its source. The record is the tool calls of the attempt's session that the engine gives a check ([CHK-B24](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)); where the engine gives none ([CHK-B25](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)), the criterion does not apply. The expand step's check of the files its task rows name reads the record of the whole visit, the calls of every session of the visit up to the attempt checked ([VSR-B1](../../../tempergraph/docs/specs/visit-session-record.spec.md)); every other criterion reads the attempt's record alone. "Opening" a file means a call of the read tool that ended without an error; lines printed by a search of a file never count. The seven steps are setup, triage, the short discovery, the full discovery, plan, expand and code, and a rule file is one of the `*.rule.md` files in the repository's `.claude/rules/temperspec/` folder. The reasons are in [the decision on rule files](../adr/a-step-check-confirms-that-each-rule-file-its-prompt-names-was-opened.adr.md) and [the decision on phases](../adr/a-phases-tests-and-source-are-the-files-of-its-test-and-code-rows.adr.md). The owner who reads a retry's findings and the maintainers of the step prompts depend on it. Part of the [overview](overview.spec.md).
 
 ## Behaviours
 
@@ -43,15 +43,27 @@ WHEN the expand step is prompted THE workflow SHALL have the prompt tell the ses
 
 - GIVEN the expand prompt WHEN it is read THEN it tells the session to open each file a task row names with the read tool before it writes that row
 
-### SRC-B5 A row's existing file the session never opened fails the expand check
+### SRC-B5 A row's existing file that no session of the visit opened fails the expand check
 
-WHEN the expand check runs on a plan with a task row that names a file that exists in the repository and the session record shows no opening of that file THE expand check SHALL fail, naming the row and the path.
+WHEN the expand check runs on a plan with a task row that names a file that exists in the repository and the record of the visit shows no opening of that file THE expand check SHALL fail.
 
-- GIVEN a row `2.1` that names `src/auth/session.py`, which exists, and a session that only searched it WHEN the expand check runs THEN it fails naming row `2.1` and `src/auth/session.py`
+- GIVEN a row `2.1` that names `src/auth/session.py`, which exists, and sessions of the visit that only searched it WHEN the expand check runs THEN it fails
 - GIVEN a row that names `tests/test_new.py`, which does not exist WHEN the expand check runs THEN it does not fail for that row
-- GIVEN a session that opened every existing file the rows name WHEN the expand check runs THEN it does not fail for a row's file
-- GIVEN rows `1.2` and `2.3` that name the same unread file WHEN the expand check runs THEN it names both rows
-- GIVEN a row of kind `docs` that names an existing spec the session never opened WHEN the expand check runs THEN it fails naming that row and the spec
+- GIVEN a first session that opened `src/a.py` and not `src/b.py`, a retry in the same visit that opened only `src/b.py`, and rows that name both files WHEN the expand check runs after the retry THEN it does not fail for either file
+
+### SRC-B11 One finding names every row and path the visit left unopened
+
+WHEN the expand check fails because task rows name existing files that no session of the visit opened THE expand check SHALL make one finding that names each of those rows and its path.
+
+- GIVEN rows `1.1` and `3.2` that name two different unread files WHEN the expand check runs THEN one finding names both rows and both paths
+- GIVEN rows `1.2` and `2.3` that name the same unread file WHEN the expand check runs THEN the finding names both rows and the path
+
+### SRC-B12 A row that kept its mark asks for no opening
+
+WHEN the expand check runs on a task row whose completed mark is kept ([KMK-B1](kept-marks.spec.md)) THE expand check SHALL make no finding about the opening of that row's file.
+
+- GIVEN row `1.1` marked `✓ 2026-11-22` by a commit of the run, left as it was by the expand step, and naming `src/a.py`, which no session of the visit opened WHEN the expand check runs THEN it makes no finding about the opening of `src/a.py`
+- GIVEN the same row after the expand step rewrote its change and emptied its mark, and `src/a.py` opened only in an earlier visit WHEN the expand check runs THEN it fails naming row `1.1` and `src/a.py`
 
 ### SRC-B6 A phase's source changed before its tests fails the code check
 
@@ -88,17 +100,20 @@ WHEN a check of this spec fails a criterion THE check SHALL name in its finding 
 
 - SRC-AC1 (SRC-B1): The check of each of the seven steps fails, naming a rule file that its prompt names and the repository holds, for a record that holds no opening of it, and does not fail for a record that holds one
 - SRC-AC2 (SRC-B1): A search of a rule file and a call on it that ended with an error do not count as opening it, an opening by another folder's path with the same file name does, and a rule file the repository does not hold is not asked for
-- SRC-AC3 (SRC-B1): The check after a retry attempt reads only the retry session's calls
+- SRC-AC3 (SRC-B1): The rule-file check after a retry attempt reads only the retry session's calls
 - SRC-AC4 (SRC-B2): The prompt of each of the seven steps tells the session to open each rule file it names that the repository holds with the read tool and says that a search of a rule file is not opening it, and the short discovery prompt says that the rule files do not count in its limit of 10 files
 - SRC-AC13 (SRC-B10): The prompt of each of the seven steps places the rule files it names in `.claude/rules/temperspec/` of the repository or where the project note names them, and says nothing of a rule file installed for the whole machine
 - SRC-AC5 (SRC-B3): With none of the rule files of its prompt in the repository's `.claude/rules/temperspec/` folder, the check of each of the seven steps marks the rule-file criterion not applicable and its message says the rule files are not in the repository
 - SRC-AC6 (SRC-B4): The expand prompt tells the session to open each file a task row names, with the read tool, before it writes the row
-- SRC-AC7 (SRC-B5): The expand check fails naming row `2.1` and `src/auth/session.py` for an existing file the record shows only searched, names both of two rows that name one unread file, and does not fail for a file that does not exist or a file the record shows opened
+- SRC-AC7 (SRC-B5): The expand check fails for an existing file that the record of the visit shows only searched, and does not fail for a file that does not exist or a file that a session of the visit opened
 - SRC-AC8 (SRC-B6): The code check fails naming phase 2 for a record that edits the phase's source file and then writes its test file, and does not fail for the reverse order
 - SRC-AC9 (SRC-B6): The code check does not fail a phase for a source file that an earlier phase names, for a phase whose test file the record never writes, for a `docs` or `chore` row's file, or for a call that ended with an error
 - SRC-AC10 (SRC-B7): The code check of a quick-lane run marks the test-first criterion not applicable and says the quick lane has no phases
 - SRC-AC11 (SRC-B8): The rule-file, expand and test-first criteria are not applicable, with a message that says there is no session record, for a stand-in executor that reports tool names only, in the check preview and under `observe.tool_inputs = off`
 - SRC-AC12 (SRC-B9): The findings and the evidence of a failing check of this spec hold no word of a shell call's command in the record
+- SRC-AC14 (SRC-B5): In a fixture in which a first session of the visit misses one existing file and a retry opens only that file, the expand check does not fail for any row's file
+- SRC-AC15 (SRC-B11): For two rows that name two different unread files the expand check makes one finding that names both rows and both paths, and for two rows that name one unread file the finding names both rows
+- SRC-AC16 (SRC-B12): The expand check makes no finding about the opening of the file of a row whose mark is kept, and fails naming the row and the path for a row whose change was rewritten and whose mark was emptied when no session of the visit opened its file
 
 ## Open questions
 

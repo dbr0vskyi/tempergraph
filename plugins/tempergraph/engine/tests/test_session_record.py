@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from tempergraph.api import CheckFinding, CheckResult, Gate, Judge, Routing, Step, Workflow
+from tempergraph.api import CheckFinding, CheckResult, Gate, Judge, Routing, Step, Value, Workflow
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import Event, SessionRequest, SessionResult
 from tempergraph.executors.standins import answer, standin
@@ -28,7 +28,7 @@ from tempergraph.run.runner import RunSettings, start
 from tempergraph.store.layout import state_root_path
 
 from .fixtures.workflows import crit, named
-from .test_run import MET, registry
+from .test_run import MET, registry, verdict_block
 
 NO_SLEEP = RunSettings(sleep=lambda s: None)
 SRC = Path(__file__).resolve().parents[1] / "src" / "tempergraph"
@@ -43,7 +43,9 @@ def seen_check(ctx: Any) -> CheckResult:
     out = os.environ.get(OUT_VAR)
     if out:
         doc = {
-            "session": None if ctx.session is None else [dict(c) for c in ctx.session], "preview": ctx.preview,
+            "session": None if ctx.session is None else [dict(c) for c in ctx.session],
+            "visit_session": None if ctx.visit_session is None else [dict(c) for c in ctx.visit_session],
+            "preview": ctx.preview,
             "attempt": ctx.attempt, "visit": ctx.visit, "unit": ctx.unit, "item": ctx.item,
             "workdir_name": ctx.workdir.name, "artifacts": ctx.artifacts, "values": ctx.values,
             "settings": ctx.settings, "criteria": list(ctx.criteria), "allow": list(ctx.allow),
@@ -254,9 +256,93 @@ def test_a_check_that_ignores_the_record_gets_the_same_context_on_every_executor
     assert (first["workdir_name"], second["workdir_name"]) == ("demo--S-1", "demo--S-2")  # named by the task
     for doc in (first, second):
         doc.pop("session")
+        doc.pop("visit_session")  # VSR-B1 differs by executor as `session` does
         doc.pop("workdir_name")
     assert first == second  # unit, item, visit, attempt, workdir, artifacts, values, settings, criteria, runs, git
     assert first["runs"] == 0 and first["unit"] == "expand" and first["attempt"] == 1
+
+
+def _call(target: str) -> dict[str, Any]:
+    return {"name": "Read", "capability": "read", "target": target, "ok": True}
+
+
+def test_a_retry_check_sees_the_calls_of_the_whole_visit(
+        repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 7, VSR-AC1
+    monkeypatch.setenv(FAIL_FIRST_VAR, "1")
+    ex = Scripted([script([("Read", READ, "docs/a.md", True)]), script([("Read", READ, "docs/b.md", True)])])
+    assert go(repo, ex).exit_code is ExitCode.FINISHED
+    first, second = lines(seen)
+    assert first["session"] == [_call("docs/a.md")] and first["visit_session"] == [_call("docs/a.md")]
+    assert second["session"] == [_call("docs/b.md")]  # the retry's own calls only
+    assert second["visit_session"] == [_call("docs/a.md"), _call("docs/b.md")]  # first attempt, then the retry
+
+
+def test_a_visit_started_by_a_trip_back_holds_no_call_of_an_earlier_visit(repo: Path, seen: Path) -> None:
+    # AC 7, VSR-AC1
+    review = Step(prompt="Review {request}", tools=["read"],
+                  gate=Gate(judge=Judge(stance="V."), criteria=[crit("c2")], back_targets=["expand"]))
+    expand = Step(prompt="Expand the plan for {request}", tools=["read", "write"],
+                  produces={"notes": Value(choices=["a", "b"])},
+                  gate=Gate(check=seen_check, judge=Judge(stance="V."), criteria=[crit("c1")]))
+    spec = named(Workflow(order=["expand", "review"], units={"expand": expand, "review": review},
+                          issue_repository="acme/x", routing=Routing(description="Expand a plan")))
+
+    def scripted(target: str, art: str) -> Callable[[SessionRequest, Any], SessionResult]:
+        def run(req: SessionRequest, sink: Any) -> SessionResult:
+            started(sink)
+            push_calls(sink, [("Read", READ, target, True)])
+            return answer(f"Done.\nARTIFACT notes: {art}" if art else "Done.", session_id="s")
+        return run
+
+    ex = Scripted([scripted("docs/a.md", "a"), scripted("docs/r.md", ""),
+                   scripted("docs/b.md", "b"), scripted("docs/r.md", "")])
+    judges = [MET, verdict_block("UNMET", defect_in="notes"), MET, MET]
+    ex.run_judge = lambda req, views, sink: answer(judges.pop(0), tools=("Read",), session_id="j")  # type: ignore[method-assign]
+    assert go(repo, ex, spec).exit_code is ExitCode.FINISHED
+    first, second = lines(seen)
+    assert (first["visit"], second["visit"]) == (1, 2)
+    assert first["visit_session"] == [_call("docs/a.md")]
+    assert second["visit_session"] == [_call("docs/b.md")]  # nothing of the first visit
+
+
+def test_visit_session_is_none_for_a_stand_in_that_reports_tool_names_only(repo: Path, seen: Path) -> None:
+    # AC 7, VSR-AC2
+    names_only = standin("claude", steps=[answer("x", tools=("Read",), session_id="s")],
+                         judges=[answer(MET, tools=("Read",), session_id="j")])
+    assert [g["visit_session"] for g in _none_case(repo, seen, names_only)] == [None]
+
+
+def test_visit_session_is_none_when_the_retrys_own_record_is_none(
+        repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 7, VSR-AC2
+    monkeypatch.setenv(FAIL_FIRST_VAR, "1")
+    ex = Scripted([script([("Read", READ, "docs/a.md", True)]), script([])])  # the retry has no record
+    got = _none_case(repo, seen, ex)
+    assert got[1]["session"] is None and got[1]["visit_session"] is None  # although the first attempt has a record
+
+
+def test_a_retry_after_an_attempt_with_no_record_holds_its_own_calls_alone(
+        repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 7, VSR-AC2
+    monkeypatch.setenv(FAIL_FIRST_VAR, "1")
+    ex = Scripted([script([]), script([("Read", READ, "docs/b.md", True)])])
+    first, second = _none_case(repo, seen, ex)
+    assert first["visit_session"] is None
+    assert second["visit_session"] == [_call("docs/b.md")]
+
+
+def test_the_preview_has_no_visit_session(repo: Path, seen: Path) -> None:
+    # AC 7, VSR-AC2
+    def previewing(req: SessionRequest, sink: Any) -> SessionResult:
+        (ticket,) = set(re.findall(r"tempergraph self-check ([0-9a-f]{32})", req.prompt))
+        started(sink)
+        push_calls(sink, [("Read", READ, "docs/a.md", True)])
+        assert selfcheck.run(state_root_path(repo), ticket, io.StringIO()) == 0
+        return answer("Expanded.", session_id="s")
+
+    got = _none_case(repo, seen, Scripted([previewing]), wf(self_check=True))
+    assert [(g["preview"], g["visit_session"] is None) for g in got] == [(True, True), (False, False)]
 
 
 def test_one_resolver_serves_every_executor_and_every_caller() -> None:  # CHK-AC3, CHK-B11, CHK-B9, AC 5

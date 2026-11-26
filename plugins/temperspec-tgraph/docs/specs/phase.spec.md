@@ -14,4 +14,4 @@ Part of the [overview](overview.spec.md). On the arm `phases` of `code_mode` the
 - [ ] ts-phs-order A source file of the phase is not changed before the phase's test files are first written (SRC-B6)
 - [ ] ts-phs-commit Every file the phase changed is committed
 - [ ] ts-phs-change Each row of the phase has its change in the file the row names
-- [ ] ts-phs-scope No file is changed that no row of the phase names, apart from the plan's marks and status
+- [ ] ts-phs-scope No file changed since the phase step was entered is a file that no row of the phase or of an earlier phase names, apart from the plan's marks and status (PHC-B9)

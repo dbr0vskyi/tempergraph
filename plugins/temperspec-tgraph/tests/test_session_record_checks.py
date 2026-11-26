@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -53,8 +54,12 @@ def reads(*names: str) -> list[dict[str, Any]]:
 
 
 def ctx_for(unit: str, work: Path, session: list[dict[str, Any]] | None, *, rules: bool | list[str] = True,
-            preview: bool = False, fixture: Path | None = None) -> CheckContext:
-    """A context on the passing fixture of the unit's gate, with the rule files its prompt names in the workspace."""
+            preview: bool = False, fixture: Path | None = None,
+            visit_session: Any = "same") -> CheckContext:
+    """A context on the passing fixture of the unit's gate, with the rule files its prompt names in the workspace.
+    `visit_session` defaults to the same calls as `session` (the calls of the whole visit, VSR-B1)."""
+    if isinstance(visit_session, str):
+        visit_session = session
     files = _copy(fixture or ROOT / "evals" / "checks" / FIXTURES[unit], work)
     artifacts: dict[str, dict[str, str]] = {}
     for f in files:
@@ -68,7 +73,8 @@ def ctx_for(unit: str, work: Path, session: list[dict[str, Any]] | None, *, rule
                        values={"triage": {"route": "plan"}} if unit == "code" else {}, git=GitFacts(),
                        allow=SPEC.allow_commands, out_dir=work.parent / f"{work.name}.out",
                        deadline_at=time.monotonic() + 60, preview=preview,
-                       session=None if session is None else tuple(session))
+                       session=None if session is None else tuple(session),
+                       visit_session=None if visit_session is None else tuple(visit_session))
     return ctx
 
 
@@ -188,21 +194,30 @@ def test_the_expand_prompt_tells_the_session_to_open_each_file_a_row_names() -> 
     assert "open each file a task row names with the read tool before you write that row" in text
 
 
-def _expand(work: Path, session: list[dict[str, Any]] | None, files: tuple[str, ...] = ()) -> tuple[Any, list[Any]]:
-    ctx = ctx_for("expand", work, session)
+def _expand(work: Path, session: list[dict[str, Any]] | None, files: tuple[str, ...] = (),
+            visit_session: Any = "same", plan_edit: Any = None) -> tuple[Any, list[Any]]:
+    ctx = ctx_for("expand", work, session, visit_session=visit_session)
     for rel in files:
         (work / rel).parent.mkdir(parents=True, exist_ok=True)
         (work / rel).write_text("x\n")
+    if plan_edit is not None:
+        plan_edit(work / "phases.md")
     res, _ = run_check(SPEC.units["expand"].gate, ctx)
     return res, [f for f in res.findings if f.criterion == "ts-exp-opened"]
 
 
+ROW_PATH = re.compile(r"(\d+\.\d+)\D+?`([^`]+)`")
+
+
 def _unread(found: list[Any]) -> list[tuple[str, str]]:
-    return sorted((f.message.split("`")[1], f.place) for f in found if f.status == "fail")
+    """The rows and paths of the one failing finding of `ts-exp-opened`."""
+    fails_ = [f for f in found if f.status == "fail"]
+    assert len(fails_) <= 1, "one finding for all unopened rows"
+    return sorted(ROW_PATH.findall(fails_[0].message)) if fails_ else []
 
 
 def test_a_row_that_names_an_existing_file_the_session_never_opened_fails_naming_row_and_path(tmp_path: Path) -> None:
-    # AC 3, SRC-AC7 (SRC-B5)
+    # AC 3, AC 9, SRC-AC7 (SRC-B5)
     rules = reads("plan.rule.md")
     searched = [*rules, call("search", "src/tool/config.py")]
     res, found = _expand(tmp_path / "a", searched, ("src/tool/config.py", "README.md"))
@@ -211,6 +226,7 @@ def test_a_row_that_names_an_existing_file_the_session_never_opened_fails_naming
     # test file does not exist, so no row names a failure for it
     assert _unread(found) == [("1.2", "src/tool/config.py"), ("2.2", "src/tool/config.py"),
                               ("3.2", "src/tool/config.py"), ("4.1", "README.md")]
+    assert found[0].fix
     opened = [*rules, call("read", "src/tool/config.py"), call("read", "./README.md")]
     _, found = _expand(tmp_path / "b", opened, ("src/tool/config.py", "README.md"))
     assert [f.status for f in found] == ["pass"]
@@ -221,15 +237,73 @@ def test_a_row_that_names_an_existing_file_the_session_never_opened_fails_naming
 
 
 def test_with_no_record_the_opened_criterion_is_not_applicable_and_quotes_no_call(tmp_path: Path) -> None:
-    # AC 3, SRC-AC11, SRC-AC12
+    # AC 7, SRC-AC11, SRC-AC12
     for i, session in enumerate([None, [call("read", None)]]):
         _, found = _expand(tmp_path / str(i), session, ("src/tool/config.py",))
         assert [f.status for f in found] == ["n_a"] and "no session record to read" in found[0].message
+    # the record of the visit is the one read: none, or a call with no target, makes the criterion not applicable
+    held = [*reads("plan.rule.md"), call("read", "src/tool/config.py")]
+    for i, visit in enumerate([None, [*held, call("edit", None)]]):
+        _, found = _expand(tmp_path / f"v{i}", held, ("src/tool/config.py",), visit_session=visit)
+        assert [f.status for f in found] == ["n_a"] and "no session record to read" in found[0].message
+    # the last session alone with no record or no target does not decide when the visit's record is whole
+    for i, last in enumerate([None, [call("read", None)]]):
+        _, found = _expand(tmp_path / f"l{i}", last, ("src/tool/config.py",), visit_session=held)
+        assert [f.status for f in found] == ["pass"]
     session = [*reads("plan.rule.md"), call("shell", "echo zanzibar"), call("search", "zanzibar")]
     res, found = _expand(tmp_path / "z", session, ("src/tool/config.py",))
     assert any(f.status == "fail" for f in found)
     blob = json.dumps([[f.criterion, f.place, f.message, f.fix] for f in res.findings]) + res.evidence
     assert "zanzibar" not in blob
+
+
+def test_a_retry_that_opens_only_the_file_the_first_session_missed_passes(tmp_path: Path) -> None:
+    # AC 10, SRC-AC14 (SRC-B5)
+    files = ("src/tool/config.py", "README.md")
+    first = [*reads("plan.rule.md"), call("read", "src/tool/config.py")]
+    retry = [call("read", "README.md")]
+    _, found = _expand(tmp_path / "a", retry, files, visit_session=[*first, *retry])
+    assert [f.status for f in found] == ["pass"]
+    _, found = _expand(tmp_path / "b", retry, files, visit_session=first)
+    assert _unread(found) == [("4.1", "README.md")]
+
+
+def test_one_finding_names_every_unopened_row_and_the_evidence_lists_them_in_full(tmp_path: Path) -> None:
+    # AC 9, SRC-AC15 (SRC-B11)
+    files = ("src/tool/config.py", "README.md", "tests/test_config.py")
+    res, found = _expand(tmp_path / "a", reads("plan.rule.md"), files)
+    assert [f.status for f in found] == ["fail"]
+    assert _unread(found) == [("1.1", "tests/test_config.py"), ("1.2", "src/tool/config.py"),
+                              ("2.1", "tests/test_config.py"), ("2.2", "src/tool/config.py"),
+                              ("3.1", "tests/test_config.py"), ("3.2", "src/tool/config.py"),
+                              ("4.1", "README.md")][:len(_unread(found))]
+    for row, path in [("1.1", "tests/test_config.py"), ("1.2", "src/tool/config.py"), ("4.1", "README.md")]:
+        assert f"{row}: {path}" in res.evidence
+    # a plan with many unopened rows: the message is clipped, the evidence is not
+    def many(plan: Path) -> None:
+        text = plan.read_text()
+        extra = "".join(f"| 9.{i} | docs | R1 | `docs/long/dir/name{i:03d}.md` | | change | |\n" for i in range(40))
+        anchor = "| 4.1 | docs | R1 | `README.md` | | Describe the missing-file message | |\n"
+        assert anchor in text
+        plan.write_text(text.replace(anchor, anchor + extra, 1))
+    big = [f"docs/long/dir/name{i:03d}.md" for i in range(40)]
+    res, found = _expand(tmp_path / "b", reads("plan.rule.md"), tuple(big), plan_edit=many)
+    assert [f.status for f in found] == ["fail"]
+    for i, path in enumerate(big):
+        assert f"9.{i}: {path}" in res.evidence
+
+
+def test_a_row_whose_mark_is_kept_asks_for_no_opening(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 8, SRC-AC16 (SRC-B12)
+    def kept(ctx: Any, plan: Any, path: str) -> dict[str, str]:
+        return {"1.2": "", "2.2": "the row differs from the row in its marking commit", "3.2": "no commit"}
+
+    monkeypatch.setattr(checks, "_kept_marks", kept)
+    _, found = _expand(tmp_path / "a", reads("plan.rule.md"), ("src/tool/config.py",))
+    named = _unread(found)
+    assert ("1.2", "src/tool/config.py") not in named  # kept: no new opening
+    assert ("2.2", "src/tool/config.py") in named  # rewritten and its mark emptied or unbacked
+    assert ("3.2", "src/tool/config.py") in named  # a mark the history does not back
 
 
 # -- the code step writes a phase's tests before its source (SRC-B6, SRC-B7; SRC-AC8 to SRC-AC10) ----------------------

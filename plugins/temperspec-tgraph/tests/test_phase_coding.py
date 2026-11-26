@@ -300,6 +300,117 @@ def test_the_phase_judge_states_a_stance_and_grades_each_rows_change_in_its_file
                    "no row of the phase names", "the plan's marks and status",
                    "cite the row id for every met"):
         assert phrase in said, phrase
+    # AC 3, AC 4, PHC-AC18 (PHC-B18): the check sorted the paths, the judge takes it as given, scope is on the first list
+    for phrase in ("changed since the phase step was entered", "changed only by earlier steps",
+                   "sorted the changed paths into", "takes that sorting as given",
+                   "does not look for the step that changed a path", "graded on the first list alone",
+                   "lowers no grade and sets no gap"):
+        assert phrase in said.lower(), phrase
+
+
+def _git(work: Path, *args: str) -> str:
+    return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=work,
+                          capture_output=True, text=True, check=True).stdout.strip()
+
+
+def _commit(work: Path, subject: str, files: dict[str, str]) -> None:
+    for name, body in files.items():
+        (work / name).parent.mkdir(parents=True, exist_ok=True)
+        (work / name).write_text(body, encoding="utf-8")
+    _git(work, "add", "-A")
+    _git(work, "commit", "-q", "-m", subject)
+
+
+def _history_repo(tmp_path: Path, phase_commit: bool = True) -> tuple[Path, str]:
+    """A repository with a base commit, a triage and a discovery commit and (when asked) a phase commit that
+    edits a file discovery also wrote."""
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    work = _work(tmp_path, _plan([("Phase 1: Alpha", [("1.1", "test", "tests/test_a.py", "AC 1", TODAY),
+                                                      ("1.2", "code", "src/a.py", "", TODAY)])], status="in-progress"),
+                 files={})
+    _git(work, "init", "-q")
+    _commit(work, "chore: base", {"README.md": "r\n"})
+    base = _git(work, "rev-parse", "HEAD")
+    _commit(work, "docs(temperspec): triage for T", {"triage_note.md": "# Triage: T\n", "shared.md": "1\n"})
+    _commit(work, "docs(temperspec): discovery for T", {"handoff.md": "h\n", "shared.md": "2\n"})
+    _commit(work, "chore: a person's edit", {"notes.md": "n\n"})
+    if phase_commit:
+        _commit(work, "feat(temperspec): phase for T", {"src/a.py": "a = 1\n", "tests/test_a.py": "# AC 1\n",
+                                                        "shared.md": "3\n"})
+    return work, base
+
+
+def _phase_context(work: Path, base: str, *, facts_base: str | None = None) -> CheckContext:
+    from tempergraph.run.checks import git_facts
+
+    facts = git_facts(work, base)
+    assert facts is not None
+    if facts_base is not None:
+        facts = dataclasses.replace(facts, base=facts_base)
+    return CheckContext(unit="phase", workdir=work, request={}, values={}, artifacts={"expand": {"phases": "plan.md"}},
+                        git=facts, allow=SPEC.allow_commands, out_dir=work.parent / "phase.out",
+                        deadline_at=time.monotonic() + 60)
+
+
+def _line(res: CheckResult, head: str) -> str:
+    lines = [ln for ln in res.evidence.splitlines() if ln.startswith(head)]
+    assert len(lines) == 1, (head, res.evidence)
+    return lines[0][len(head):]
+
+
+def test_the_phase_evidence_lists_the_paths_changed_since_the_phase_step_was_entered_in_order(tmp_path: Path) -> None:
+    # AC 1, PHC-AC16 (PHC-B16, PHC-B9)
+    work, base = _history_repo(tmp_path)
+    res = checks.phase_check(_phase_context(work, base))
+    # the file an earlier step and the phase both changed is among them
+    assert _line(res, "Changed since the phase step was entered: ") == "shared.md, src/a.py, tests/test_a.py"
+    assert "Changed paths since the run's base" not in res.evidence
+    # no phase commit yet and nothing uncommitted: the first list holds none
+    work2, base2 = _history_repo(tmp_path / "two", phase_commit=False)
+    res2 = checks.phase_check(_phase_context(work2, base2))
+    assert _line(res2, "Changed since the phase step was entered: ") == "none"
+    # a repository with no commit of the step phase yet: the paths of the commits that do not name it
+    (work2 / "src").mkdir(exist_ok=True)
+    (work2 / "src" / "a.py").write_text("a = 1\n", encoding="utf-8")
+    res3 = checks.phase_check(_phase_context(work2, base2))
+    assert _line(res3, "Changed since the phase step was entered: ") == "src/a.py"
+
+
+def test_the_phase_evidence_lists_each_path_only_earlier_steps_changed_with_their_steps(tmp_path: Path) -> None:
+    # AC 2, PHC-AC17 (PHC-B17)
+    work, base = _history_repo(tmp_path)
+    res = checks.phase_check(_phase_context(work, base))
+    assert _line(res, "Changed only by earlier steps: ") == "handoff.md (discovery), notes.md, triage_note.md (triage)"
+    work2, base2 = _history_repo(tmp_path / "two", phase_commit=False)
+    res2 = checks.phase_check(_phase_context(work2, base2))
+    assert _line(res2, "Changed only by earlier steps: ") == ("handoff.md (discovery), notes.md, shared.md (triage, "
+                                                               "discovery), triage_note.md (triage)")
+    # a path two steps changed lists both in the order of the commits
+    one = _plan([("Phase 1: A", [("1.1", "code", "x.py", "", TODAY)])])
+    work3 = tmp_path / "three"
+    work3.mkdir()
+    _git(work3, "init", "-q")
+    _commit(work3, "chore: base", {"README.md": "r\n", "plan.md": one})
+    base3 = _git(work3, "rev-parse", "HEAD")
+    _commit(work3, "docs(temperspec): triage for T", {"shared.md": "1\n"})
+    _commit(work3, "docs(temperspec): discovery for T", {"shared.md": "2\n"})
+    _commit(work3, "feat(temperspec): phase for T", {"x.py": "x\n"})
+    res3 = checks.phase_check(_phase_context(work3, base3))
+    assert _line(res3, "Changed only by earlier steps: ") == "shared.md (triage, discovery)"
+    assert _line(res3, "Changed since the phase step was entered: ") == "x.py"
+    # the line ends none when no path qualifies
+    work4 = tmp_path / "four"
+    work4.mkdir()
+    _git(work4, "init", "-q")
+    _commit(work4, "chore: base", {"README.md": "r\n", "plan.md": one})
+    base4 = _git(work4, "rev-parse", "HEAD")
+    _commit(work4, "feat(temperspec): phase for T", {"x.py": "x\n"})
+    res4 = checks.phase_check(_phase_context(work4, base4))
+    assert _line(res4, "Changed only by earlier steps: ") == "none"
+    # history that cannot be read: the first list holds every changed path, the second none
+    res5 = checks.phase_check(_phase_context(work, base, facts_base="f" * 40))
+    assert _line(res5, "Changed only by earlier steps: ") == "none"
+    assert "triage_note.md" in _line(res5, "Changed since the phase step was entered: ")
 
 
 def test_the_phase_note_of_the_step_in_the_workflow_caps_at_1500_characters() -> None:
@@ -698,6 +809,44 @@ def test_the_code_gate_checks_the_whole_change_after_the_phases(repo: Path) -> N
     assert by["ts-code-changed"].status == "pass" and by["ts-code-rows"].status == "pass"
     assert by["ts-code-lane"].status == "n_a" and "not in the quick lane" in by["ts-code-lane"].message
     assert by["ts-code-verify"].status == "pass" and by["ts-code-proof"].status == "pass"
+    # AC 6, PHC-AC19 (PHC-B19): the two lists counted from the code step's entry
+    # (the stand-in's code session wrote the plan's status and the report: the first list holds those two, none of the phases' files)
+    assert _line(res, "Changed since the code step was entered: ") == "plan.md, report.md"
+    earlier = _line(res, "Changed only by earlier steps: ")
+    for path in ("src/p1.py", "src/p2.py", "tests/test_p1.py", "tests/test_p2.py"):
+        assert f"{path} (phase)" in earlier, (path, earlier)
+    assert "Changed paths since the run's base" not in res.evidence
+    # a run with no commit of the step phase keeps the one line
+    work, base2 = _history_repo(stand.workdir.parent / "nophase", phase_commit=False)  # type: ignore[union-attr]
+    plain = checks.code_check(dataclasses.replace(_phase_context(work, base2), unit="code"))
+    assert "Changed paths since the run's base" in plain.evidence
+
+
+def test_a_stand_in_run_of_two_phases_with_earlier_documents_passes_every_phase_gate_with_no_pause(repo: Path) -> None:
+    # AC 5, PHC-AC20 (PHC-B9, PHC-B16, PHC-B17)
+    stand = Stand(phases=2, route="discovery")  # the run takes the discovery step, which writes handoff.md
+    out = _go(repo, stand)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [r for r in _records(repo, "pause")] == []
+    assert [r for r in _records(repo, "escalate")] == []
+    prompts = stand.prompts("phase", "judge")
+    assert len(prompts) == 2
+    for number, prompt in enumerate(prompts, start=1):
+        assert "Changed only by earlier steps:" in prompt and "Changed since the phase step was entered:" in prompt
+        earlier = next(ln for ln in prompt.splitlines() if ln.startswith("Changed only by earlier steps:"))
+        own = next(ln for ln in prompt.splitlines() if ln.startswith("Changed since the phase step was entered:"))
+        assert "handoff.md (discovery)" in earlier and "triage_note.md (triage)" in earlier
+        assert f"src/p{number}.py" in own and f"tests/test_p{number}.py" in own
+        assert "triage_note.md" not in own and "handoff.md" not in own
+
+
+def test_the_code_judge_brief_says_the_changed_paths_are_two_lists_counted_from_the_code_steps_entry() -> None:
+    # AC 6, PHC-AC19 (PHC-B19)
+    said = _said((ROOT / "judges" / "code.md").read_text(encoding="utf-8")).lower()
+    for phrase in ("two lists counted from the code step's entry", "changed since the code step was entered",
+                   "changed only by earlier steps", "the files of the phases", "need no row",
+                   "docs/tasks/", "the plan", "written by prepare"):
+        assert phrase in said, phrase
 
 
 def test_a_plan_whose_status_is_not_completed_after_the_last_phase_fails_before_any_command_runs(repo: Path) -> None:

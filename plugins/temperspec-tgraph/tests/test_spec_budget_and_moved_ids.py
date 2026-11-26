@@ -294,6 +294,22 @@ def test_each_rule_file_criterion_is_a_blocker_checked_by_its_gate_and_names_its
     assert names and all(n in row["text"] for n in names)
 
 
+def test_the_phase_scope_criterion_is_graded_on_the_paths_changed_since_the_phase_step_was_entered() -> None:
+    # AC 3, PHC-AC18 (PHC-B18)
+    o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
+    entry = next(r for r in o["revisions"] if "issue 148" in r.get("note", ""))
+    assert o["revision"] == entry["revision"] == o["revisions"][-1]["revision"]
+    where, row = _criteria()["ts-phs-scope"]
+    assert where == "phase" and "since the phase step was entered" in row["text"]
+    assert row["text"] == _rows("phase.spec.md")["ts-phs-scope"]  # the docs check compares the whole line
+    assert "earlier steps" in row["check_method"] and "since the phase step was entered" in row["check_method"]
+    scale = row["verifier"]["scale"]
+    assert all("first list" in scale[k] for k in ("met", "partial", "unmet"))
+    # the criterion of the expand step keeps its words
+    _, opened = _criteria()["ts-exp-opened"]
+    assert all(w in opened["text"] for w in ("task row", "file", "opened"))
+
+
 @pytest.mark.parametrize("cid, unit, verifier, words", [
     ("ts-exp-opened", "expand", "expand_check", ("task row", "file", "opened")),
     ("ts-code-order", "code", "code_check", ("phase", "source", "test files", "first written")),
