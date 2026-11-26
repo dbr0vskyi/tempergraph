@@ -87,6 +87,14 @@ WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `ev
 
 - GIVEN a parallel unit with one branch WHEN it validates THEN it is refused `parallel-branches`
 
+### WFM-B14 Paths a gate's judge may skip
+
+WHEN a workflow is validated THE engine SHALL refuse, with a finding code of its own for each, a `judge_may_skip` (a gate's list of path patterns that its judge need not open, [SRV-B42](judge-read-share.spec.md)) that holds an absolute pattern or a pattern naming a path outside the repository, and a `judge_may_skip` on a gate with no judge.
+
+- GIVEN a gate whose `judge_may_skip` holds `/var/cache/**` WHEN the workflow validates THEN it is refused
+- GIVEN a gate whose `judge_may_skip` holds `../shared/**` WHEN the workflow validates THEN it is refused
+- GIVEN a gate with no judge that declares `judge_may_skip` WHEN the workflow validates THEN it is refused
+
 ## Acceptance criteria
 
 - WFM-AC1 (WFM-B1, WFM-B4, WFM-B8, WFM-B9, WFM-B10, WFM-B11, WFM-B13): Every refusal has a fixture workflow that fails validation with its own finding code
@@ -96,3 +104,4 @@ WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `ev
 - WFM-AC5 (WFM-B3, WFM-B5, WFM-B6, WFM-B12): A workflow using only tiers and capability names validates against all four shipped executors, and each warning has a fixture that warns and does not refuse outside `stable`
 - WFM-AC6 (WFM-B10): A fixture workflow using each kind, primitive and field outside the running release fails validation with `not_in_release`, on the catalog, a start and the pre-start check alike
 - WFM-AC7 (WFM-B8): A workflow whose parallel branch declares `write` or `edit` validates with no error finding, and the same workflow declaring `workspace: in_place` is refused with its own finding code
+- WFM-AC8 (WFM-B14): A fixture workflow for each refusal of WFM-B14 (an absolute pattern, a pattern that climbs above the repository root, a list on a gate with no judge) fails validation with a finding code of its own, and a fixture whose gate has a judge and declares `generated/**` and `docs/../out/*.log` validates
