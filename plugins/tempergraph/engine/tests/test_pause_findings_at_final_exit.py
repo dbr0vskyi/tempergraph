@@ -425,3 +425,34 @@ def test_each_paused_segment_with_a_listed_finding_has_a_section_of_its_own(
     for ln in prompt.splitlines():  # `test_loop_child.py` reads a `- ` line with a backtick and `cause` as a fingerprint
         if ln.startswith("- `") and "cause" in ln:
             assert "class " in ln and "side " in ln, ln  # only finding rows
+
+
+@pytest.mark.parametrize("how", ["stopped_by_request", "attempt_cap", "cost_cap"])
+def test_a_final_exit_that_is_not_a_finish_carries_the_earlier_pause_fingerprint(
+        repo: Path, monkeypatch: pytest.MonkeyPatch, how: str) -> None:  # SIL-AC48, AC 9
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, f"F-4-{how}")
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
+    flags: dict[str, Any] = {}
+    if how == "stopped_by_request":
+        from tempergraph.durability import control
+        monkeypatch.setattr(control, "take_stop", lambda *a, **k: control.TakenStop(mode="drain", caller={}))
+    elif how == "attempt_cap":
+        flags = {"run.attempt_cap": 1}
+    else:
+        flags = {"run.run_cost_cap_usd": 0.001}
+    out = resume(two_step(), f"F-4-{how}", repo, registry(ex), decision="retry",
+                 settings=dataclasses.replace(NO_SLEEP, flags=flags))
+    code = ExitCode.BUDGET_OR_INFRA if how == "cost_cap" else ExitCode.STOPPED
+    assert out.exit_code is code and out.reason == how, out.message
+    fp = finding_of(repo, f"F-4-{how}", "retries_spent")["fingerprint"]
+    (t,) = tickets()
+    doc = json.loads(t.read_text())
+    assert fp in doc["pause_fingerprints"], doc
+
+
+def test_the_guide_names_every_exit_that_is_final(
+        repo: Path) -> None:  # SIL-AC48, SIL-AC46, AC 9, AC 10
+    guide = Path(__file__).resolve().parents[2] / "docs" / "guides" / "improving-workflows.guide.md"
+    para = next(p for p in guide.read_text().split("\n\n") if "final exit" in p and "exit 5" in p)
+    assert "exit 0" in para and "exit 4" in para and "exit 5" in para
