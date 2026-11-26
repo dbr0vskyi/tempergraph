@@ -130,11 +130,15 @@ def _unit(session_key: str) -> str:
 
 
 def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping[str, Any]] = (),
-           grants: Iterable[Mapping[str, Any]] = ()) -> list[dict[str, Any]]:
-    """Causes of one segment: `{unit, cause, count, executor?, child?}` with no text. A record of a sub-workflow
-    child's unit carries `child` (the unit's path), so a child's unit and a parent's unit of one name keep their own
-    causes (SWF-B9)."""
+           grants: Iterable[Mapping[str, Any]] = (), *,
+           starter: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Causes of one segment: `{unit, cause, count, executor?, child?, class?}` with no text. A record of a
+    sub-workflow child's unit carries `child` (the unit's path), so a child's unit and a parent's unit of one name keep
+    their own causes (SWF-B9). `starter` is the caller of the thread's first `run_started`: an `agent_decided` finding
+    carries class `designed` when the deciding caller has the same host and recorded host session, else `fault`
+    (FRC-B6)."""
     out: dict[tuple[str, str, str, str], int] = {}
+    classes: dict[tuple[str, str, str, str], str] = {}
     versions: dict[tuple[str, str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC4)
     child = ""  # the path of the child the record being read belongs to; empty for the run's own units
 
@@ -250,7 +254,14 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
         rescue = any(t.get("class") == "rescue" for t in iv.get("touches") or [])
         steer = [t for t in iv.get("touches") or [] if t.get("class") == "steer"]
         if rescue and c.get("decided_by") == "agent":
-            add(str(iv.get("unit") or ""), f"agent_decided:{iv.get('pause_kind') or 'escalation'}")
+            unit_name = str(iv.get("unit") or "")
+            code = f"agent_decided:{iv.get('pause_kind') or 'escalation'}"
+            session = str(c.get("host_session") or "")
+            same = bool(session) and session == str((starter or {}).get("host_session") or "") \
+                and str(c.get("host") or "") == str((starter or {}).get("host") or "")
+            key = ("", unit_name, code, "")  # one finding for the group: any decision of another agent makes it a fault
+            classes[key] = "designed" if same and classes.get(key, "designed") == "designed" else "fault"
+            add(unit_name, code)
         if c.get("decided_by") == "person" and (iv.get("ruling") or any(t.get("action") in ("rewind", "rerun")
                                                                           for t in steer)):
             add(str(iv.get("unit") or ""), "pushback")
@@ -259,5 +270,6 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
             else f"grant_unused:{g.get('capability') or g.get('prefix')}")
     return [{"unit": u, "cause": code, "count": n, **({"child": ch} if ch else {}),
              **({"executor": ex} if ex else {}),
+             **({"class": classes[(ch, u, code, ex)]} if (ch, u, code, ex) in classes else {}),
              **({"executor_version": versions[(ch, u, code, ex)]} if (ch, u, code, ex) in versions else {})}
             for (ch, u, code, ex), n in out.items()]

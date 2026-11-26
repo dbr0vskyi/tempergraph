@@ -49,9 +49,9 @@ WHEN an eval trial needs a higher level than its case's `max_level` THE engine S
 
 ### SUP-B7 Agent rescues feed the loop
 
-WHEN self-improvement reads runs in which agents answered the same gate's pause with `proceed` and no change THE engine SHALL cluster the `agent_decided:<pause cause>` findings by workflow, unit and pause cause across runs and machines, and file one workflow issue naming a check or the environmental cause as the remedy.
+WHEN self-improvement reads runs in which agents other than the caller that started the run answered the same gate's pause with `proceed` and no change THE engine SHALL cluster the `agent_decided:<pause cause>` findings by workflow, unit and pause cause across runs and machines, and file one workflow issue naming a check or the environmental cause as the remedy ([FRC-B6](friction-causes.spec.md)).
 
-- GIVEN seven runs on two machines in which an agent answered the `code` gate's `check_environmental` escalation with `proceed` and each run then passed WHEN self-improvement reads them THEN one cluster and one workflow issue result
+- GIVEN seven runs on two machines in which an agent that had not started the run answered the `code` gate's `check_environmental` escalation with `proceed` and each run then passed WHEN self-improvement reads them THEN one cluster and one workflow issue result
 
 ### SUP-B8 Promotion counts agents
 
@@ -103,7 +103,7 @@ WHEN an eval suite runs a workflow case ([EVS](eval-suites.spec.md)) THE engine 
 
 ### SUP-B16 Supervision in the improvement loop
 
-WHEN the improvement loop reads supervision ([SIL](self-improvement.spec.md)) THE engine SHALL make each agent's own rescue a friction finding with cause `agent_decided:<pause cause>` clustered as SUP-B7, and join supervision cost to the cost lens as its own figure, never summed into run cost.
+WHEN the improvement loop reads supervision ([SIL](self-improvement.spec.md)) THE engine SHALL make each agent's own rescue a friction finding with cause `agent_decided:<pause cause>` of the class that [FRC-B6](friction-causes.spec.md) gives it, clustered as SUP-B7, and join supervision cost to the cost lens as its own figure, never summed into run cost.
 
 - GIVEN a run with $0.40 run cost and $0.10 supervision cost WHEN the cost lens reads it THEN it shows the two figures apart
 
