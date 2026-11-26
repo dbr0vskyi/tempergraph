@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 8,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: Rows 3.3, 3.5, 3.6, 3.8, 3.9 and 3.10 are only partly confirmed, from search lines. Rows 3.1, 3.2, 3.4 and 3.7 were not read. Row 3.3: test_temperspec.py:808 `head = \"Review findings that block nothing\"`. Row 3.5: summary.py:181 `out += [\"\", \"### Review findings that block nothing\", \"\"] + unblocking`. Row 3.6: README.md:35-36 `triage → ... → independent_review`. Row 3.8: stamp.json:74 `o…",
+      "fix": "Read the files of rows 3.1, 3.2, 3.4, 3.7 and 3.9 around the change lines."
+    },
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "UNMET: The first list holds files under evals/checks/independent_review/ (the visible tail is `.../must-pass/2-not-blocking/src/tool/config.py`). They exist: must-pass/1-none/findings.md, must-pass/2-not-blocking/findings.md, must-pass/2-not-blocking/src/tool/config.py, must-fail/no-line/findings.md and must-fail/file-missing/findings.md. Grep of the plan for 'evals/checks' found nothing, so no r…",
+      "fix": "Add a plan row for the evals/checks fixtures, or remove them from the run."
+    }
+  ]
+}
