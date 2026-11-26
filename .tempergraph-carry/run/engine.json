@@ -6,7 +6,7 @@
   },
   "last_on": {
     "engine_version": "0.2.0",
-    "engine": "0.2.0-7f7c4cf67b49"
+    "engine": "0.2.0-e71ee2bd5c8d"
   },
   "pinned": null,
   "history": [
@@ -40,6 +40,14 @@
       "workflow_version": "0.1.0+4b7468a444af",
       "shape_digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038",
       "checkpoint_format": 1,
+      "started_at": "2026-11-26T01:41:34.741Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-e71ee2bd5c8d",
+      "workflow_version": "0.1.0+e0e2769b32e5",
+      "shape_digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038",
+      "checkpoint_format": 1,
       "units": {
         "prepare": {
           "kind": "script",
@@ -65,7 +73,7 @@
         },
         "setup": {
           "kind": "step",
-          "digest": "ce2508d846893227",
+          "digest": "d15d7d21c548af5b",
           "produces": [
             "overview",
             "setup_note"
@@ -73,7 +81,7 @@
         },
         "triage": {
           "kind": "step",
-          "digest": "d2f07390a8a2be39",
+          "digest": "4b00fabddeff4b9d",
           "produces": [
             "covered",
             "gaps",
@@ -120,7 +128,7 @@
         },
         "plan": {
           "kind": "step",
-          "digest": "fb41045bc737e53f",
+          "digest": "359a8199549c043a",
           "produces": [
             "complexity",
             "plan"
@@ -160,11 +168,11 @@
         },
         "outcome": {
           "kind": "step",
-          "digest": "efe4dcb34512211c",
+          "digest": "cf893fdb1ba5aa2e",
           "produces": []
         }
       },
-      "started_at": "2026-11-26T01:41:34.741Z"
+      "started_at": "2026-11-26T02:46:07.732Z"
     }
   ]
 }
