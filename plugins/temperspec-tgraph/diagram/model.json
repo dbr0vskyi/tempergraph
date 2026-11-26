@@ -243,6 +243,11 @@
       "decision"
     ],
     [
+      "prepare.human",
+      "prepare.judge",
+      "decision"
+    ],
+    [
       "setup_route.step",
       "setup_route.judge",
       "next"
@@ -303,6 +308,11 @@
       "decision"
     ],
     [
+      "setup_route.human",
+      "setup_route.judge",
+      "decision"
+    ],
+    [
       "list_components.step",
       "list_components.judge",
       "next"
@@ -355,6 +365,11 @@
     [
       "list_components.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "list_components.human",
+      "list_components.judge",
       "decision"
     ],
     [
@@ -415,6 +430,11 @@
     [
       "read_component.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "read_component.human",
+      "read_component.judge",
       "decision"
     ],
     [
@@ -480,6 +500,11 @@
     [
       "setup.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "setup.human",
+      "setup.judge",
       "decision"
     ],
     [
@@ -583,6 +608,11 @@
       "decision"
     ],
     [
+      "triage.human",
+      "triage.judge",
+      "decision"
+    ],
+    [
       "discovery_short.step",
       "discovery_short.judge",
       "next"
@@ -668,6 +698,11 @@
       "decision"
     ],
     [
+      "discovery_short.human",
+      "discovery_short.judge",
+      "decision"
+    ],
+    [
       "owner_questions.step",
       "owner_questions.judge",
       "next"
@@ -745,6 +780,11 @@
     [
       "owner_questions.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "owner_questions.judge",
       "decision"
     ],
     [
@@ -843,6 +883,11 @@
       "decision"
     ],
     [
+      "ask_route.human",
+      "ask_route.judge",
+      "decision"
+    ],
+    [
       "ask_owner.step",
       "ask_owner.judge",
       "next"
@@ -930,6 +975,11 @@
     [
       "ask_owner.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "ask_owner.judge",
       "decision"
     ],
     [
@@ -1030,6 +1080,11 @@
     [
       "read_gap.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "read_gap.judge",
       "decision"
     ],
     [
@@ -1140,6 +1195,11 @@
     [
       "discovery.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "discovery.judge",
       "decision"
     ],
     [
@@ -1253,6 +1313,11 @@
       "decision"
     ],
     [
+      "plan.human",
+      "plan.judge",
+      "decision"
+    ],
+    [
       "code_mode.step",
       "code_mode.judge",
       "next"
@@ -1370,6 +1435,11 @@
     [
       "code_mode.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "code_mode.judge",
       "decision"
     ],
     [
@@ -1498,6 +1568,11 @@
       "decision"
     ],
     [
+      "expand.human",
+      "expand.judge",
+      "decision"
+    ],
+    [
       "phase.step",
       "phase.judge",
       "next"
@@ -1615,6 +1690,11 @@
     [
       "phase.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "phase.judge",
       "decision"
     ],
     [
@@ -1758,6 +1838,11 @@
       "decision"
     ],
     [
+      "code.human",
+      "code.judge",
+      "decision"
+    ],
+    [
       "code_join.step",
       "code_join.judge",
       "next"
@@ -1885,6 +1970,11 @@
     [
       "code_join.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "code_join.judge",
       "decision"
     ],
     [
@@ -2070,6 +2160,11 @@
     [
       "outcome.human",
       "__end__",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "outcome.judge",
       "decision"
     ],
     [
@@ -2083,5 +2178,5 @@
       "next"
     ]
   ],
-  "digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038"
+  "digest": "af10a279a7aa48ae0e70bea4212e4bc273728af0f93cc86cdd17b107e10c7e9b"
 }
