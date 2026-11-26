@@ -12,7 +12,7 @@ from tempergraph.run.finalize import FinalizerResult
 from tempergraph.store.layout import state_root_path
 
 from .conftest import hash_tree
-from .test_finalizer_outcomes import PR, finalize_record, happy, raises, skips, skips_quietly, spec_with
+from .test_finalizer_outcomes import PR, happy, raises, skips, skips_quietly, spec_with
 from .test_run import go, records
 
 

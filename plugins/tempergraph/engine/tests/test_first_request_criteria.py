@@ -20,7 +20,7 @@ from .test_cli import cli
 from .test_outcome_escape_finding import escapes, loop_kinds, observe, process
 from .test_pr_later import QUIET, REPO, comment, commit, pr_host, rows
 from .test_pr_later import review as pr_review
-from .test_pr_run_files import FILE, run_that_commits, spec_with_pull_request
+from .test_pr_run_files import FILE, run_that_commits
 
 CANARY = "CANARY-5d2c-first-request-do-not-leak"
 STABLE = dataclasses.replace(QUIET, improvement_mode="stable")

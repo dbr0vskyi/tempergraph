@@ -59,7 +59,7 @@ def test_a_run_with_a_single_escape_leaks_nothing_either(tmp_path: Path) -> None
     assert [p.name for p in hits] == ["pull_request.jsonl"]
 
 
-def test_a_carried_thread_never_carries_the_pull_request_evidence(world: World) -> None:  # FBK-AC7, task AC 5
+def test_a_carried_thread_never_carries_the_pull_request_evidence(world: World) -> None:  # noqa: F811  FBK-AC7, task AC 5
     a = world.paused_on_a()
     root = state_root_path(a)
     segment(root, "t1", 1)

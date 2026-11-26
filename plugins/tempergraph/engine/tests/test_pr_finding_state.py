@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import threading
 import time
@@ -76,10 +77,8 @@ class WaitingHost(CountingHost):
     barrier: threading.Barrier = dataclasses.field(default_factory=lambda: threading.Barrier(2))
 
     def pull_state(self, repo: str, number: int) -> dict[str, Any]:
-        try:
+        with contextlib.suppress(threading.BrokenBarrierError):
             self.barrier.wait(timeout=1.5)  # both reads meet here, unless the second waits at the lock
-        except threading.BrokenBarrierError:
-            pass
         return super().pull_state(repo, number)
 
 
@@ -124,9 +123,8 @@ def test_an_exclusive_lock_makes_a_second_holder_wait(tmp_path: Path) -> None:  
         th.start()
         time.sleep(0.3)
         assert order == []
-        with pytest.raises(lock.LockHeld):
-            with lock.exclusive(path, timeout_s=0.1):
-                pass
+        with pytest.raises(lock.LockHeld), lock.exclusive(path, timeout_s=0.1):
+            pass
         order.append("first")
     th.join(timeout=10)
     assert order == ["first", "second"]
