@@ -55,6 +55,7 @@ class Candidate:
     records: Sequence[Mapping[str, Any]] = ()  # the run log's records, read for ISS-B8 to ISS-B10 through issue_context
     mode: str | None = None  # the workflow's improvement mode (ISS-B8)
     judge_executor: str | None = None  # the loop's judge executor (ISS-B8)
+    earlier_answers: Sequence[bool] = ()  # the attributed flags already recorded for the fingerprint in the window
 
 
 @dataclass(kw_only=True)
@@ -63,7 +64,8 @@ class Decision:
     reason: str
     candidate: Candidate
     repo: str | None = None
-    counts: dict[str, int] = field(default_factory=dict)
+    counts: dict[str, int] = field(default_factory=dict)  # the pattern figures an issue body shows
+    counted: dict[str, int] = field(default_factory=dict)  # runs, requests, machines of a judged friction fault
 
 
 def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
@@ -85,9 +87,14 @@ def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime |
     since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
     same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
     runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
-    reqs = {str(h.get("request_digest")) for h in same if h.get("request_digest")}
+    first: dict[str, str] = {}  # SIL-B3: a thread counts its request once, by the first digest it recorded
+    for h in sorted(same, key=lambda h: str(h.get("at") or "")):
+        t = str(h.get("thread"))
+        if h.get("request_digest") and t not in first:
+            first[t] = str(h["request_digest"])
     if c.request_digest:
-        reqs.add(c.request_digest)
+        first[str(f.get("thread"))] = c.request_digest  # the exit's run counts by its own digest
+    reqs = set(first.values())
     counts = {"runs": len(runs), "requests": len(reqs),
               "machines": len({str(h.get("machine")) for h in same} | {str(f.get("machine"))})}
     met = len(runs) >= params.value("pattern_rule.min_runs") and len(reqs) >= params.value(
@@ -95,11 +102,42 @@ def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime |
     return counts, met
 
 
+def recorded_answers(root: Path, workflow: str, now: datetime | None = None) -> dict[str, list[bool]]:
+    """SIL-B18, SIL-B36: the `attributed` flags of the `loop_judged` answers of the workflow's runs in the state
+    root, per fingerprint, inside `pattern_rule.window_days` by the record's time, oldest first."""
+    now = now or datetime.now(UTC)
+    since = now - timedelta(days=int(params.value("pattern_rule.window_days")))
+    rows: list[tuple[datetime, str, bool]] = []
+    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for ln in lines:
+            try:
+                rec = json.loads(ln)
+                if rec.get("kind") != "loop_judged":
+                    continue
+                at = datetime.fromisoformat(str(rec.get("ts")).replace("Z", "+00:00"))
+                at = at if at.tzinfo else at.replace(tzinfo=UTC)
+                if at < since:
+                    continue
+                for a in rec.get("answers") or []:
+                    rows.append((at, str(a["fingerprint"]), bool(a["attributed"])))
+            except (ValueError, TypeError, KeyError, AttributeError):
+                continue
+    out: dict[str, list[bool]] = {}
+    for _, fp, flag in sorted(rows, key=lambda r: r[0]):
+        out.setdefault(fp, []).append(flag)
+    return out
+
+
 def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository: str,
            now: datetime | None = None) -> Decision:
     """Whether a candidate files, or is only recorded, and why (SIL-B12 to SIL-B16, B3, B7). A friction finding
     files only when its judge attributed it and either its confidence is at or above the floor or its fingerprint
-    meets the pattern rule (SIL-B18); one the judge gave no answer for is `not_judged` and never files (SIL-B35)."""
+    meets the pattern rule on a majority of the recorded answers (SIL-B18); one that does not file carries one of
+    `not_judged` (SIL-B35), `not_attributed`, `few_answers` or `below_count`."""
     f = c.finding
     repo = repository(f, issue_repository)
     if f.get("class") != "fault":
@@ -112,14 +150,20 @@ def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository:
     if c.lens == "friction":
         if c.confidence is None:
             return Decision(action="record", reason="not_judged", candidate=c)  # SIL-B35
-        if not c.attributed:
-            return Decision(action="record", reason="below_floor", candidate=c)
         counts, met = _pattern(c, history, now)
-        if met:  # SIL-B18: the count files at any confidence
-            return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts)
+        if not c.attributed:
+            return Decision(action="record", reason="not_attributed", candidate=c, counted=counts)
+        answers = [*c.earlier_answers, True]
+        majority = len(answers) >= 2 and 2 * sum(answers) > len(answers)  # SIL-B18: more than half, two or more
+        if met and majority:  # the count files at any confidence
+            return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts,
+                            counted=counts)
         if c.confidence >= params.value("friction.file_confidence"):
-            return Decision(action="file", reason="fault", candidate=c, repo=repo)
-        return Decision(action="record", reason="below_floor", candidate=c)
+            return Decision(action="file", reason="fault", candidate=c, repo=repo, counted=counts)
+        if met:
+            reason = "few_answers" if len(answers) == 1 else "not_attributed"
+            return Decision(action="record", reason=reason, candidate=c, counted=counts)
+        return Decision(action="record", reason="below_count", candidate=c, counted=counts)
     if c.lens == "outcome" and f.get("side") == "workflow":  # SIL-B3; one clear engine fault is enough
         counts, met = _pattern(c, history, now)
         if not met:
