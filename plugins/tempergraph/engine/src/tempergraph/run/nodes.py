@@ -660,6 +660,10 @@ class EngineNodes:
                 for call in selfcheck.close(self.ctx.state_root, ticket):
                     self.ctx.log.write("self_check", unit=unit, item=iid, attempt=attempt, result=call.get("result"),
                                        findings=call.get("findings"), duration_s=call.get("duration_s"))
+        if res.partial and not res.ok:  # RCT-B11: a session the stop request ended is no failed attempt; none is recorded,
+            reason = self.ctx.drain_requested()  # so no retry is charged and a resume runs the attempt again
+            if reason:
+                raise Drain(reason)
         after = gitmod.fingerprint(workdir)
         foreign = self._foreign_worktrees(unit, iid, key, known, worktrees_before)  # WTR-B26: recorded, never touched
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
