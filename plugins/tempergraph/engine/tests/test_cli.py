@@ -91,8 +91,11 @@ def test_resume_dry_run_files_nothing_for_the_whole_thread(
                                                          judge(verdict_block("UNVERIFIABLE"))])
     code, _, err = cli(repo, ex, "run", "demo", "notes", "--task-id", "D-1")
     assert code == ExitCode.PAUSED, err
-    ex.steps, ex.judges = [REVIEW], [judge()]
+    ex.steps, ex.judges = [REVIEW], [judge(verdict_block("UNVERIFIABLE"))]
     code, _, err = cli(repo, ex, "resume", "demo", "D-1", "--decision", "proceed", "--dry-run")
+    assert code == ExitCode.PAUSED, err  # a second pause: the hold must outlast this segment
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", "D-1", "--decision", "proceed")  # no --dry-run here
     assert code == 0, err
     tickets = sorted(child.tickets_dir(home_path()).glob("*.json"))
     assert tickets and json.loads(tickets[0].read_text())["dry_run"] is True
