@@ -156,6 +156,6 @@ Then, from the first session's table: i145, i134a, i134b, i62, i103, i130, i104,
 
 ### Before the pull request is ready (added to the first session's list)
 
-- Remove the `gh` shim's hold only after i171b is merged and reviewed, and check first whether the loop tries again a filing that failed.
+- Remove the `gh` shim's hold only after i171b and i170b are merged and reviewed. **Empty or review `.tempergraph/filing-outbox.jsonl` first**: the filings the shim refused are queued there (five creates and one comment on 2026-11-26 03:50, more with every exit), and the next filing that is not a dry run sends them all with no fresh dedup (`improve/filing.py:369-374`).
 - The operator's live checks: L-43 (#165), a real usage-limit refusal (#202).
 - Triage #198, #199, #200.
