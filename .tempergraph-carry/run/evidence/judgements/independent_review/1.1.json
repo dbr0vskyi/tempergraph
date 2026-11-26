@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "independent_review",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-rev-blockers",
+      "evidence": "UNMET: Two findings are marked blocking. (1) tempergraph.regenerations.json:5: the declared commands are `tempergraph author verify <path>` with no `--json`, and without that flag `author verify` prints plain text (cli/author.py:245-255), so `findings_of` in workflow/temperspec/regeneration.py finds no JSON line and falls back to one finding made of the last 40 lines of output. In this repository…",
+      "fix": "Add --json to the declared commands and cover the real declaration with a test. Restore the stamp assertion and regenerate the stamp and authoring.json."
+    }
+  ]
+}

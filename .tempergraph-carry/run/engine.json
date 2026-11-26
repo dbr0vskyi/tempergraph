@@ -32,6 +32,14 @@
       "workflow_version": "0.1.0+bf47edf9a92a",
       "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
       "checkpoint_format": 1,
+      "started_at": "2026-11-26T17:43:28.423Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-8f7e8a118a78",
+      "workflow_version": "0.1.0+bf47edf9a92a",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
       "units": {
         "prepare": {
           "kind": "script",
@@ -163,7 +171,7 @@
           "produces": []
         }
       },
-      "started_at": "2026-11-26T17:43:28.423Z"
+      "started_at": "2026-11-26T20:13:18.178Z"
     }
   ]
 }

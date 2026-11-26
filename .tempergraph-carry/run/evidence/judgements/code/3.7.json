@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 3,
+  "attempt": 7,
+  "blockers": [
+    {
+      "criterion": "ts-code-aligned",
+      "evidence": "PARTIAL: I read tempergraph.regenerations.json:5-36, where every declaration now carries `--json`, and `regeneration.py` only through search lines (json parsing at lines 56, 213, 256). I did not open the other listed source files. SCF-B21 (blueprint-and-scaffold.spec.md:134) allows an outcome revision newer than the stamp.",
+      "fix": "Read the remaining listed files against the edited specs; refresh stamp.json and authoring.json with `tempergraph author verify plugins/temperspec-tgraph`"
+    },
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: stamp.json:104 and authoring.json:403 say outcome_revision 24 while outcome.json:3 says 25, and no authoring.json refresh is among the changes. The related-spec text I read does not forbid this. I could not confirm whether the stamp's digests are stale.",
+      "fix": "Operator runs `tempergraph author verify plugins/temperspec-tgraph` and commits the refreshed files"
+    },
+    {
+      "criterion": "ts-code-change",
+      "evidence": "PARTIAL: The check confirmed each row's file changed (ts-code-changed pass). I did not read each row's change in its file.",
+      "fix": "Read each row against its file"
+    },
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: The assertion `stamp[\"outcome_revision\"] == o[\"revision\"]` was removed from test_spec_budget_and_moved_ids.py (the test at line 297 now carries only a comment about the stamp's refresh). Nothing covers the stamp's currency, so the existing test is weaker. I did not read the other criterion tests.",
+      "fix": "After refreshing the stamp, restore the equality check, or add a plan row for an ordering check"
+    }
+  ]
+}

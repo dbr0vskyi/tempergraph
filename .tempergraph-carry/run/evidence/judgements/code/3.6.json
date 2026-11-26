@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 3,
+  "attempt": 6,
+  "blockers": [
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: No contradiction found in the files read. However, stamp.json:104 says outcome_revision 24 while outcome.json:3 is 25, and the test that compared them was removed (test_spec_budget_and_moved_ids.py:297-301) with no replacement. Nothing covers the stamp's currency.",
+      "fix": "Refresh stamp.json and authoring.json, or keep a check that the stamp matches the outcome revision"
+    }
+  ]
+}
