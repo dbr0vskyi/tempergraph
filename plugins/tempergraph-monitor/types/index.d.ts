@@ -18,6 +18,7 @@ export type MonitorRun = {
   cost: string
   question: string | null
   resume: string | null
+  life: string | null
 }
 
 /** Where the pane is: the run list, a run, a unit, an attempt, or a session (MRV §2.1, MDD §2). */

@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test'
 import type { DetailDoc, RunRecord, StatusDoc, StatusRow } from '../hooks/lib/engine'
 import { isReadable } from '../hooks/lib/engine'
 import {
-  alertsFrom, attemptRows, bandRow, healthAlerts, levelText, listRow, money, narrator, runLabel, runList, sessionNow,
+  alertsFrom, attemptRows, bandRow, healthAlerts, levelText, lifeText, listRow, money, narrator, runLabel, runList, sessionNow,
   statusLine, summarise, touchStrip, unitRowText, unitRows,
 } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
@@ -73,6 +73,14 @@ describe('labels and money (MBA §2.1, contract M4)', () => {
     expect(a.startsWith('alpha/')).toBe(true)
     expect(b.startsWith('beta/')).toBe(true)
     expect(a.slice(-4)).not.toBe(b.slice(-4))
+  })
+  test('a sign of life: the open tool, else how long the session is quiet, led by a suspected stall (MRV-B6)', () => {
+    const att = { attempt: 1, step: { sessions: [{ session_key: 'a.1.step', live: { open_tool: { name: 'Grep', elapsed: 12 } } }] } }
+    expect(lifeText(att, {})).toBe('Grep 12s')
+    const quiet = { attempt: 1, step: { sessions: [{ session_key: 'a.1.step', live: { last_event_age_s: 95 } }] } }
+    expect(lifeText(quiet, { suspect_stall: true })).toBe('stall? quiet 1m')
+    expect(lifeText(undefined, { silent_s: 40 })).toBe('quiet 40s')
+    expect(lifeText(undefined, {})).toBeNull()
   })
   test('estimates and gaps are never shown as reported', () => {
     expect(money({ reported: 0.1, completeness: 'complete' })).toBe('$0.10')

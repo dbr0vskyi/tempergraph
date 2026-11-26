@@ -136,6 +136,7 @@ export type RunSummary = {
   cost: string
   question: string | null
   resume: string | null
+  life: string | null // sign of life of the session in flight: its open tool, or how long it has been quiet
 }
 
 export function summarise(row: StatusRow, detail: DetailDoc | undefined, now: number, repo?: string,
@@ -166,7 +167,24 @@ export function summarise(row: StatusRow, detail: DetailDoc | undefined, now: nu
     cost: money(detail ? sumCost(detail) : row.cost),
     question: pause?.question ?? null,
     resume: pause?.resume?.[0] ?? row.pending_gates?.[0]?.resume ?? null,
+    life: current?.state === 'running' && row.alive ? lifeText(att, detail?.health) : null,
   }
+}
+
+/** The open session of an attempt: the last step or judge session that carries a live block. */
+function liveSession(att: Attempt | undefined): Session | undefined {
+  return [...(att?.step?.sessions ?? []), ...(att?.judge?.sessions ?? [])].filter(s => s.live).at(-1)
+}
+
+/** A row's sign of life (MRV §2.3): `stall?` when the engine suspects a stall, then the open tool and how long it
+ * has run, else how long the session has been quiet (its last event, else the run's `silent_s`). */
+export function lifeText(att: Attempt | undefined, health: DetailDoc['health'] | undefined): string | null {
+  const live = liveSession(att)?.live
+  const stall = health?.suspect_stall ? 'stall? ' : ''
+  const tool = live?.open_tool
+  if (tool?.name) return `${stall}${tool.name} ${duration(tool.elapsed)}`
+  const quiet = live?.last_event_age_s ?? health?.silent_s
+  return quiet == null ? (stall ? 'stall?' : null) : `${stall}quiet ${duration(quiet)}`
 }
 
 function sumCost(d: DetailDoc): Cost {
@@ -330,7 +348,7 @@ export function listRow(r: RunSummary): string {
   const where = r.unit ? `${r.unit}${r.node ? `·${r.node}` : ''}` : ''
   const att = r.attempt ? `a${r.attempt}${r.attempt > 1 ? ' ↻' : ''}` : ''
   const time = r.mark === '⏸' ? `waits ${duration(r.waiting)}` : duration(r.elapsed)
-  return [`${r.mark} ${r.label}`, r.workflow, `${r.passed}/${r.planned}`, where, att, time, r.cost]
+  return [`${r.mark} ${r.label}`, r.workflow, `${r.passed}/${r.planned}`, where, att, time, r.life, r.cost]
     .filter(Boolean).join('  ')
 }
 

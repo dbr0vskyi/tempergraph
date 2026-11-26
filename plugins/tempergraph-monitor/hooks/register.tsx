@@ -74,6 +74,7 @@ function readSettings(options: PluginOptions): Settings {
 const tails = new Map<string, TailState>()
 const records = new Map<string, RunRecord[]>()
 const details = new Map<string, DetailDoc>()
+const detailAt = new Map<string, number>() // when each run's detail document was last read for its row
 const health = new Map<string, { stall: boolean; cap: boolean }>()
 const logPaths = new Map<string, string>()
 let lastStatus = 0
@@ -282,11 +283,14 @@ async function refreshStatus($: $, now: number): Promise<void> {
     if (row.log_path) logPaths.set(row.thread_id, row.log_path)
     const live = row.alive || row.state === 'paused'
     let d = details.get(row.thread_id)
-    if (live && (!d || d.run.last_seq !== (records.get(row.thread_id)?.at(-1)?.seq ?? d.run.last_seq))) {
+    // read again when the run log grew, and on a clock while the run lives, so the row's sign of life moves (MDS §2.1)
+    const grew = d && d.run.last_seq !== (records.get(row.thread_id)?.at(-1)?.seq ?? d.run.last_seq)
+    if (live && (!d || grew || (row.alive && now - (detailAt.get(row.thread_id) ?? 0) >= RATES.rowDetail))) {
       const fresh = await verb<DetailDoc>($, detailArgv(row.thread_id))
       if (fresh && isReadable(fresh, 'detail')) {
         d = fresh
         details.set(row.thread_id, fresh)
+        detailAt.set(row.thread_id, now)
       }
     }
     if (!live && row.log_path && !tails.has(row.thread_id)) {
@@ -393,7 +397,7 @@ function todaySeconds(now: number): number {
 
 export const register: Register = (on, options) => {
   settings = readSettings(options)
-  for (const m of [tails, records, details, health, logPaths]) m.clear()
+  for (const m of [tails, records, details, detailAt, health, logPaths]) m.clear()
   lastStatus = lastDetail = lastExtra = lastProjection = lastFleet = 0
   busy = false
   notFound = false

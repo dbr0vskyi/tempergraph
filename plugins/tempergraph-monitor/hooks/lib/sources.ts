@@ -128,7 +128,7 @@ export const READ_ONLY_SHAPES: readonly (readonly (string | RegExp)[])[] = [
 ]
 
 function fits(rest: readonly string[], shape: readonly (string | RegExp)[]): boolean {
-  return rest.length === shape.length && shape.every((s, i) => (typeof s === 'string' ? rest[i] === s : s.test(rest[i])))
+  return rest.length === shape.length && shape.every((s, i) => (typeof s === 'string' ? rest[i] === s : s.test(rest[i] ?? '')))
 }
 
 /** Every schedule on the machine, for the next slot, last fire and failures (engine SCH). */
@@ -200,7 +200,8 @@ export function keepTail(held: readonly RunRecord[], added: readonly RunRecord[]
 
 // -- poll rates (MDS §2.1, MDS-B1) -------------------------------------------------------------------------------
 
-export const RATES = { live: 5_000, idle: 30_000, change: 1_000, detail: 2_000 } as const
+/** `rowDetail`: a live run's detail document is read again this often for its list row, log growth or not. */
+export const RATES = { live: 5_000, idle: 30_000, change: 1_000, detail: 2_000, rowDetail: 10_000 } as const
 
 /** How long to wait before the next `status` call. */
 export function statusEvery(anyAlive: boolean, paneOpen: boolean): number {
