@@ -84,12 +84,12 @@ WHEN a unit's check fails on two attempts in a row of one visit and item with th
 - GIVEN the same failing finding on attempts 1 and 2 and a step that changed no file on attempt 2 WHEN the gate decides THEN the unit is retried as BUD-B8 says
 - GIVEN an `effort_ladder` and the same failing finding on two attempts in a row with changed files WHEN the gate decides THEN the ladder does not climb and the run pauses with cause `check_repeat`
 
-### BUD-B17 A usage limit is a cause of its own
+### BUD-B17 A usage limit spends no counter
 
-WHEN a session of a unit's attempt (a step, retry, council member or chair session, a judge session that grades the attempt, or that judge's re-ask) ends not ok with `usage_limit` true ([SSN-B11](session-contract.spec.md)) THE engine SHALL spend no retry and no infra try on it, whatever its `error_kind` or `infra_cause`, the usage limit being its only cause.
+WHEN a session of a unit's attempt (a step, retry, council member or chair session, a judge session that grades the attempt, or that judge's re-ask) ends not ok with `usage_limit` true ([SSN-B11](session-contract.spec.md)) THE engine SHALL spend no retry and no infra try on it, whatever its `error_kind` or `infra_cause`.
 
 - GIVEN a step session that ends not ok with `usage_limit` true and `error_kind` `model` WHEN its gate decides THEN the retry budget is unchanged
-- GIVEN a step session that ends not ok with `usage_limit` true and `infra_cause` `throttled` WHEN the node ends THEN the session is not rerun after a backoff, no infra try is spent and the run does not end as an infra failure
+- GIVEN a step session that ends not ok with `usage_limit` true and `infra_cause` `throttled` WHEN the attempt ends THEN the session is not rerun after a backoff, no infra try is spent and the run does not end as an infra failure
 - GIVEN a step session that ends not ok with `usage_limit` false and `error_kind` `model` WHEN its gate decides THEN the retry budget is spent as BUD-B1 says
 
 ### BUD-B12 Concurrent sessions under one cap
@@ -141,7 +141,7 @@ WHEN a session's reservation would take spend plus reservations over the run cos
 - BUD-AC12 (BUD-B13): A fixture run of a council whose members have no per-session cost cap writes, before each member's first `attempt_start` record, a `reservation` record with `action` `held` and `source` `share` whose `reserved_usd` is the run's remaining cap divided by the number of members
 - BUD-AC13 (BUD-B12, BUD-B14): A fixture run of a council whose members' reservations together cross the cap writes, for a member that waited, one `waiting` record that lists a running member's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`
 - BUD-AC14 (BUD-B15): A fixture run of a council whose next member reservation does not fit while no member session is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`, and starts no later session of the council
-- BUD-AC15 (BUD-B17): A fixture run of a step with a retry budget of 2 whose stand-in executor ends every session not ok with `usage_limit` true and a reset one hour ahead has its retry counter at 0 and is not ended with exit 5 and reason `budget` after three sessions ended by the usage limit (the first run and two resumes), while the same fixture with `usage_limit` false spends the retry budget as BUD-B1 says
+- BUD-AC15 (BUD-B17): A fixture run of a step whose stand-in executor ends every session not ok with `usage_limit` true, resumed until the sessions it has ended that way outnumber the step's retry budget, has its retry counter at 0 and is not ended with exit 5 and reason `budget`, while the same fixture with `usage_limit` false spends the retry budget as BUD-B1 says
 
 ## Open questions
 

@@ -28,11 +28,11 @@ WHEN a run resumes after an attempt whose start record no step record closed THE
 
 ### DUR-B12 Resume after a usage limit
 
-WHEN `resume` names a thread paused for a usage limit ([HUM-B14](gate-and-human.spec.md)) and carries no decision THE engine SHALL rerun only the session the usage limit ended, in its unit under the attempt number it had and with every counter as it was before it.
+WHEN `resume` names a thread paused for a usage limit ([HUM-B14](gate-and-human.spec.md)) and carries no decision THE engine SHALL rerun only the session the usage limit ended, in its unit, under the attempt number that session had and with every counter as it was before that session ran.
 
-- GIVEN a step with a retry budget of 2 whose first session the usage limit ended WHEN `resume` runs with no decision THEN the session that runs is attempt 1 of the same unit and the retry counter is 0
+- GIVEN a step with a retry budget of 3 whose first session the usage limit ended WHEN `resume` runs with no decision THEN the session that runs is attempt 1 of the same unit and no retry has been spent
 - GIVEN a judge session that the usage limit ended after its step passed WHEN `resume` runs with no decision THEN the judge runs and the step does not
-- GIVEN a pause whose reset instant is an hour ahead WHEN `resume` runs now and the executor still ends the session with `usage_limit` true THEN the thread pauses with reason `usage_limit` and every counter as it was
+- GIVEN a thread paused for a usage limit whose reset instant has not passed WHEN `resume` runs and the session it reruns ends not ok with `usage_limit` true THEN the resume is not refused and the thread pauses for a usage limit with every counter as it was
 
 ### DUR-B3 Concurrency
 
@@ -63,11 +63,11 @@ WHEN `status` prints a thread THE engine SHALL write one row, under schema versi
 
 ### DUR-B13 A usage-limit pause on the status row
 
-WHEN `status` prints a thread paused for a usage limit ([HUM-B14](gate-and-human.spec.md)) THE engine SHALL add `usage_limit_resets_at` to its row, the latest reset returned by the sessions its pauses wait on, null when none returned one.
+WHEN `status` prints a thread paused for a usage limit ([HUM-B14](gate-and-human.spec.md)) THE engine SHALL add `usage_limit_resets_at` to its row: the latest reset instant among the thread's pending pauses for a usage limit, null when none of them carries one.
 
-- GIVEN a thread paused for a usage limit with a reported reset instant WHEN `status --json` runs THEN its row holds `usage_limit_resets_at` with that instant
+- GIVEN two pending gates of a parallel block, both paused for a usage limit, one with an earlier and one with a later reset instant WHEN `status --json` runs THEN its row holds the later instant as `usage_limit_resets_at`
 - GIVEN a thread paused for a usage limit whose executor reported no reset instant WHEN `status --json` runs THEN its row holds `usage_limit_resets_at` null
-- GIVEN that thread once it has run past the session the usage limit ended WHEN `status --json` runs THEN its row holds no `usage_limit_resets_at`
+- GIVEN a thread that was paused for a usage limit and is running after a `resume` WHEN `status --json` runs THEN its row holds no `usage_limit_resets_at`
 
 ### DUR-B5 Wait
 
@@ -107,4 +107,4 @@ WHEN a start gives `--alias <name>` THE engine SHALL keep it in `runs/aliases.js
 - DUR-AC8 (DUR-B7): A setting changed at a resume applies to the next attempt and to every later resume
 - DUR-AC9 (DUR-B8): An alias held by a live thread is refused to a second start and freed when the thread finishes
 - DUR-AC10 (DUR-B12): A fixture thread paused by a step session that the usage limit ended and resumed with no decision runs that session under the same attempt number with every counter equal to its value before the session, and a fixture thread paused by a judge session that the usage limit ended and resumed with no decision starts the judge and not the step
-- DUR-AC11 (DUR-B13): The `status` row of a fixture thread paused for a usage limit holds `usage_limit_resets_at` equal to the reset its stand-in executor reported, null when it reported none, and the row of that thread after a resume past the session the usage limit ended holds no such key
+- DUR-AC11 (DUR-B13): The `status` row of a fixture thread paused for a usage limit holds `usage_limit_resets_at` equal to the reset its stand-in executor reported (the latest of them when several gates of a parallel block are paused for it), null when it reported none, and the row of that thread while it runs after a `resume` holds no such key
