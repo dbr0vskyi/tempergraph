@@ -206,6 +206,20 @@ def test_prp_ac16_a_setting_never_raises_a_workflow_declared_at_record(repo: Pat
     assert t["autonomy"] == "record"
 
 
+def test_prp_ac16_a_stops_exit_reads_the_setting_too(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # PRP-AC16 (PRP-B31, SIL-B27): the stop of a paused thread is an exit; the setting is written while it waits
+    from .test_stop_at_pause import loop_on, paused_on_retries, stop
+    from .test_stop_at_pause import tickets as stop_tickets
+
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, "P-9")
+    assert stop_tickets() == []
+    write_setting(repo, loop_autonomy="record")
+    assert stop(repo, "P-9", ex).exit_code is ExitCode.STOPPED
+    (path,) = stop_tickets()
+    assert json.loads(path.read_text())["autonomy"] == "record"
+
+
 def test_prp_ac16_a_lost_runners_exit_reads_the_setting_too(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # PRP-AC16 (PRP-B31, SIL-B30): the exit recorded for a lost runner has no settings of its own
     from .test_lost_runner import kill, loop_on, verb
