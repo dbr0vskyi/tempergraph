@@ -13,7 +13,8 @@ import {
 } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
 import {
-  detailArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, READ_ONLY_VERBS, statusArgv, statusEvery, WRITING_VERBS,
+  detailArgv, evalsBarArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, READ_ONLY_VERBS, scheduleListArgv,
+  scheduleShowArgv, statusArgv, statusEvery, WRITING_VERBS,
 } from '../hooks/lib/sources'
 
 const dir = new URL('./fixtures/', import.meta.url).pathname
@@ -234,3 +235,17 @@ describe('supervision level (SUP-B11, MRV §2.4)', () => {
   })
 })
 
+
+describe('read-only subcommands (MDS-B8, issue 248)', () => {
+  test('MDS-AC-7: exactly the listed shapes of schedule and evals are read-only, every other subcommand is refused', () => {
+    for (const argv of [scheduleListArgv(), scheduleShowArgv('nightly-notes-3f2a'), evalsBarArgv(), evalsBarArgv('demo')])
+      expect(isReadOnly(argv)).toBe(true)
+    for (const w of [['tempergraph', 'schedule', 'add', 'demo', 'every day'], ['tempergraph', 'schedule', 'list'],
+      ['tempergraph', 'schedule', 'show', 'nightly-notes-3f2a'], ['tempergraph', 'schedule', 'remove', 'nightly-notes-3f2a'],
+      ['tempergraph', 'schedule', 'show', 'x; rm', '--json'], ['tempergraph', 'evals', 'score', 'demo', '--json'],
+      ['tempergraph', 'evals', 'bar', 'demo', '--json', '--extra'], ['tempergraph', 'evals', 'label', '--json']])
+      expect(isReadOnly(w)).toBe(false)
+    expect(() => scheduleShowArgv('../x')).toThrow()
+    expect(() => evalsBarArgv('demo --now')).toThrow()
+  })
+})
