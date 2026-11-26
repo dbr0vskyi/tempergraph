@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.7.retry",
+  "kind": "retry",
+  "unit": "phase",
+  "attempt": 7,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 6,
+  "peak_context": 18022,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Grep": {
+      "capability": "search",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.369
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.382
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.709
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "read",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "eb238d854fa923ab"
+  ],
+  "_wrote": [],
+  "prior_overlap": 0.5
+}
