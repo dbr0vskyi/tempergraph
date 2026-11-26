@@ -236,7 +236,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
             elif reason == "cost_cap":
                 add("", "cost_cap")
             elif reason == "attempt_cap" and r.get("exit_code") == 4:  # FRC-B2
-                add("", "attempt_cap", n=len(trips))
+                add("", "attempt_cap", n=int(r.get("trips_back", len(trips))))  # CMP-B20's figure
             if r.get("exit_code") == 0 and finalized:  # FRC-B3: names and numbers only, no text of a step or a reason
                 outcome = str(finalized.get("outcome") or "")
                 if finalized.get("manual_steps") or outcome in ("skipped", "error", "invalid"):

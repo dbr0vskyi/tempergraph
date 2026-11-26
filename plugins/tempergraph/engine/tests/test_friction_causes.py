@@ -36,6 +36,10 @@ def of(repo: Path, cause: str, task: str = "T-1") -> list[dict[str, Any]]:
     return [f for f in found(repo, task) if f["cause"] == cause or f["cause"].startswith(cause + ":")]
 
 
+def exit_record(repo: Path, task: str = "T-1") -> dict[str, Any]:
+    return [r for r in records(repo, task) if r["kind"] == "run_exit"][-1]
+
+
 def chain(ship: bool = False, loop_budget: int = 1) -> Any:
     """draft, then review whose gate may send the run back to draft, then optionally a unit that has not run before."""
     units: dict[str, Any] = {
@@ -87,9 +91,11 @@ def test_frc_ac1_a_unit_that_had_not_run_before_is_not_counted(repo: Path) -> No
 
 
 def test_frc_ac1_an_attempt_cap_before_any_session_leaves_count_zero(repo: Path) -> None:  # FRC-AC1, AC 2
-    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge(BACK)])
-    out = go(repo, ex, chain(), flags={"run.attempt_cap": 2})
+    # the review's own retry is the one attempt counted (CMP-B19), so the cap stops the visit the trip back begins
+    ex = standin("claude", steps=[DRAFT, REVIEW, REVIEW], judges=[judge(), judge(verdict_block("UNMET")), judge(BACK)])
+    out = go(repo, ex, chain(), flags={"run.attempt_cap": 1})
     assert out.exit_code is ExitCode.STOPPED and out.reason == "attempt_cap", out.message
+    assert [c.kind for c in ex.calls].count("judge") == 3  # every scripted session ran: none after the trip back
     (f,) = of(repo, "trip_back")
     assert f["cause"] == "trip_back:draft" and f["unit"] == "review" and f["count"] == 0
     assert (f["class"], f["side"]) == ("fault", "workflow")
@@ -101,10 +107,12 @@ def test_frc_ac1_an_attempt_cap_before_any_session_leaves_count_zero(repo: Path)
 def test_frc_ac2_a_stop_after_two_trips_back_counts_them(repo: Path) -> None:  # FRC-AC2, AC 3
     ex = standin("claude", steps=[DRAFT, REVIEW, DRAFT, REVIEW],
                  judges=[judge(), judge(BACK), judge(), judge(BACK)])
-    out = go(repo, ex, chain(loop_budget=2), flags={"run.attempt_cap": 4})
+    # the second visits of draft and review are the two attempts counted (CMP-B19); the first visits count none
+    out = go(repo, ex, chain(loop_budget=2), flags={"run.attempt_cap": 2})
     assert out.exit_code is ExitCode.STOPPED and out.reason == "attempt_cap", out.message
     (f,) = of(repo, "attempt_cap")
     assert f["cause"] == "attempt_cap" and f["unit"] == "" and f["count"] == 2
+    assert f["count"] == exit_record(repo)["trips_back"]  # the figure the exit itself carries (CMP-B20)
     assert (f["class"], f["side"]) == ("fault", "workflow") and f["segment_exit"] == 4
     assert_fault_remedy(f, ("gate criterion", "check", "attempt cap"))  # AC 8
 
@@ -112,10 +120,10 @@ def test_frc_ac2_a_stop_after_two_trips_back_counts_them(repo: Path) -> None:  #
 def test_frc_ac2_a_stop_with_no_trip_back_leaves_count_zero(repo: Path) -> None:  # FRC-AC2, AC 3
     failed = verdict_block("UNMET")
     ex = standin("claude", steps=[DRAFT, DRAFT], judges=[judge(failed), judge(failed)])
-    out = go(repo, ex, chain(), flags={"run.attempt_cap": 2})
+    out = go(repo, ex, chain(), flags={"run.attempt_cap": 1})  # the draft's retry is the one attempt counted
     assert out.exit_code is ExitCode.STOPPED and out.reason == "attempt_cap", out.message
     (f,) = of(repo, "attempt_cap")
-    assert f["unit"] == "" and f["count"] == 0
+    assert f["unit"] == "" and f["count"] == 0 == exit_record(repo)["trips_back"]
     assert not of(repo, "trip_back")
 
 
