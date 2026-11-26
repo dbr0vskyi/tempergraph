@@ -11,24 +11,38 @@
         10,
         11
       ],
-      "remedy_class": "judge_model",
-      "confidence": 0.6,
+      "remedy_class": "brief",
+      "confidence": 0.7,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge graded the spec claim MET from grep output and a count without opening gate-and-human.spec.md, although it had located the file, where the intent calls for PARTIAL."
+      "note": "The judge never opened the spec files the findings name and verified the spec claim only from a grep count that excluded the three named specs."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        10,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded both criteria MET with search-printed evidence for the spec claim, where the rules call for PARTIAL."
     },
     {
       "category": "environment_fault",
       "turns": [
         2,
         3,
-        4
+        4,
+        6,
+        7
       ],
       "remedy_class": "brief",
-      "confidence": 0.3,
+      "confidence": 0.5,
       "check": "unsupported",
       "corroborated": false,
-      "note": "Reads of engine/src/... failed because the files sit under plugins/tempergraph/engine/..., so the cited or guessed paths did not resolve from the worktree root and cost two turns."
+      "note": "The findings cite paths that do not exist from the worktree root, so two reads failed and the judge had to glob for the real location."
     }
   ],
   "conformance": [],

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.discovery.4.retry.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 1218,
+  "turns_so_far": 1,
+  "pgid": 1535802,
+  "last_event_at": "2026-11-26T17:53:00.552Z",
+  "updated_at": "2026-11-26T17:53:00.553Z",
+  "pid": 1444602,
+  "ended": false
+}

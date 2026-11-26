@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.2.step",
+  "view_chars": 10131,
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        21,
+        22,
+        23,
+        25,
+        27,
+        28,
+        30,
+        31
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.45,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session placed new requirements R13 and R14 in the wrong order, then spent a search, a re-read and two more edits fixing it before adding the new phase."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rule files plan.rule.md and documents.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Read triage note, hand-off and specs before planning",
+      "status": "followed",
+      "turns": [
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Start from hand-off reading list; name extra files opened in section 0",
+      "status": "followed",
+      "turns": [
+        13,
+        14,
+        16,
+        36
+      ]
+    },
+    {
+      "item": "On a trip back edit the existing plan in place and keep Completed marks",
+      "status": "followed",
+      "turns": [
+        21,
+        22,
+        23,
+        30,
+        31,
+        33,
+        34,
+        36
+      ]
+    },
+    {
+      "item": "Complex plan: phases, goals, weights and verification commands only, no rows",
+      "status": "followed",
+      "turns": [
+        33,
+        34
+      ]
+    },
+    {
+      "item": "Write the plan and no other file; no shell",
+      "status": "followed",
+      "turns": [
+        21,
+        22,
+        23,
+        30,
+        31,
+        33,
+        34
+      ]
+    },
+    {
+      "item": "Verification commands start with a command from tempergraph.commands.json or read-only git",
+      "status": "unclear",
+      "turns": [
+        34
+      ]
+    },
+    {
+      "item": "Report ends with ARTIFACT plan and ARTIFACT complexity lines",
+      "status": "unclear",
+      "turns": [
+        36
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.5.step",
+  "view_chars": 36890,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        32,
+        158,
+        66,
+        94,
+        139,
+        236,
+        238
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Context peaked near 412k tokens with 271k spent before the first write, because large files and unrelated engine sources were read and re-read."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        226,
+        235,
+        256,
+        275,
+        296,
+        305
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.65,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The hand-off was changed through about two dozen small sequential edits and then re-read and patched again, where one rewrite would have done."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        246,
+        278,
+        281,
+        305
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Most of the work after the three-line spec fix went to reconciling reading-list cites and line ranges in the hand-off."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        40,
+        41,
+        43,
+        108,
+        113
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A few searches were too broad or came back empty and had to be redone with narrower patterns."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        1,
+        317
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The prompt carried an unresolved placeholder for the conversation setting, and the step had no shell to run tests or the docs check."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.judge",
+  "view_chars": 5589,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        12,
+        15
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "One of the six changed files was never read (only a search at turn 12 touched it), yet the verdict states every row's change was confirmed in its file; the brief should require reading the file around each quoted line."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

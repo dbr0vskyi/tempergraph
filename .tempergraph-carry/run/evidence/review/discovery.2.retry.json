@@ -1,33 +1,52 @@
 {
   "schema_version": 1,
   "session_key": "discovery.2.retry",
-  "view_chars": 30350,
+  "view_chars": 30264,
   "observations": [
-    {
-      "category": "context_bloat",
-      "turns": [
-        28,
-        162
-      ],
-      "remedy_class": "flow",
-      "confidence": 0.7,
-      "check": "kept",
-      "corroborated": false,
-      "note": "A retry meant to fix three reading-list items re-explored the whole discovery, reaching 311k context with 92 turns over 200k and 228k tokens spent before the first edit."
-    },
     {
       "category": "wasted_turns",
       "turns": [
-        57,
-        81,
-        124,
-        146
+        28,
+        161
       ],
       "remedy_class": "prompt",
-      "confidence": 0.5,
+      "confidence": 0.7,
       "check": "kept",
       "corroborated": false,
-      "note": "Many turns went to a side hypothesis, outline greps over code files and hunting test fixtures that the three failing reading-list items did not require."
+      "note": "The retry knew by turn 19 that only three reading-list items needed a locator, yet it re-read specs, code and tests for about 140 more turns before its first edit at turn 164."
+    },
+    {
+      "category": "context_bloat",
+      "turns": [
+        164,
+        188
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session reached 228k tokens before its first write and peaked at 311k, with 92 turns above 200k, because a retry started from a full re-verification instead of a narrow fix list."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        32,
+        33,
+        85,
+        86,
+        90,
+        100,
+        101,
+        102,
+        171,
+        215,
+        218
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Sixteen files were opened more than once, including spec files whose ids earlier greps had already shown."
     },
     {
       "category": "tool_thrash",
@@ -38,23 +57,10 @@
         228
       ],
       "remedy_class": "tools",
-      "confidence": 0.5,
+      "confidence": 0.4,
       "check": "unsupported",
       "corroborated": false,
-      "note": "Grep patterns with look-around failed because PCRE2 is off, took two reworded retries at turns 94 and 97, and the same error recurred at turn 228."
-    },
-    {
-      "category": "prompt_misread",
-      "turns": [
-        2,
-        19,
-        230
-      ],
-      "remedy_class": "prompt",
-      "confidence": 0.3,
-      "check": "kept",
-      "corroborated": false,
-      "note": "The retry blocker is ts-dis-general but the session worked only on ts-dis-reading and never checked what ts-dis-general covers."
+      "note": "Two greps used look-around, which the search tool rejects without PCRE2, and the same lint pattern was re-run three times."
     }
   ],
   "conformance": [],

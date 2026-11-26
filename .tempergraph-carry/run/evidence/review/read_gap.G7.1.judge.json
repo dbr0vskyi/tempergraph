@@ -13,34 +13,31 @@
       "confidence": 0.8,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge never read the gap row in the triage note (the grep line was omitted as too long) and assumed the gap from the task text, yet graded both criteria MET."
+      "note": "The judge never read the gap's row in the triage note (the grep output was truncated) yet graded ts-rdg-answers MET against a gap it inferred from the task text."
     },
     {
       "category": "environment_fault",
       "turns": [
-        6,
-        11
+        6
       ],
       "remedy_class": "brief",
-      "confidence": 0.4,
+      "confidence": 0.5,
       "check": "unsupported",
       "corroborated": false,
-      "note": "Grep truncated the long triage row to '[Omitted long matching line]', so the brief should tell the judge to open the note with Read at the row's line instead of grepping it."
+      "note": "The search tool omitted the long matching lines holding the gap row, and the brief gives no instruction to Read the triage note by line range when that happens."
     },
     {
       "category": "judge_shallow",
       "turns": [
-        2,
-        4,
         7,
         8,
         11
       ],
       "remedy_class": "criterion",
-      "confidence": 0.6,
+      "confidence": 0.55,
       "check": "kept",
       "corroborated": false,
-      "note": "Evidence for MET leaned on grep output for several files and the findings line itself was never shown being read, where the Intent says search-only evidence is PARTIAL."
+      "note": "Both criteria were graded MET with part of the evidence taken from search output and an unread gap row, where the brief says to grade PARTIAL."
     }
   ],
   "conformance": [],

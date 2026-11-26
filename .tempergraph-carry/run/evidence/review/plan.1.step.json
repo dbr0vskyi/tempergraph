@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.1.step",
+  "view_chars": 12674,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        25,
+        26,
+        27,
+        34,
+        35
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.2,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The same file was read in three or two consecutive calls, likely range reads, which a single read with a larger range could have covered."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        50,
+        52,
+        53,
+        54,
+        55,
+        57,
+        60,
+        61,
+        63,
+        64,
+        66
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Many guess-style searches and globs outside the hand-off's reading list, several returning nothing, suggest the hand-off did not say where the review check and eval cases live."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rules to follow: open plan.rule.md and documents.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Procedure 1: read triage note, hand-off, then the specs they name",
+      "status": "followed",
+      "turns": [
+        5,
+        7,
+        11,
+        12,
+        17,
+        18
+      ]
+    },
+    {
+      "item": "Procedure 1: open other files only for what the hand-off list does not answer, and say so in section 0",
+      "status": "unclear",
+      "turns": [
+        50,
+        66
+      ]
+    },
+    {
+      "item": "Procedure 2: stop early on a defective spec",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Procedure 3: read the code by path and find verification commands in tempergraph.commands.json",
+      "status": "followed",
+      "turns": [
+        21,
+        22,
+        24,
+        37
+      ]
+    },
+    {
+      "item": "Procedure 4: requirements cover every acceptance criterion",
+      "status": "unclear",
+      "turns": [
+        70
+      ]
+    },
+    {
+      "item": "Procedure 6: measure complexity against the plan rule",
+      "status": "followed",
+      "turns": [
+        69,
+        71
+      ]
+    },
+    {
+      "item": "Procedure 7: complex plan has phases, goals, weights and commands only, no rows",
+      "status": "followed",
+      "turns": [
+        69,
+        70
+      ]
+    },
+    {
+      "item": "Procedure 8: list documents the change makes false under Docs to update",
+      "status": "unclear",
+      "turns": [
+        70
+      ]
+    },
+    {
+      "item": "Procedure 9: write the plan to docs/plans/i203a.plan.md with status planned",
+      "status": "followed",
+      "turns": [
+        67,
+        70
+      ]
+    },
+    {
+      "item": "Limits: no shell, write only the plan, no git, stay in the working directory",
+      "status": "followed",
+      "turns": [
+        70
+      ]
+    },
+    {
+      "item": "Limits: do not claim the plan is correct",
+      "status": "followed",
+      "turns": [
+        71
+      ]
+    },
+    {
+      "item": "What to end with: ARTIFACT plan and ARTIFACT complexity lines",
+      "status": "unclear",
+      "turns": [
+        71
+      ]
+    },
+    {
+      "item": "If you are blocked: BLOCKED or UPSTREAM lines",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

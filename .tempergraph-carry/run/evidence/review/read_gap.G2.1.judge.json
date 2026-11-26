@@ -6,6 +6,8 @@
     {
       "category": "judge_unread",
       "turns": [
+        5,
+        6,
         7,
         8,
         9,
@@ -15,29 +17,18 @@
       "confidence": 0.6,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge graded ts-rdg-answers and ts-rdg-cited MET on claims about checks.py 1215-1216, routing.py 472 and __init__.py 96 without ever reading those files, only grep output, which should have been PARTIAL."
+      "note": "The judge graded ts-rdg-answers and ts-rdg-cited MET while only grepping, never reading, the code files checks.py, routing.py and __init__.py that the findings cite, which the intent says should be PARTIAL."
     },
     {
       "category": "judge_trusts_report",
       "turns": [
         14
       ],
-      "remedy_class": "judge_model",
-      "confidence": 0.55,
-      "check": "unsupported",
-      "corroborated": false,
-      "note": "Facing a truncated finding line, the judge graded the full version from the step's account instead of checking it against the files."
-    },
-    {
-      "category": "request_ambiguous",
-      "turns": [
-        14
-      ],
       "remedy_class": "brief",
-      "confidence": 0.45,
+      "confidence": 0.4,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The gap_finding handed to the judge was cut off mid-sentence, so the brief did not give the judge the full findings line to grade."
+      "note": "The findings text reached the judge cut off mid-sentence, and it graded the full version from the step's account rather than from the findings line it was asked to grade."
     }
   ],
   "conformance": [],

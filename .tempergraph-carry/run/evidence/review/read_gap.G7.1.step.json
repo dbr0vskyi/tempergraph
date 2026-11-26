@@ -15,7 +15,7 @@
       "confidence": 0.3,
       "check": "kept",
       "corroborated": false,
-      "note": "checks.py was read four times (the digest flags three re-reads), which may be separate line ranges but could have been one targeted read after the first search."
+      "note": "The session read checks.py four times at different ranges, which is mostly narrow reading as instructed, but one Grep for the function names with line numbers could have cut the re-reads."
     },
     {
       "category": "instruction_ignored",
@@ -26,9 +26,52 @@
       "confidence": 0.35,
       "check": "kept",
       "corroborated": false,
-      "note": "The final gap_finding appears to contain markdown headings and bullet lines although the step requires a single line with no line break, so the artifact format may not have been followed."
+      "note": "The final reply seems to hold markdown bullets and line breaks inside the gap_finding line, though the brief asks for one line with no line break, and the view is truncated so this is uncertain."
     }
   ],
-  "conformance": [],
+  "conformance": [
+    {
+      "item": "Read only: no write, no command",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Search ids and names first, read narrow line ranges",
+      "status": "followed",
+      "turns": [
+        1,
+        8,
+        11
+      ]
+    },
+    {
+      "item": "Use the web only for a research needed gap",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Report rules with basis (tested/read/stated) and file and lines",
+      "status": "followed",
+      "turns": [
+        12
+      ]
+    },
+    {
+      "item": "End with ARTIFACT gap_finding as one line of at most 1,500 characters",
+      "status": "unclear",
+      "turns": [
+        12
+      ]
+    }
+  ],
   "none_found": false
 }

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.1.judge",
+  "view_chars": 5241,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        8,
+        13
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.65,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge never opened the changed test file or README.md (only 2 of 4 changed paths were read) yet its status says it read the files the rows name, so the row-change grades rest on grep output."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        8,
+        13
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "A single grep for test names and numbers stood in for reading the test file, so it cannot show the test carries the criterion or is not skipped; require a quoted line from a file the judge read before MET."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

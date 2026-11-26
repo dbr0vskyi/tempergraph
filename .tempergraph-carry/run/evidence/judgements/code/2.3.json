@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 2,
+  "attempt": 3,
+  "blockers": [
+    {
+      "criterion": "ts-code-aligned",
+      "evidence": "PARTIAL: I read regeneration.py in full. It implements the declaration read and its errors (lines 50-74), `due` ignoring outputs (89-97), the command runner with no shell and a 600 s timeout (134-155), restore on failure (120-131) and commit on success (181-184). It also implements the check's environmental and plain-failure findings (239-273). All of this agrees with plan rows 3.8 and 7.10. I di…",
+      "fix": "Read the specs and the engine files to confirm HUM-B15 to B18 and SCF-B24 and B25."
+    },
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: The check passes the engine's full pytest, ruff and mypy. I did not read the related specs against the diff, so nothing contradicting them was found by me directly.",
+      "fix": ""
+    },
+    {
+      "criterion": "ts-code-change",
+      "evidence": "PARTIAL: I confirmed rows 3.8 and 7.10 in regeneration.py (the DECLARED, RAN and PASSED constants at lines 24-26, `_report` at line 276). The check confirmed that every row's file changed. I did not open the other row files.",
+      "fix": ""
+    },
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: The check confirmed each proving test exists and is not skipped. I did not read the test bodies, so I cannot say each fails when its criterion's result is absent. The suites pass.",
+      "fix": ""
+    }
+  ]
+}

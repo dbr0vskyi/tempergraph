@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.6.retry",
+  "view_chars": 29751,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        20,
+        46,
+        75,
+        156,
+        158
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Context peaked at 257k tokens with 56 turns above 200k and about 140k tokens spent before the first edit, with large files such as checks.py and the hand-off re-read repeatedly."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        89,
+        90,
+        91,
+        129,
+        130,
+        133,
+        149,
+        153
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The same id-shape grep was run three times at 89-91 and three times at 129-133, and a look-around regex at 149 failed because the search tool does not support it."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        98,
+        113,
+        195,
+        200,
+        208,
+        211,
+        214
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "After the fix landed at turn 83 the session kept re-verifying the hand-off's test claims and researching a lint command to adjust plan hints, which goes beyond closing the triage gaps."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Close every gap with a document in the agreed format, and nothing more",
+      "status": "unclear",
+      "turns": [
+        83,
+        211,
+        214
+      ]
+    },
+    {
+      "item": "You write documents only",
+      "status": "unclear",
+      "turns": [
+        83,
+        122,
+        123
+      ]
+    }
+  ],
+  "none_found": false
+}

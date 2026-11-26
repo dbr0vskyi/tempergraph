@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.2.judge",
+  "view_chars": 5170,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        4,
+        5,
+        6,
+        7,
+        10,
+        11,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read only the plan and a regenerations JSON, never the files the phase rows name, so ts-phs-change and ts-phs-scope were judged from grep output where the intent asks for the row's line quoted from the file read."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

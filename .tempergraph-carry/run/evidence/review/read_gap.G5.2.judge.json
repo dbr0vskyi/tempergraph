@@ -4,17 +4,16 @@
   "view_chars": 4133,
   "observations": [
     {
-      "category": "judge_unread",
+      "category": "judge_shallow",
       "turns": [
-        9,
         11,
         15
       ],
-      "remedy_class": "judge_model",
-      "confidence": 0.55,
-      "check": "unsupported",
+      "remedy_class": "criterion",
+      "confidence": 0.45,
+      "check": "kept",
       "corroborated": false,
-      "note": "The judge graded ts-rdg-answers MET and said it checked every claim, but it never opened engine-update.spec.md, whose line 122 the findings rest on, so that evidence is only grep output and should have been PARTIAL."
+      "note": "The judge graded ts-rdg-answers MET but never opened engine-update.spec.md, so the claim that line 122 holds the only name-taken rule rests on grep output alone, which the brief says should be PARTIAL."
     }
   ],
   "conformance": [],

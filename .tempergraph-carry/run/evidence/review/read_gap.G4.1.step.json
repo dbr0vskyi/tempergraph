@@ -10,24 +10,65 @@
         9
       ],
       "remedy_class": "tools",
-      "confidence": 0.4,
+      "confidence": 0.5,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The first Read call used `path` instead of `file_path` and was rejected, costing one turn before the correct retry."
+      "note": "A Read call used `path` instead of `file_path`, failed validation, and was retried one turn later."
     },
     {
       "category": "dead_end_repeated",
       "turns": [
         10,
-        13
+        13,
+        14
       ],
       "remedy_class": "prompt",
-      "confidence": 0.25,
+      "confidence": 0.35,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The same back_target/trip back grep ran twice with empty turns between, though the differing result sizes suggest the scope changed."
+      "note": "The same back_target and trip back search was run more than once with only small changes to the pattern."
     }
   ],
-  "conformance": [],
+  "conformance": [
+    {
+      "item": "Procedure 1: read the gap row, then the documents it names",
+      "status": "followed",
+      "turns": [
+        1,
+        9
+      ]
+    },
+    {
+      "item": "Procedure 2: read narrowly, search for ids first",
+      "status": "followed",
+      "turns": [
+        2,
+        4,
+        8,
+        16,
+        19
+      ]
+    },
+    {
+      "item": "Procedure 3: use the web only for a research needed gap",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Limits: read-only, no writes and no commands",
+      "status": "followed",
+      "turns": [
+        1,
+        25
+      ]
+    },
+    {
+      "item": "Hand over gap_finding ending with the ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        25
+      ]
+    }
+  ],
   "none_found": false
 }

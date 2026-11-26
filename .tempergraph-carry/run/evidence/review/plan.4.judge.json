@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.4.judge",
+  "view_chars": 5771,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        5,
+        6,
+        7,
+        9
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only two specs and left the rest of the specs the plan names or the check lists as related unread, yet graded ts-plan-spec MET."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5,
+        9
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Behaviours RGN-B13 to B16 and RGF-B1 to B8 were seen only as grep output, which the intent says caps the grade at PARTIAL, but the verdict was MET."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.step",
+  "view_chars": 20318,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.85,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 says to mark all completed rows in one edit of the plan, but the agent made eight separate edits."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        59,
+        70
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The agent ran a shell grep and a python3 heredoc that the prompt's limits say are refused, and both were blocked."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        52,
+        54,
+        57,
+        63,
+        72,
+        73,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Fixture state shared through module globals failed repeatedly and took many reruns and about ten small edits to fix."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        83,
+        85,
+        86,
+        87,
+        89,
+        90,
+        91
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The test's expected finding format and run-record sequence were corrected one failure at a time instead of being read from the code first."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read plan and triage, set status",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        95
+      ]
+    },
+    {
+      "item": "Procedure 3: tests first, seen failing",
+      "status": "followed",
+      "turns": [
+        34,
+        39,
+        42
+      ]
+    },
+    {
+      "item": "Procedure 4: smallest code change",
+      "status": "followed",
+      "turns": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the named test files",
+      "status": "followed",
+      "turns": [
+        91
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs outside the plan",
+      "status": "unclear",
+      "turns": []
+    },
+    {
+      "item": "Procedure 8: one edit for all completed marks",
+      "status": "not_followed",
+      "turns": [
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102
+      ]
+    },
+    {
+      "item": "Limits: shell runs only declared commands, no grep or inline python",
+      "status": "not_followed",
+      "turns": [
+        59,
+        70
+      ]
+    },
+    {
+      "item": "Hand over: phase_note ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        103
+      ]
+    }
+  ],
+  "none_found": false
+}

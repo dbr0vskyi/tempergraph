@@ -2,7 +2,90 @@
   "schema_version": 1,
   "session_key": "read_gap.G6.1.step",
   "view_chars": 6372,
-  "observations": [],
-  "conformance": [],
-  "none_found": true
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        2,
+        4,
+        5,
+        8,
+        9,
+        20,
+        17,
+        21
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The id search was repeated three times with narrowing patterns, and validate.py and nodes.py were re-read in separate calls, where one scoped search or read per file might have been enough."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure: read the triage row first, then the named documents",
+      "status": "followed",
+      "turns": [
+        1,
+        15,
+        18
+      ]
+    },
+    {
+      "item": "Procedure: read the code narrowly, search ids first",
+      "status": "followed",
+      "turns": [
+        2,
+        4,
+        5,
+        12,
+        14
+      ]
+    },
+    {
+      "item": "Procedure: use the web only for a research needed gap",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Limits: only read, write no file and run no command",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+        12,
+        14,
+        15,
+        17,
+        18,
+        20,
+        21
+      ]
+    },
+    {
+      "item": "Limits: stay in the working directory and on gap G6",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "item": "Hand over: end with the one-line ARTIFACT gap_finding",
+      "status": "unclear",
+      "turns": [
+        23
+      ]
+    }
+  ],
+  "none_found": false
 }

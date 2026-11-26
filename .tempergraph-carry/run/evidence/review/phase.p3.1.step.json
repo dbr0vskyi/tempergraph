@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.1.step",
+  "view_chars": 34300,
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        164,
+        290
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "About 60 poll calls (git log -1 plus reading the background output file) waited on a slow 71-test run; the run should be bounded or given a blocking wait instead of polling at high context."
+    },
+    {
+      "category": "context_bloat",
+      "turns": [
+        1,
+        120,
+        172,
+        290
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Roughly 120k tokens were loaded before the first write and 159 turns ran above 200k context, so the long polling phase paid for a very large context each time."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        292,
+        306
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 7 (search the spec folders for behaviours the changed files make false) was not run, and the final note admits it."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        293,
+        305
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.75,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asks for one edit marking all rows, but the plan was edited about ten times, one per row."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        115,
+        119,
+        136,
+        139,
+        141,
+        144,
+        155,
+        188
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The agent used pipes, 2>&1, heredocs and a shell grep despite the plain-single-command rule; two were refused by the permission layer."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        109,
+        147
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The worktree stamp test failed through repeated edit-and-rerun cycles on the test file, with extra engine reads in between, before it passed."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Write the phase's tests before changing source files",
+      "status": "followed",
+      "turns": [
+        33,
+        78
+      ]
+    },
+    {
+      "item": "Run only the test files the rows name",
+      "status": "followed",
+      "turns": [
+        109,
+        147,
+        162
+      ]
+    },
+    {
+      "item": "Step 7: check specs outside the plan that the change touches",
+      "status": "not_followed",
+      "turns": [
+        306
+      ]
+    },
+    {
+      "item": "Step 8: write completed marks in one edit of the plan",
+      "status": "not_followed",
+      "turns": [
+        293,
+        305
+      ]
+    },
+    {
+      "item": "Use plain single commands, no pipes or redirections",
+      "status": "not_followed",
+      "turns": [
+        115,
+        141,
+        188
+      ]
+    },
+    {
+      "item": "No git commit, push or gh",
+      "status": "followed",
+      "turns": [
+        174,
+        178
+      ]
+    },
+    {
+      "item": "Skills and subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

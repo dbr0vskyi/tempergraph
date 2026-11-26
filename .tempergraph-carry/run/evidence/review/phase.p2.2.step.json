@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p2.2.step",
+  "view_chars": 7514,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Step 1: read the phase rows in the plan and the triage note",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Step 2: build only rows with an empty Completed cell, leave marked rows as they are",
+      "status": "followed",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Step 3: write tests first and see them fail",
+      "status": "not_applicable",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Step 6: run only the test files the rows name",
+      "status": "not_applicable",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Step 7: check specs touched by changed source files",
+      "status": "not_applicable",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Step 8: write completed marks in one edit of the plan",
+      "status": "not_applicable",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Limits: no commit or push, change no file outside the rows",
+      "status": "followed",
+      "turns": [
+        4,
+        5
+      ]
+    },
+    {
+      "item": "Hand over: end with ARTIFACT phase_note, one line",
+      "status": "followed",
+      "turns": [
+        5
+      ]
+    }
+  ],
+  "none_found": true
+}

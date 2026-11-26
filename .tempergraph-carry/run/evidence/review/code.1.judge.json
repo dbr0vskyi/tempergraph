@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.judge",
+  "view_chars": 11410,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read only the hand-off and plan and never opened the changed files, the edited spec or the tests that the intent says to read before grading, so changed_read is 0 of 2."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        7,
+        10,
+        11,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge placed the defect in the plan and discovery based on a grep count of zero checklist lines and grep lines from docs_check.py, without opening the spec or the checker to confirm."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

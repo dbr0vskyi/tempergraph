@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.3.retry",
+  "view_chars": 14740,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "plan.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "item": "documents.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Edit the existing plan in place on a trip back; empty the Completed cell of each row changed or flagged, keep the other marks",
+      "status": "followed",
+      "turns": [
+        5,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ]
+    },
+    {
+      "item": "Write the plan only; no other file, no git, no shell",
+      "status": "followed",
+      "turns": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "item": "Start from the hand-off's reading list and open other files only for what it does not answer",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Write the plan in parts, each write under about 12 KB",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": true
+}

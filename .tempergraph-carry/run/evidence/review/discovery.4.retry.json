@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.4.retry",
+  "view_chars": 15796,
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        13,
+        18,
+        19,
+        20
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The first edit came before the matched lines and the hand-off were read, and a second same-size edit plus a repeated hand-off read followed, so the edit was likely redone."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        1
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The rendered prompt still contains the unfilled placeholder ⟨missing:settings.conversation⟩, so a setting was not resolved before the step ran."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

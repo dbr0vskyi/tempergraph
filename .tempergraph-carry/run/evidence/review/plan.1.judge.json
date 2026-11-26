@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.1.judge",
+  "view_chars": 6160,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        1,
+        4,
+        5,
+        8,
+        9,
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge says it did not open overview.spec.md, code-join.spec.md or independent-review.spec.md, although the plan lists them and the intent says to open every named spec."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        6,
+        7,
+        11,
+        12,
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge's evidence for several behaviours (JRD-B1, PNR-B8, CON-B7) is only lines a grep printed, with no read of the surrounding file, which the intent says caps the grade at PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

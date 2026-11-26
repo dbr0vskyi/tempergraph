@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.1.step",
+  "view_chars": 12261,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The procedure asks for the completed marks in one edit of the plan, but the session made four separate edits, one per row."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        43,
+        44
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session tried a sed command, which is not among the allowed shell commands, was denied, and fell back to the Edit tool, costing one turn."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Write tests first and see them fail for the right reason",
+      "status": "followed",
+      "turns": [
+        23,
+        25
+      ]
+    },
+    {
+      "item": "Run only the test files the rows name, never the whole suite",
+      "status": "followed",
+      "turns": [
+        25,
+        41
+      ]
+    },
+    {
+      "item": "Write the completed marks in one edit of the plan",
+      "status": "not_followed",
+      "turns": [
+        45,
+        46,
+        47,
+        48
+      ]
+    },
+    {
+      "item": "Use only declared shell commands",
+      "status": "not_followed",
+      "turns": [
+        43
+      ]
+    },
+    {
+      "item": "Check specs touched by changed files that the plan does not name",
+      "status": "unclear",
+      "turns": [
+        10,
+        17
+      ]
+    }
+  ],
+  "none_found": false
+}

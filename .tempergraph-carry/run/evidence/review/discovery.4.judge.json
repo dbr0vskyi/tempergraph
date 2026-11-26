@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.4.judge",
+  "view_chars": 7629,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        4,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.75,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge opened only 1 of 11 changed documents and skipped the other specs and both ADRs because a re-check instruction told it not to re-open them, although the intent requires opening every changed file."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        3,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.65,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded criteria 8, 9, 14 and 15 from the hand-off's description of documents it never read, which the intent says is only a claim and should have been graded PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

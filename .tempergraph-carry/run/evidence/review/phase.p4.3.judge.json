@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.3.judge",
+  "view_chars": 5306,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        4,
+        5,
+        6,
+        7,
+        9,
+        13
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read only two files besides the plan and graded row changes from Grep output for the rest, yet its turn 13 verdict says every row's change is in its file, where the intent calls for PARTIAL on search-only evidence."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

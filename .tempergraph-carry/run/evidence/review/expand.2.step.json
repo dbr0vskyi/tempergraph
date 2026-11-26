@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.2.step",
+  "view_chars": 10572,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        20,
+        27,
+        30,
+        32
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The step guessed an engine path that does not exist and ran several greps for 'artifacts' before finding how check fixtures are read in selftest.py and checks.py, so the prompt could name where fixture expectations are defined."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        12,
+        38,
+        42,
+        37,
+        41
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "test_regeneration.py was read three times and CheckFinding was grepped twice because the first pattern missed, which adds small avoidable turns."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Open plan.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "Read the plan first",
+      "status": "followed",
+      "turns": [
+        1
+      ]
+    },
+    {
+      "item": "Edit only task tables and Verification, no code or spec edits",
+      "status": "followed",
+      "turns": [
+        46,
+        49
+      ]
+    },
+    {
+      "item": "Do not run git / no shell use",
+      "status": "followed",
+      "turns": []
+    },
+    {
+      "item": "Open each file a task row names with the read tool before writing the row",
+      "status": "unclear",
+      "turns": [
+        8,
+        9,
+        12,
+        21,
+        26,
+        29,
+        34,
+        35
+      ]
+    },
+    {
+      "item": "Write the proof table and check verification commands",
+      "status": "unclear",
+      "turns": [
+        44,
+        48,
+        49
+      ]
+    },
+    {
+      "item": "Skills and subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

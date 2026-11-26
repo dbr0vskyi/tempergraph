@@ -8,18 +8,32 @@
       "turns": [
         4,
         5,
-        7
+        7,
+        9,
+        11
       ],
       "remedy_class": "prompt",
       "confidence": 0.3,
       "check": "unsupported",
       "corroborated": false,
-      "note": "Three greps for overlapping terms (stamp, diagram, authoring record) could have been one combined search, though the cost was small."
+      "note": "Several overlapping grep alternations for stamp, authoring and diagram, and two separate commands.json searches, could have been one or two targeted searches."
+    },
+    {
+      "category": "prompt_misread",
+      "turns": [
+        12,
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.2,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The visible answer frames the gap as regenerations and says nothing declares them, although a stamp.json example was read in turn 12; the answer is cut off, so whether it covers stamp, authoring record, diagram and engine inputs is unconfirmed."
     }
   ],
   "conformance": [
     {
-      "item": "read-only limits (no write, no command)",
+      "item": "tool:read/search/list (read-only, inside working directory)",
       "status": "followed",
       "turns": [
         1,
@@ -35,19 +49,17 @@
       ]
     },
     {
-      "item": "read the triage note row for G3 first",
-      "status": "followed",
-      "turns": [
-        1
-      ]
-    },
-    {
-      "item": "web tools only for a research-needed gap",
+      "item": "tool:web_search",
       "status": "not_applicable",
       "turns": []
     },
     {
-      "item": "end with ARTIFACT gap_finding line",
+      "item": "tool:web_fetch",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "handover: ARTIFACT gap_finding line",
       "status": "unclear",
       "turns": [
         13

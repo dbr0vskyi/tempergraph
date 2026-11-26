@@ -4,16 +4,16 @@
   "view_chars": 4855,
   "observations": [
     {
-      "category": "judge_shallow",
+      "category": "judge_unread",
       "turns": [
         8,
         17
       ],
-      "remedy_class": "brief",
-      "confidence": 0.5,
-      "check": "kept",
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "unsupported",
       "corroborated": false,
-      "note": "The judge cited checks.py:1216 as a reader of the commands file but never opened checks.py, so that MET rests on grep output and should have been PARTIAL under the brief's own rule."
+      "note": "The verdict cites checks.py:1216 as evidence but the judge never opened checks.py, relying on grep output that the brief says supports only PARTIAL, yet it graded both criteria met."
     }
   ],
   "conformance": [],

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "session_key": "code.4.retry",
+  "kind": "retry",
+  "unit": "code",
+  "attempt": 4,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 36,
+  "peak_context": 113876,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 14,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.701
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 2.586
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.209
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "list",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "a8d2e1d4d8575260",
+    "d062606cdf226318"
+  ],
+  "_wrote": [],
+  "prior_overlap": 0.2
+}

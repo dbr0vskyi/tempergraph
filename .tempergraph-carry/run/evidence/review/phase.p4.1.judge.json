@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.1.judge",
+  "view_chars": 5466,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3,
+        4,
+        5,
+        6,
+        12,
+        14
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.65,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge located the row changes and tests through grep hits and then reported each change in place, although the intent says search-printed lines alone make a criterion PARTIAL."
+    },
+    {
+      "category": "judge_unread",
+      "turns": [
+        9,
+        10,
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Only 2 of the 7 changed files were opened, so the line-by-line quotes the brief asks for behind each MET could not come from files the judge read."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        12,
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The scope grade rests on one grep of file names matched to the plan rows, which the judge itself calls unverified beyond name matching."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

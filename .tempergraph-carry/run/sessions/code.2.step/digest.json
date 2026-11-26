@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.step",
+  "kind": "step",
+  "unit": "code",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 81,
+  "peak_context": 78082,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 51746,
+  "files_reread": 7,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 15,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.394
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.33
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 15,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 701.42
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 6,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.325
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.094
+    },
+    "Monitor": {
+      "capability": null,
+      "calls": 1,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 0.003
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 5,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.205
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "5cfaf15b9ce73a64",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 65,
+      "last_turn": 67
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 17,
+      "last_turn": 65,
+      "minutes": 96.1,
+      "tokens": 526
+    },
+    {
+      "first_turn": 76,
+      "last_turn": 79,
+      "minutes": 30.1,
+      "tokens": 32
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 7,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "10b01d26896311d4",
+    "4104c626b7e8545c",
+    "50c97f51a95a85cd",
+    "8071378d6ddda733",
+    "8f9a7a67ea4b69b6",
+    "d062606cdf226318",
+    "d3d90c016f6894d6"
+  ],
+  "_wrote": [
+    "13c1ce21f7932c4f",
+    "18766fda260d6e97",
+    "4226ac267f4b83a5"
+  ]
+}

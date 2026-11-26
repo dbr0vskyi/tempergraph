@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.3.retry",
+  "view_chars": 10328,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Open plan.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Open each file a task row names before writing that row",
+      "status": "followed",
+      "turns": [
+        5,
+        6,
+        7,
+        10,
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    {
+      "item": "Edit only task tables and Verification section; do not change design or status",
+      "status": "followed",
+      "turns": [
+        20
+      ]
+    },
+    {
+      "item": "Do not run a shell or git",
+      "status": "followed",
+      "turns": [
+        3,
+        17,
+        18
+      ]
+    }
+  ],
+  "none_found": true
+}

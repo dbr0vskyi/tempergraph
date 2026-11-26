@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.1.step",
+  "view_chars": 14018,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        60
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session tried sed -i through the shell on the plan although the prompt limits the shell to the declared commands, and the call was refused."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The prompt asks for the Completed marks in one edit of the plan, but the session made eight separate edits, one per row."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "write tests first, see them fail for the right reason",
+      "status": "followed",
+      "turns": [
+        26,
+        27,
+        28,
+        48
+      ]
+    },
+    {
+      "item": "run only the declared commands, one per call",
+      "status": "not_followed",
+      "turns": [
+        60
+      ]
+    },
+    {
+      "item": "mark all completed rows in one edit of the plan",
+      "status": "not_followed",
+      "turns": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69
+      ]
+    },
+    {
+      "item": "run only the test files the rows name, not the whole suite",
+      "status": "followed",
+      "turns": [
+        48,
+        56
+      ]
+    },
+    {
+      "item": "check specs touched by the changed source files",
+      "status": "unclear",
+      "turns": [
+        58
+      ]
+    }
+  ],
+  "none_found": false
+}

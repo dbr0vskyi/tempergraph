@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.2.judge",
+  "view_chars": 5126,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3,
+        4,
+        6,
+        7,
+        8,
+        10
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded all seven rows as having their change in file after reading only three files in short windows and locating the back-refusal codes by search lines, so some rows may rest on printed search lines instead of quoted file lines."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

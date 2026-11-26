@@ -11,58 +11,25 @@
         8
       ],
       "remedy_class": "prompt",
-      "confidence": 0.6,
+      "confidence": 0.55,
       "check": "kept",
       "corroborated": false,
-      "note": "G8's row lists search terms ('registry', 'author verify') that the turn 5 grep never ran, and the grep also left out 'regenerat' and 'generated file' that G7 needs, so the rows the retry was asked to fix still do not accurately name the search that found nothing."
-    }
-  ],
-  "conformance": [
-    {
-      "item": "Open task-notes.rule.md and documents.rule.md with the read tool",
-      "status": "followed",
-      "turns": [
-        2,
-        3
-      ]
+      "note": "The fix asked each of G5, G7 and G8 to name the search that found nothing, but G8 lists terms ('registry', 'author verify') that the only grep (turn 5) never searched."
     },
     {
-      "item": "Each gap row names the search that found nothing",
-      "status": "not_followed",
-      "turns": [
-        5,
-        7,
-        8
-      ]
-    },
-    {
-      "item": "Write only the triage note, no other file",
-      "status": "followed",
-      "turns": [
-        7
-      ]
-    },
-    {
-      "item": "Do not run git or use a shell",
-      "status": "followed",
+      "category": "instruction_ignored",
       "turns": [
         1,
-        2,
-        3,
         5,
         7
-      ]
-    },
-    {
-      "item": "Skills",
-      "status": "not_applicable",
-      "turns": []
-    },
-    {
-      "item": "Subagents",
-      "status": "not_applicable",
-      "turns": []
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "On this retry the task file named in step 1 was never re-read, so the copied acceptance criteria were not re-checked against the task."
     }
   ],
+  "conformance": [],
   "none_found": false
 }

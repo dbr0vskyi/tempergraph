@@ -2,20 +2,7 @@
   "schema_version": 1,
   "session_key": "read_gap.G5.1.judge",
   "view_chars": 4407,
-  "observations": [
-    {
-      "category": "dead_end_repeated",
-      "turns": [
-        11,
-        13
-      ],
-      "remedy_class": "brief",
-      "confidence": 0.3,
-      "check": "unsupported",
-      "corroborated": false,
-      "note": "The judge ran the same 'workflows register' search twice and got almost nothing back both times, so the second run added little."
-    }
-  ],
+  "observations": [],
   "conformance": [],
-  "none_found": false
+  "none_found": true
 }

@@ -6,7 +6,6 @@
     {
       "category": "judge_unread",
       "turns": [
-        2,
         6,
         7,
         10,
@@ -16,26 +15,11 @@
         15,
         17
       ],
-      "remedy_class": "brief",
-      "confidence": 0.75,
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge opened only 4 of the 14 changed documents and graded the rest from hand-off claims and search lines, though the intent says to open each file."
-    },
-    {
-      "category": "judge_shallow",
-      "turns": [
-        10,
-        11,
-        13,
-        14,
-        17
-      ],
-      "remedy_class": "brief",
-      "confidence": 0.5,
-      "check": "kept",
-      "corroborated": false,
-      "note": "The judge reported reading the BUD, WFM and CON pointers and checked the decision record's options and choice using only search output, which the criteria rate as PARTIAL."
+      "note": "The judge opened only 4 of 14 changed documents and relied on search output for the pointer lines and the decision-record check, then described them as read in its summary."
     }
   ],
   "conformance": [],

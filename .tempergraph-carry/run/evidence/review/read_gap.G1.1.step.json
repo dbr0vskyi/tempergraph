@@ -6,16 +6,19 @@
     {
       "category": "instruction_ignored",
       "turns": [
+        2,
+        5,
+        6,
         10
       ],
       "remedy_class": "prompt",
-      "confidence": 0.5,
+      "confidence": 0.6,
       "check": "kept",
       "corroborated": false,
-      "note": "The finding says the session searched the specs for regenerat, stamp and generated, but no such search appears in turns 1-9, and the one file it cites for that search (capability-list.spec.md) was never opened."
+      "note": "The finding says it searched the specs for 'regenerat', 'stamp' and 'generated' and found only capability-list.spec.md, but no such search or read appears in the turns, so the prompt should require the reader to run and cite its own searches."
     },
     {
-      "category": "wasted_turns",
+      "category": "tool_thrash",
       "turns": [
         2,
         5,
@@ -25,9 +28,65 @@
       "confidence": 0.3,
       "check": "unsupported",
       "corroborated": false,
-      "note": "Three overlapping Greps for code_join and outcome terms could have been one search, and turn 3 is empty."
+      "note": "Three near-identical greps for code_join and outcome ran where one would have done."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        3
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.15,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Turn 3 made no call and produced no visible output."
     }
   ],
-  "conformance": [],
+  "conformance": [
+    {
+      "item": "Procedure: read triage row and named documents",
+      "status": "followed",
+      "turns": [
+        1,
+        4,
+        9
+      ]
+    },
+    {
+      "item": "Procedure: read the code narrowly",
+      "status": "followed",
+      "turns": [
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "item": "Procedure: use web only for a cited public source",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Hand over: name files with line ranges or say what was searched",
+      "status": "not_followed",
+      "turns": [
+        10
+      ]
+    },
+    {
+      "item": "Limits: read only, inside the working directory, own gap only",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    }
+  ],
   "none_found": false
 }

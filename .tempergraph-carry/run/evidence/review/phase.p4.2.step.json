@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.2.step",
+  "view_chars": 9454,
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        13,
+        14,
+        15,
+        17,
+        19
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Waiting on a test run took six turns, including a blocked chained sleep, two reads of an output file outside the workspace and a repeat run of the briefs test, because the harness gave no clean way to wait."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        19
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent used grep inside a shell until-loop although the prompt says to read and search with the file tools and bars listing and reading commands."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        21,
+        22,
+        23
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Row 4.5 was marked complete although the test checks only the prompt wording and not the rendered brief its Change cell describes, and the prompt says to leave a row unmarked when it conflicts with the plan."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        20,
+        21,
+        22
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The turns show no search of the spec folders for specs the change touches, which the procedure asks for before marking rows."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read the plan and triage note",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Procedure 3: test first, tests carry criterion id",
+      "status": "unclear",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the phase's test files, not the whole suite or verification commands",
+      "status": "followed",
+      "turns": [
+        9,
+        13
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs the change touches",
+      "status": "unclear",
+      "turns": []
+    },
+    {
+      "item": "Procedure 8: mark completed rows in one edit after tests pass",
+      "status": "followed",
+      "turns": [
+        21,
+        22
+      ]
+    },
+    {
+      "item": "Limits: plain single commands, file tools instead of shell for reading",
+      "status": "not_followed",
+      "turns": [
+        15,
+        19
+      ]
+    },
+    {
+      "item": "Handover: phase_note ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        23
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.3.judge",
+  "view_chars": 5132,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        10,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge read only the plan and blueprint.json and took the other row files' changes from grep output, yet turn 11 says criteria 6 and 7 were graded from files it read, where the intent calls for PARTIAL on search-only evidence."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

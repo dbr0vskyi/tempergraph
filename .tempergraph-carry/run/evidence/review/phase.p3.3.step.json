@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.3.step",
+  "view_chars": 10780,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        31,
+        32,
+        33,
+        34,
+        35,
+        36
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asks for one edit that marks all built rows, but the session made six separate edits to the plan, one per row, after a no-op edit that errored in turn 27."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        15,
+        16,
+        18,
+        21,
+        23,
+        24,
+        26
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "After the test run moved to the background, the session polled an output file outside the workspace four times, with narration turns between, and never obtained the pass count."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        13,
+        24
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The two test files ran past the 120 s foreground limit and became a background task whose output lies outside the allowed directories, so the shell could not report their result to the session."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        27
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The first plan edit had identical old and new text and errored, which cost a turn."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

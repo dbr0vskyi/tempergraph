@@ -2,7 +2,86 @@
   "schema_version": 1,
   "session_key": "read_gap.G8.1.step",
   "view_chars": 5793,
-  "observations": [],
-  "conformance": [],
-  "none_found": true
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        8,
+        9,
+        11,
+        12,
+        14
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.2,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A near-empty broad search for 'register', two reads of the same spec file and two empty turns added little, but the cost was small."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure: read the gap row, then the documents and code it names, narrowly",
+      "status": "followed",
+      "turns": [
+        1,
+        4,
+        5,
+        6,
+        7,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Limits: read only, no writes or commands, stay in the working directory",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Procedure: use the web only for a cited public source",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "What to hand over: gap_finding naming files with line ranges or ids",
+      "status": "unclear",
+      "turns": [
+        15
+      ]
+    },
+    {
+      "item": "What to end with: ARTIFACT gap_finding line",
+      "status": "unclear",
+      "turns": [
+        15
+      ]
+    },
+    {
+      "item": "If you are blocked: BLOCKED line",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Skills, subagents and lessons in header",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
 }

@@ -9,23 +9,11 @@
         4,
         6
       ],
-      "remedy_class": "judge_model",
+      "remedy_class": "brief",
       "confidence": 0.7,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge never opened any spec file, so its gap and covered-id grades rest on one grep's printed lines and the note's own lists."
-    },
-    {
-      "category": "judge_trusts_report",
-      "turns": [
-        2,
-        6
-      ],
-      "remedy_class": "brief",
-      "confidence": 0.65,
-      "check": "unsupported",
-      "corroborated": false,
-      "note": "The judge confirmed only the note's G6 and G8 searches and accepted the other gap rows from the note, though the intent says to repeat the searches."
+      "note": "The judge opened only the task and the note and never opened a spec file, although the intent says to open what the search finds, so its coverage and gap verdicts rest on one grep."
     },
     {
       "category": "judge_shallow",
@@ -33,11 +21,11 @@
         4,
         6
       ],
-      "remedy_class": "judge_model",
+      "remedy_class": "criterion",
       "confidence": 0.6,
       "check": "kept",
       "corroborated": false,
-      "note": "One grep was the whole independent check for ts-tri-gaps and ts-tri-covered, which need a search per concept and a read of each spec to confirm the ids are defined once."
+      "note": "The judge confirmed only the G6 and G8 searches with one grep and admits it did not check every gap row, so the gap and covered criteria were graded without the independent repetition the intent asks for."
     }
   ],
   "conformance": [],

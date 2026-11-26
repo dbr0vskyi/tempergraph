@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.2.judge",
+  "view_chars": 4869,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        8,
+        9
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.75,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge read only the plan and graded the row files from grep output, yet turn 9 says it read the two files itself."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

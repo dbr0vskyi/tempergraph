@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 2,
+  "attempt": 3,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: I read the change of 5.3–5.6 and 5.8 in the file, or confirmed it from a matched line. 5.1: test_regeneration_scope.py:22 'LINE = \"Written by the regeneration\"' and RGN-AC13 tests at :70-:102. 5.2: test_regeneration_briefs.py:20 and :29 carry RGN-AC14 and RGN-AC15. 5.3: test_judge_reading.py:80 'test_a_declared_output_only_the_regeneration_changed_is_not_a_source_file', and :91 asserts '…",
+      "fix": "Read the full lines to confirm the Scope-bullet wording and the no-task-row wording."
+    }
+  ]
+}

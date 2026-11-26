@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "session_key": "discovery.3.retry",
-  "view_chars": 34811,
+  "view_chars": 34725,
   "observations": [
     {
       "category": "context_bloat",
@@ -13,10 +13,10 @@
       "confidence": 0.6,
       "check": "kept",
       "corroborated": false,
-      "note": "The retry spent about 247k tokens reading before its first edit and stayed over 200k context for 182 turns, re-deriving what the earlier attempt already knew."
+      "note": "About 248k tokens were read before the first edit and context peaked near 353k, so the retry should be handed a narrower reading list instead of re-reading all rule files, specs and engine code."
     },
     {
-      "category": "tool_thrash",
+      "category": "wasted_turns",
       "turns": [
         105,
         106,
@@ -25,60 +25,47 @@
         109,
         110
       ],
-      "remedy_class": "prompt",
+      "remedy_class": "tools",
       "confidence": 0.5,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The same long-line grep was run on one file with six different length thresholds; one query would have been enough."
-    },
-    {
-      "category": "tool_thrash",
-      "turns": [
-        143,
-        167,
-        173,
-        175,
-        178,
-        190,
-        212,
-        233
-      ],
-      "remedy_class": "prompt",
-      "confidence": 0.45,
-      "check": "kept",
-      "corroborated": false,
-      "note": "Many single-sentence edits were made to the same files in long runs instead of batching or rewriting the block."
+      "note": "Six consecutive greps of the same pattern at different line-length thresholds were probing that one check could have settled."
     },
     {
       "category": "wasted_turns",
       "turns": [
-        236,
-        240,
-        256,
-        257,
-        266,
-        267,
-        277,
-        278,
-        279
+        41,
+        42,
+        45,
+        46,
+        263,
+        264,
+        269,
+        270
       ],
-      "remedy_class": "flow",
-      "confidence": 0.4,
+      "remedy_class": "prompt",
+      "confidence": 0.35,
       "check": "kept",
       "corroborated": false,
-      "note": "After the blockers were fixed the session kept polishing wording, re-reading the hand-off and sweeping for flagged phrases that gate would catch anyway."
+      "note": "The 500-character line check was repeated across files and edit passes, where one scoped search at the end would do."
     },
     {
-      "category": "request_ambiguous",
+      "category": "environment_fault",
       "turns": [
-        2,
-        281
+        70,
+        71,
+        72,
+        192,
+        193,
+        194,
+        253,
+        254
       ],
-      "remedy_class": "flow",
-      "confidence": 0.3,
+      "remedy_class": "tools",
+      "confidence": 0.4,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The retry context names only ts-dis-general, yet the session worked on two flagged checks, and the intent has an unfilled conversation placeholder."
+      "note": "With no git or shell the retry had to hunt for other copies of the original sentences to undo a prior attempt's edits to existing specs, and it could not run the structure check itself."
     }
   ],
   "conformance": [],

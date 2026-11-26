@@ -7,17 +7,14 @@
       "category": "instruction_ignored",
       "turns": [
         8,
-        15,
-        16,
-        17,
         19,
         20
       ],
       "remedy_class": "prompt",
-      "confidence": 0.6,
+      "confidence": 0.5,
       "check": "kept",
       "corroborated": false,
-      "note": "The procedure says to read every spec and code line the searches find, but the session only grepped them (turn 8 headings and ids, turns 15-17 tiny hits) and opened no spec or code file before writing the gap rows."
+      "note": "The agent never opened any spec or decision record it found by grep, though the procedure says to read what it finds, so the Existing documents entries and the no-coverage verdict rest on grep lines only."
     },
     {
       "category": "tool_thrash",
@@ -27,11 +24,11 @@
         12,
         13
       ],
-      "remedy_class": "prompt",
-      "confidence": 0.55,
+      "remedy_class": "tools",
+      "confidence": 0.5,
       "check": "kept",
       "corroborated": false,
-      "note": "capabilities.md was read in four small slices (about 4 KB in total) where a single read would have done."
+      "note": "capabilities.md, a small file, was read four times in tiny chunks where one read would have done."
     },
     {
       "category": "environment_fault",
@@ -42,67 +39,9 @@
       "confidence": 0.4,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The prompt reached the agent with the conversation setting unfilled (⟨missing:settings.conversation⟩), so the never/blocking/always handling of owner decisions had no value to follow."
+      "note": "The conversation setting reached the prompt as an unfilled placeholder, and the session shows no sign the agent noticed it when deciding how to write the Owner decisions section."
     }
   ],
-  "conformance": [
-    {
-      "item": "Rules to follow (task-notes.rule.md, documents.rule.md opened with read)",
-      "status": "followed",
-      "turns": [
-        2,
-        3
-      ]
-    },
-    {
-      "item": "Procedure (read the task, read the documents found, one gap row per gap with search evidence)",
-      "status": "not_followed",
-      "turns": [
-        8,
-        10,
-        11,
-        12,
-        13,
-        15,
-        16,
-        17
-      ]
-    },
-    {
-      "item": "Limits (no shell, no git, only the triage note written)",
-      "status": "followed",
-      "turns": [
-        20
-      ]
-    },
-    {
-      "item": "Tools for this step (Read, Grep, Glob, Write)",
-      "status": "followed",
-      "turns": [
-        1,
-        5,
-        20
-      ]
-    },
-    {
-      "item": "What to hand over",
-      "status": "unclear",
-      "turns": [
-        21
-      ]
-    },
-    {
-      "item": "What to end with (ARTIFACT lines)",
-      "status": "unclear",
-      "turns": [
-        21
-      ]
-    },
-    {
-      "item": "If you are blocked",
-      "status": "not_applicable",
-      "turns": []
-    }
-  ],
+  "conformance": [],
   "none_found": false
 }

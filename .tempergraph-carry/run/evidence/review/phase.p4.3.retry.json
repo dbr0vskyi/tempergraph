@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.3.retry",
+  "view_chars": 12632,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Procedure 3: write the phase's tests, carrying the criterion id (RGF-AC5)",
+      "status": "followed",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the test files the rows name, as plain commands",
+      "status": "followed",
+      "turns": [
+        9
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs outside the plan that the change touches",
+      "status": "not_applicable",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Procedure 8: completed marks written in one edit to the plan",
+      "status": "followed",
+      "turns": [
+        5,
+        11
+      ]
+    },
+    {
+      "item": "Limits: change no file that no row of the phase names",
+      "status": "followed",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "What to hand over: end with ARTIFACT phase_note",
+      "status": "unclear",
+      "turns": [
+        11
+      ]
+    }
+  ],
+  "none_found": true
+}

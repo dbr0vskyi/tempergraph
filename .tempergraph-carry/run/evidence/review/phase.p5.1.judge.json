@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.1.judge",
+  "view_chars": 5175,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        5,
+        6,
+        8,
+        9
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.75,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read only the plan and used greps for the eight changed files, yet turn 9 says it read the changed lines in each file, so any MET on ts-phs-change rests on search output the brief says is only PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

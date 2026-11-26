@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.4.retry",
+  "view_chars": 13884,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        5,
+        6,
+        8
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session never opened the hand-off that sits beside the triage note, so it skipped the reading-list start the prompt requires, although it did read the rule files, plan and triage note."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        10,
+        16,
+        18,
+        19
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session searched for outcome_revision four times in narrowing scopes to find the stamp-revision rule, which one broader search could have answered."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Open plan.rule.md and documents.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Start from the hand-off's reading list and open other files only for what it does not answer",
+      "status": "not_followed",
+      "turns": [
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "item": "Write the plan and no other file; edit an existing plan in place",
+      "status": "followed",
+      "turns": [
+        28,
+        29,
+        30,
+        31,
+        32
+      ]
+    },
+    {
+      "item": "No shell and no git in this step",
+      "status": "followed",
+      "turns": [
+        9,
+        10,
+        16
+      ]
+    },
+    {
+      "item": "Say in section 0 which extra file was opened and why",
+      "status": "unclear",
+      "turns": [
+        34
+      ]
+    }
+  ],
+  "none_found": false
+}

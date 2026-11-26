@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p2.1.step",
+  "view_chars": 15231,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        60,
+        62,
+        63,
+        64,
+        65
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asks for all completed marks in one plan edit, but the session tried a refused sed -i and then made four separate edits."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        20,
+        22,
+        24,
+        25,
+        35,
+        36,
+        37,
+        38,
+        40,
+        44,
+        45,
+        46,
+        47
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Building a test fixture that clears the earlier rungs and compares the home took about 25 turns of trial and error, including a repeated four-edit batch on the same target twice."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        22
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A pytest call with an unrecognized --pdb-trace flag and an addopts override failed with usage error and gave no information."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        43
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "A grep was run through the shell although the prompt says to search with the file tools and the shell refuses such commands."
+    },
+    {
+      "category": "context_bloat",
+      "turns": [
+        6,
+        9,
+        11,
+        29,
+        31
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "verify.py and test_scaffold.py were each read more than once, adding avoidable context and turns."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        50,
+        51,
+        52,
+        54,
+        55,
+        57,
+        58,
+        59
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "No search of the spec folders for behaviours the changed source files give to someone outside (step 7) appears before the rows were marked."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

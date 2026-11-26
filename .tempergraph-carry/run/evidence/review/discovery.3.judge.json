@@ -6,17 +6,27 @@
     {
       "category": "judge_unread",
       "turns": [
+        2,
         3,
-        6,
-        7,
+        15
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only 6 of the 11 changed documents, yet its closing summary says it read the new and changed documents for criteria 8, 9, 14 and 15."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
         11,
         15
       ],
-      "remedy_class": "brief",
-      "confidence": 0.6,
-      "check": "unsupported",
+      "remedy_class": "judge_model",
+      "confidence": 0.35,
+      "check": "kept",
       "corroborated": false,
-      "note": "The judge opened only 6 of 11 changed documents, relied on search-printed lines for some behaviours and still wrote that it read the new and changed documents, so the brief should require opening every changed file before a criterion is graded MET."
+      "note": "The PNR and JRD behaviours were only searched with grep and never read in their files, so any MET resting on them should have been graded PARTIAL."
     }
   ],
   "conformance": [],

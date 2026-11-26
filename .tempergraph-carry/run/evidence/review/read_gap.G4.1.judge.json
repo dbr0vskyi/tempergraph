@@ -14,19 +14,31 @@
       "confidence": 0.8,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge graded ts-rdg-answers MET although it opened only code-join.spec.md and never read review-findings.spec.md or budgets-and-failures.spec.md, seeing BUD-B3 and BUD-B4 only as grep output, which the brief says is PARTIAL."
+      "note": "The judge graded MET without opening review-findings.spec.md or most of the budgets spec, and by its own account leaned on grep output for BUD-B3 and BUD-B4."
     },
     {
       "category": "judge_trusts_report",
       "turns": [
-        3,
         6
       ],
       "remedy_class": "judge_model",
       "confidence": 0.6,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge accepted the findings' 'nothing found' claims on the step's own account and graded them MET without running a search of its own to show the search was real."
+      "note": "The judge accepted the step's 'nothing found' claims without running its own search of the spec folders."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        2,
+        3,
+        6
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Both criteria were graded MET on two greps and one short file read, where the brief says search-only evidence should be PARTIAL; the criteria could require a quoted line from a file the judge opened."
     }
   ],
   "conformance": [],

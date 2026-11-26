@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.2.retry",
+  "view_chars": 16962,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        9
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session tried a python3 heredoc in the shell, which the prompt forbids as inline python, and the denial then blocked further approval-requiring commands."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Fourteen single-line Edit calls added the criterion comments one at a time after the batched shell attempt was refused."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        28,
+        29,
+        30,
+        31
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 7 was reduced to listing spec files that mention regeneration or code_join, with no search for each changed file's commands, fields and messages, and the step was skipped in the previous attempt too."
+    },
+    {
+      "category": "prompt_misread",
+      "turns": [
+        31
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The retry named the blocker ts-phs-change, but the session only fixed criterion ids and did not check the plan marks or which row files changed."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Step 3: tests carry their criterion ids",
+      "status": "followed",
+      "turns": [
+        11,
+        24
+      ]
+    },
+    {
+      "item": "Step 6: run only the test files the rows name, as plain commands",
+      "status": "followed",
+      "turns": [
+        26
+      ]
+    },
+    {
+      "item": "Step 7: check specs outside the plan's front matter",
+      "status": "not_followed",
+      "turns": [
+        28,
+        29,
+        30,
+        31
+      ]
+    },
+    {
+      "item": "Step 8: write the completed marks in one edit of the plan",
+      "status": "unclear",
+      "turns": [
+        31
+      ]
+    },
+    {
+      "item": "Limits: plain single commands, no inline python",
+      "status": "not_followed",
+      "turns": [
+        9
+      ]
+    },
+    {
+      "item": "Limits: no commit, push or gh",
+      "status": "followed",
+      "turns": [
+        26
+      ]
+    },
+    {
+      "item": "Hand over: phase_note ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        31
+      ]
+    }
+  ],
+  "none_found": false
+}

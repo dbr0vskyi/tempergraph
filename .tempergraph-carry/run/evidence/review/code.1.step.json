@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.step",
+  "view_chars": 24389,
+  "observations": [
+    {
+      "category": "environment_fault",
+      "turns": [
+        30,
+        46,
+        48
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The self-check preview was killed at the 10-minute background limit with no output, so it had to be restarted and the full suite is too slow for the default limit."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        34,
+        37,
+        38,
+        40,
+        41,
+        42,
+        43
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent polled an empty output file and ran git status and git log repeatedly while the preview was running, with about 62 minutes idle."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        49
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The hand-off with tests_passed no was emitted while the second preview was still running, and work continued afterwards."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        51,
+        54,
+        116
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A test run rewrote the package diagram and the report was edited after the preview, so the tree changed after the one preview run."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        61,
+        64,
+        68,
+        71,
+        87
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent ran the whole package suite twice and ruff over whole directories, which the step forbids outside the preview, and the ruff runs only surfaced findings in files it did not touch."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        93,
+        95
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A mistyped output path caused a denied read that had to be redone."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        83,
+        84,
+        98
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Plan row 6.2 adds outcome.json criteria that docs_check rejects without matching spec acceptance lines, and phase 6 reported no deviation, so the plan fault surfaced only at the join."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "task-notes.rule.md and plan.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        5,
+        6
+      ]
+    },
+    {
+      "item": "Step 7: search specs outside the plan's front matter",
+      "status": "followed",
+      "turns": [
+        14,
+        15,
+        16,
+        19,
+        22
+      ]
+    },
+    {
+      "item": "Set plan status to completed and write the code report",
+      "status": "followed",
+      "turns": [
+        25,
+        27
+      ]
+    },
+    {
+      "item": "Run the preview once after the last phase",
+      "status": "unclear",
+      "turns": [
+        30,
+        48
+      ]
+    },
+    {
+      "item": "Change no file after the preview run",
+      "status": "not_followed",
+      "turns": [
+        54,
+        116
+      ]
+    },
+    {
+      "item": "Never run the whole suite",
+      "status": "not_followed",
+      "turns": [
+        61,
+        87
+      ]
+    },
+    {
+      "item": "Quick lane procedure",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

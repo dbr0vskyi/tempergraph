@@ -4,28 +4,28 @@
   "view_chars": 4744,
   "observations": [
     {
+      "category": "judge_shallow",
+      "turns": [
+        4,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The gap-list verdict (criterion 6) rests on a single four-term grep, although the intent asks for a search per concept the task needs."
+    },
+    {
       "category": "judge_unread",
       "turns": [
         4,
         6
       ],
       "remedy_class": "brief",
-      "confidence": 0.65,
+      "confidence": 0.5,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge graded the gap list without opening any spec file, so its verdict on criterion 6 rests only on grep output."
-    },
-    {
-      "category": "judge_shallow",
-      "turns": [
-        4,
-        6
-      ],
-      "remedy_class": "brief",
-      "confidence": 0.55,
-      "check": "kept",
-      "corroborated": false,
-      "note": "One grep for four terms was the whole independent search for gaps, short of the intent's instruction to search the spec folders and open what it finds."
+      "note": "No spec file behind the grep hits was opened, and the intent says a verdict resting only on search output cannot be MET, yet the judge returned a firm verdict on criterion 6."
     }
   ],
   "conformance": [],

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.1.step",
+  "view_chars": 18744,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 says to mark all built rows in one edit of the plan, but the session made nine single-row edits and a tenth that changed nothing."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        74,
+        79,
+        80,
+        81,
+        86,
+        87,
+        92,
+        93
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The AC8 test was patched against the wrong module object and re-run three times before the patch went on the unit's own callable, each run costing 20-77 seconds."
+    },
+    {
+      "category": "prompt_misread",
+      "turns": [
+        34,
+        69,
+        71,
+        72,
+        73
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "New test files imported a non-existent `tgwf_temperspec` module and had to be corrected after the first run by reading a sibling test."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        59,
+        60,
+        61,
+        62,
+        63,
+        98
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The shown turns contain no search of the spec folders for behaviours the changed files expose, which step 7 requires."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        12,
+        16,
+        18
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Several searches for how a visit's reason reaches the code step, one into a non-existent briefs.py path, before the design was clear."
+    },
+    {
+      "category": "context_bloat",
+      "turns": [
+        96
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A root-level ruff check over the whole workflow folder with the wrong config returned about 10k characters of unrelated findings that the session then ignored."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

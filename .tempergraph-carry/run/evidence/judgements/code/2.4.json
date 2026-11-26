@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 2,
+  "attempt": 4,
+  "blockers": [
+    {
+      "criterion": "ts-code-aligned",
+      "evidence": "PARTIAL: I read regeneration.py in full. It implements RGN-B3 and B4 (load_declaration, lines 50-74), B6 and B7 (due, lines 89-97) and B9, B10 and B16 (_run_one, lines 134-155, with the command as its own allow-list). It implements B11 and B12 (regenerate, lines 181-185, which calls _restore on failure and commit_step on success) and RGF-B8 (environmental FAIL, lines 255-263). The engine code is …",
+      "fix": ""
+    },
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: I found no contradiction in the changed engine lines I saw. I did not read the related specs, so I cannot cite behaviour ids against the diff.",
+      "fix": ""
+    },
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: I did not open any test file. The check's ts-code-proof finding (pass) shows each criterion id is carried by a non-skipped test, and the verification commands pass. I cannot confirm that each assertion matches its criterion.",
+      "fix": ""
+    }
+  ]
+}

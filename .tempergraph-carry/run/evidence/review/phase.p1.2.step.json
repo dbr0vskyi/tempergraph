@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.2.step",
+  "view_chars": 7719,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Procedure 1: read plan rows and triage note, set status to in-progress",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        5
+      ]
+    },
+    {
+      "item": "Procedure 2: build only rows with empty Completed cell",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Procedure 3: tests first for test rows",
+      "status": "not_applicable",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Procedure 4: smallest code change for code rows",
+      "status": "not_applicable",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Procedure 5: docs rows",
+      "status": "not_applicable",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the test files the rows name, plain commands",
+      "status": "followed",
+      "turns": [
+        6
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs touched by changed source files",
+      "status": "not_applicable",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Procedure 8: one edit of the plan with completed marks",
+      "status": "not_applicable",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Limits: change only plan marks and status, no commit, single commands",
+      "status": "followed",
+      "turns": [
+        5,
+        6
+      ]
+    },
+    {
+      "item": "Hand over: phase_note ARTIFACT line",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    }
+  ],
+  "none_found": true
+}

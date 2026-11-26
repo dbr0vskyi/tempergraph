@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.3.judge",
+  "view_chars": 5082,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        1,
+        3
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read the plan once and, for ts-exp-design, rested on the Req and Change cells matching, with no visible row-by-row check or quoted path:line evidence behind the MET that the intent requires."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

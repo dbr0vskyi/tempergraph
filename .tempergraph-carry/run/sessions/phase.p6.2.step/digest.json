@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.2.step",
+  "kind": "step",
+  "unit": "phase",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 4,
+  "peak_context": 38443,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.295
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 2.481
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "list",
+    "search",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "290dfeb0c304e758"
+  ],
+  "_wrote": []
+}

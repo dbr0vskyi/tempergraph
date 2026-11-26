@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.6.judge",
+  "view_chars": 8352,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge named contracts.spec.md:34 as its open lead but never opened that file, and only 2 of the 4 changed documents were read, so the brief should require opening every changed document before grading."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        11,
+        12
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The on_fail and back lookups were single greps with no read of the surrounding file lines, so anything the judge graded from them rests on search output alone."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

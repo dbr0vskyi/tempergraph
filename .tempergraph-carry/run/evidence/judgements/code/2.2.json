@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 2,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-code-aligned",
+      "evidence": "PARTIAL: I read regeneration.py in full. Declaration handling is at lines 50-74. `due` is at lines 89-97 and ignores outputs. The command runner with its allow-list is at lines 139-142. Restore on failure is at lines 181-182, and the commit is at line 184. The three criterion constants and the check results are at lines 24-26 and 239-273. The engine back-gate pieces are present: the validate.py e…",
+      "fix": "Read the remaining changed files against each spec behaviour."
+    },
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: I did not read the related specs. The only evidence is that the engine suite passed in the check, and the diff adds `back` to GateSpec.on_fail at contracts.py:161 without changing other values.",
+      "fix": "Read the related specs' behaviours against the diff."
+    },
+    {
+      "criterion": "ts-code-change",
+      "evidence": "PARTIAL: I confirmed these rows. Row 1.4 is at contracts.py:161. Row 1.5 is at validate.py:416-424 and 545. Row 1.6 is at nodes.py:1524. Row 1.7 is at gate.py:459. Row 2.3 is at registry.py:161. Row 2.4 is at verify.py:198. Rows 3.8 and 7.10 are in regeneration.py. I did not open the rest, such as checks.py, __init__.py, blueprint.json, the prompts, outcome.json, README and the fixtures.",
+      "fix": "Open the remaining rows' files."
+    },
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: I only listed the test names in test_regeneration_run.py. Names such as `test_rgf_ac8_a_command_that_cannot_run_pauses_at_once_and_sends_nothing_back` (line 308) fit their criteria. I did not read the assertions.",
+      "fix": "Read the assertions of each criterion-tagged test."
+    }
+  ]
+}
