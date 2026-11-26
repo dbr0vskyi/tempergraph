@@ -8,7 +8,7 @@ How a regeneration that fails reaches the code step, once: what the code step is
 
 ### RGF-B1 A failed regeneration sends the run back to the code step
 
-WHEN a due regeneration fails and the failure is not one of the environment THE workflow SHALL send the run back to the code step, giving it as the reason of its visit one numbered finding for each thing the command reported, in the order it reported them.
+WHEN a due regeneration fails and the failure is not one of the environment THE workflow SHALL send the run back to the code step, giving it as the reason of its visit one numbered finding for each failure the command reported (RGF-B3, RGF-B4), in the order it reported them.
 
 - GIVEN a due regeneration whose command exits 2 after it reported three findings WHEN the unit ends THEN the code step has a second visit whose reason lists three findings, numbered 1 to 3 in the order the command reported them
 - GIVEN a regeneration that fails once and passes after the code step's second visit WHEN the run goes on THEN the unit runs a second time, passes, and the run goes on with no pause
@@ -21,20 +21,21 @@ WHEN a due regeneration fails and the failure is not one of the environment THE 
 - GIVEN two due regenerations that both fail WHEN the unit ends THEN one trip back is made and its reason lists the findings of the first regeneration, then those of the second, numbered from 1 in one run
 - GIVEN two due regenerations of which only the second fails WHEN the unit ends THEN one trip back is made with the findings of the second alone
 
-### RGF-B3 A report of the engine's two commands makes one finding for each thing it reports
+### RGF-B3 A report of the engine's two commands makes one finding for each failure it lists
 
-WHEN a failed regeneration command printed the JSON that `tempergraph author verify --json` or `tempergraph upgrade-check --json` prints THE workflow SHALL make one finding for each error finding and each failed check the report holds, with the rung or check, the code, the unit, the message and the remedy as the report gives them.
+WHEN a failed regeneration command printed the JSON report of `tempergraph author verify` or of `tempergraph upgrade-check` THE workflow SHALL make one finding for each failure the report lists (each finding of a failed rung, each error finding, each failed check), holding the rung or check, the code, the unit, the message and the remedy as the report gives them.
 
-- GIVEN an `author verify` report whose rung `compare` holds one finding with the code `blueprint-difference`, the unit `plan`, a message and a remedy WHEN the regeneration fails THEN one finding holds `compare`, `blueprint-difference`, `plan`, that message and that remedy
+- GIVEN an `author verify` report whose failed rung `compare` holds one finding with the code `blueprint-difference`, the unit `plan`, a message and a remedy WHEN the regeneration fails THEN one finding holds `compare`, `blueprint-difference`, `plan`, that message and that remedy
+- GIVEN an `author verify` report whose failed rung `compare` holds two findings WHEN the regeneration fails THEN two findings come in the order the report lists them
 - GIVEN an `upgrade-check` report whose check `V4 audit` failed with the evidence `new findings: outcome-unverified-blocker` WHEN the regeneration fails THEN one finding holds `V4 audit` and that evidence
-- GIVEN an `author verify` report whose rungs `load` and `compare` each hold one finding WHEN the regeneration fails THEN two findings come in the order of the report, that of `load` first
 
 ### RGF-B4 Any other failed command makes one finding
 
-WHEN a failed regeneration command printed no such report THE workflow SHALL make one finding for it, holding the command, its exit code and the last 40 lines of its output as the engine's command run keeps them ([CHK-B12](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)).
+WHEN a failed regeneration command printed no report of those two commands, or a report that lists no failure, THE workflow SHALL make one finding for it, holding the command, its exit code and the last 40 lines of its output as the engine's command run keeps them ([CHK-B12](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)).
 
 - GIVEN a command `make docs` that prints three lines of errors and exits 2 WHEN the unit ends THEN one finding holds `make docs`, the exit code 2 and the three lines
 - GIVEN a command that prints JSON of another form and exits 1 WHEN the unit ends THEN one finding holds the command, the exit code 1 and the last lines of its output
+- GIVEN an `upgrade-check` report that lists no failed check and no error finding, and a command that exits 2 WHEN the unit ends THEN one finding holds the command, the exit code 2 and the last lines of its output
 
 ### RGF-B5 The code step is told to fix those findings and nothing else
 
@@ -53,9 +54,9 @@ WHEN a failed regeneration sends the run back THE workflow SHALL run the code st
 
 ### RGF-B7 A failure after the trip pauses the run
 
-WHEN a regeneration fails after the run has gone back to the code step once for a failed regeneration THE workflow SHALL pause the run instead of sending it back a second time, showing in the pause each finding left by its number and its text.
+WHEN a regeneration fails after the run has gone back to the code step once for a failed regeneration THE workflow SHALL pause the run instead of sending it back a second time, listing the findings left in the pause.
 
-- GIVEN a regeneration that fails on the first pass and on the second pass after the code step's visit WHEN the unit ends the second time THEN the run pauses and the pause lists the findings of the second failure, each with its number and its text
+- GIVEN a regeneration that fails on the first pass and on the second pass after the code step's visit WHEN the unit ends the second time THEN the run pauses and the pause lists the findings of the second failure
 - GIVEN a regeneration that fails the first time and passes after the visit WHEN the unit ends the second time THEN the run does not pause
 - GIVEN a run that the review sent back to the code step and a regeneration that fails for the first time after that visit WHEN the unit ends THEN the run goes back to the code step
 
@@ -71,9 +72,9 @@ WHEN a due regeneration's command is refused, does not start, is ended by a sign
 
 - RGF-AC1 (RGF-B1): A fixture run whose regeneration fails once with three findings enters the code step a second time with a reason that lists three numbered findings in the order reported, the regeneration passes on the second visit, and the run goes on with no pause
 - RGF-AC2 (RGF-B2): A fixture run with two due regenerations that both fail makes one trip back whose reason lists the findings of the first, then those of the second, numbered from 1 in one run, and one whose only second regeneration fails makes one trip back with its findings alone
-- RGF-AC3 (RGF-B3): A fixture command that prints an `author verify` report with the failures of summary over 60 characters, check with no pass case and no fail case, blocker that no case verifies and blueprint difference, and an `upgrade-check` report with a failed check, comes back as one finding for each, each holding the rung or check, the code, the unit, the message and the remedy as the report gives them, so that a file the report names is named in the finding
-- RGF-AC4 (RGF-B4): A fixture command that exits 2 with errors printed, and one that prints JSON of another form and exits 1, each come back as one finding holding the command, its exit code and the last lines of its output
+- RGF-AC3 (RGF-B3): Fixture reports of `author verify` (a failed rung with a summary over 60 characters, the failed rung `compare` with a blueprint difference) and of `upgrade-check` (the failed check `V4 audit` naming a check with no pass case, one with no fail case and a blocker no case verifies) each give one finding for each failure listed, with the rung or check, code, unit, message and remedy the report gives, so that a file the report names is named
+- RGF-AC4 (RGF-B4): A fixture command that exits 2 with errors printed, one that prints JSON of another form and exits 1, and one that prints an `upgrade-check` report that lists no failure and exits 2, each come back as one finding holding the command, its exit code and the last lines of its output
 - RGF-AC5 (RGF-B5): The code prompt says that a visit whose reason lists the findings of a failed regeneration fixes those findings and changes nothing else, and the brief of such a visit holds the numbered findings under its reason
 - RGF-AC6 (RGF-B6): In a fixture run on each arm the trip back starts one code session and no expand step, no phase item, no plan step and no discovery step, and the unit runs a second time, before the review, after the code step passes
-- RGF-AC7 (RGF-B7): A fixture run whose regeneration fails twice pauses after the second failure and the pause lists the findings left with their numbers and texts, a run whose second pass succeeds does not pause, and a run that the review sent back is sent back once more by a first regeneration failure
+- RGF-AC7 (RGF-B7): A fixture run whose regeneration fails twice pauses after the second failure and the pause lists the findings left, a run whose second pass succeeds does not pause, and a run that the review sent back is sent back to the code step by a first regeneration failure
 - RGF-AC8 (RGF-B8): A fixture command whose program does not exist, one the unit refuses and one that has not finished after 600 seconds each pause the run at the unit with kind `escalation` and send nothing back, and a command that exits with 1 is sent back and does not pause
