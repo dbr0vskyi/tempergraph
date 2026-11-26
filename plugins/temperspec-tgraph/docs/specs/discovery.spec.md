@@ -4,7 +4,7 @@
 
 Every gap is closed by a spec, a decision record or a research note in the agreed format, committed
 
-Part of the [overview](overview.spec.md). A triage note that lists two or more gaps first gets one read-only reading session for each gap, and the step's one writing session then closes the gaps from their findings and writes the hand-off; the criteria below judge that session's output, and the reading sessions write no document ([parallel reading](parallel-reading.spec.md)). When the run paused for the owner's answers, the step closes each owner decision of the triage note on its answer, or on its default when it has none, and says in its hand-off how each was closed ([owner questions](owner-questions.spec.md)).
+Part of the [overview](overview.spec.md). A triage note that lists two or more rows to read (gaps, and open questions routed to the code, the documents or a source) first gets one read-only reading session for each, and the step's one writing session then closes the gaps from their findings and writes the hand-off; the criteria below judge that session's output, and the reading sessions write no document ([parallel reading](parallel-reading.spec.md)). When the run paused for the owner's answers, the step closes each owner decision of the triage note on its answer, or on its default when it has none, and says in its hand-off how each was closed ([owner questions](owner-questions.spec.md)). Each uncertainty row of the triage note that says `Blocks` or `Shapes` gets its end in the hand-off, and what the step notices beyond the task's criteria goes to the plan under `Left to the plan`, never into a behaviour (rule file `task-notes.rule.md`).
 
 ## 6. Acceptance criteria
 
@@ -27,3 +27,4 @@ Part of the [overview](overview.spec.md). A triage note that lists two or more g
 - [ ] ts-dis-scope No document the discovery step wrote covers a concept outside the task's gaps
 - [ ] ts-dis-narrow Every discovery prompt tells the session to search for ids and names, to read the line ranges it needs instead of whole files, and to stop reading once each gap has its answer
 - [ ] ts-dis-reading The hand-off of a task that goes on to a plan has a reading list with one item for each file the plan will need, naming an existing file, the line ranges or ids that matter and one line on why
+- [ ] ts-dis-uncertain Every open question of the triage note that blocks or shapes the change has one line under the hand-off's Uncertainties closed that says how it ended: answered with where it was read, the owner's answer, or an assumption with what it costs if wrong

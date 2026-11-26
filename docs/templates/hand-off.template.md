@@ -8,6 +8,10 @@ Two or three sentences.
 
 - G1: `docs/specs/session-expiry.spec.md` (SES-B1, SES-B2)
 
+## Uncertainties closed
+
+- U1: Answered: a refresh is served by the same handler, so it counts (`src/auth/session.py`, lines 40-52)
+
 ## Changed documents
 
 - `docs/specs/session-expiry.spec.md`: new
@@ -23,6 +27,14 @@ Two or three sentences.
 ## Open questions
 
 - None
+
+## Left to the plan
+
+- The wording a refused client sees (U2)
+
+## Reach
+
+- `src/auth/middleware.py` (lines 12-30): calls the session check on every request
 
 ## Reading list
 

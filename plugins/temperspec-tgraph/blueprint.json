@@ -127,29 +127,6 @@
       }
     },
     {
-      "name": "owner_questions",
-      "kind": "script",
-      "summary": "List the owner's questions of the one pause",
-      "produces": [
-        "question_list",
-        "empty"
-      ]
-    },
-    {
-      "name": "ask_route",
-      "kind": "route"
-    },
-    {
-      "name": "ask_owner",
-      "kind": "ask",
-      "produces": [
-        "answers"
-      ],
-      "reads": [
-        "triage_note"
-      ]
-    },
-    {
       "name": "read_gap",
       "kind": "map",
       "summary": "Read one gap's documents and code; report findings",
@@ -174,6 +151,29 @@
         "effort": "medium",
         "why": "It reads one findings line against one gap row, and the check of the writing step comes later"
       }
+    },
+    {
+      "name": "owner_questions",
+      "kind": "script",
+      "summary": "List the owner's questions of the one pause",
+      "produces": [
+        "question_list",
+        "empty"
+      ]
+    },
+    {
+      "name": "ask_route",
+      "kind": "route"
+    },
+    {
+      "name": "ask_owner",
+      "kind": "ask",
+      "produces": [
+        "answers"
+      ],
+      "reads": [
+        "triage_note"
+      ]
     },
     {
       "name": "discovery",
@@ -371,7 +371,7 @@
     "triage": {
       "route": [
         "discovery_short",
-        "owner_questions",
+        "read_gap",
         "plan",
         "code"
       ]
@@ -382,31 +382,20 @@
         "plan"
       ]
     },
-    "ask_route": {
-      "route": [
-        "ask_owner",
-        "read_gap"
-      ]
-    },
     "read_gap": {
       "map": {
         "over": "triage.triage_note"
       }
     },
+    "ask_route": {
+      "route": [
+        "ask_owner",
+        "discovery"
+      ]
+    },
     "discovery": {
       "route": [
         "plan",
-        "finalizer"
-      ]
-    },
-    "phase": {
-      "map": {
-        "over": "expand.phases"
-      }
-    },
-    "code_join": {
-      "route": [
-        "independent_review",
         "finalizer"
       ]
     },
@@ -418,6 +407,17 @@
         },
         "default": "phases"
       }
+    },
+    "phase": {
+      "map": {
+        "over": "expand.phases"
+      }
+    },
+    "code_join": {
+      "route": [
+        "independent_review",
+        "finalizer"
+      ]
     }
   },
   "input": {

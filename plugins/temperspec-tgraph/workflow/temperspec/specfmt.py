@@ -13,7 +13,7 @@ SPEC_CAP_LINES = 400
 # The repository's spec budget is at most 400 lines and at most 30 KB; "over" means strictly more.
 SPEC_CAP_BYTES = 30 * 1024
 SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
-TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", "Route")
+TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Intent", "Existing documents", "Uncertainties", "Gaps", "Route")
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions", "Reading list")
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
 REPORT_HEADINGS = ("Verification", "Deviations")  # the quick lane adds `## Rows` before them (no plan to mark)
@@ -73,7 +73,23 @@ COVERED = re.compile(rf"\b(?i:Covered by)\s+`?({ID}-B\d+)`?\s+and\s+`?({ID}-AC\d
 OWNER_HEADING = "Owner decisions"
 SORT_END = re.compile(r"\b(findable|owner decision)\W*$", re.I)
 GAP_ID = re.compile(r"\bG\d+\b")
-OWNER_ENTRY = re.compile(r"^\s*(?:[-*]\s+)?\**(G\d+)\**\s*:\s*(.*?)\s*$")
+OWNER_ENTRY = re.compile(r"^\s*(?:[-*]\s+)?\**([GU]\d+)\**\s*:\s*(.*?)\s*$")
+# The triage note's `## Intent` (what the task is for and where it stops) and `## Uncertainties` (what the task leaves
+# open about its own intent, one row for each question, found by a scan of fixed categories). A row is
+# `U<n> <category>: <question>. <Impact> <what>. Route: <route>`: the impact says how much rests on the answer and
+# the route where the answer is looked for. `Detail` rows are settled by the plan; every other row is working.
+INTENT_FIELDS = ("Goal", "In scope", "Out of scope", "Assumptions")
+ASSUMPTION = re.compile(r"^\s*(?:[-*]\s+)?\**(A\d+)\**\s*:\s*(.*?)\s*$")
+IF_WRONG = re.compile(r"\bIf wrong\s*:\s*\S", re.I)
+UNCERTAINTY_CATEGORIES = ("goal", "scope", "actors", "data", "names", "side effects", "failures", "limits",
+                          "dependencies", "existing behaviour", "terms")
+UNCERTAINTY_IMPACTS = ("blocks", "shapes", "detail")
+UNCERTAINTY_ROUTES = ("code", "docs", "source", "owner", "plan")
+READ_ROUTES = ("code", "docs", "source")  # the routes a reading session can follow
+UNCERTAINTY_ROW = re.compile(r"^\s*(?:[-*]|\|)\s*\**(U\d+)\**\s+([^:|]*?)\s*:\s*(\S.*)$")
+UNCERTAINTY_IMPACT = re.compile(r"(?:^|[.?!]\s+)\**(Blocks|Shapes|Detail)\b")
+UNCERTAINTY_ROUTE = re.compile(r"\bRoute\s*:\s*`?([a-z]+)`?\W*$", re.I)
+UNCERTAINTY_ID = re.compile(r"\bU\d+\b")
 # An option written on a line of its own under an empty `Options:` (`a) 30 minutes`, `- b) 15 minutes`).
 OWNER_OPTION_LINE = re.compile(r"^\s*(?:[-*]\s+)?\(?([a-z])\)\s+(.+?)\s*$")
 OWNER_ITEM = re.compile(r"^\s*(?:[-*]\s+)?\**(Options|Default|If wrong)\**\s*:\s*(.*?)\s*$", re.I)
@@ -319,8 +335,32 @@ def _owner_entries(lines: list[str]) -> list[OwnerEntry]:
 
 
 @dataclass
+class Uncertainty:
+    """One row of the `Uncertainties` section: its id, its category, its impact and its route as written (lower
+    case, empty when the row names none), and the row itself."""
+
+    id: str
+    category: str = ""
+    impact: str = ""
+    route: str = ""
+    text: str = ""
+
+    @property
+    def working(self) -> bool:
+        """A row the run has to answer before the plan: every row but a `Detail` one."""
+        return self.impact != "detail"
+
+
+@dataclass
 class Triage:
     criteria: list[int] = field(default_factory=list)
+    # The Intent section's fields by lower-case name (`goal`, `in scope`, `out of scope`, `assumptions`), the
+    # assumption rows `A<n>` with whether each states `If wrong:`, and the Uncertainties section: `none`, `some`, or
+    # empty when it is neither, and its rows.
+    intent: dict[str, str] = field(default_factory=dict)
+    assumptions: dict[str, bool] = field(default_factory=dict)
+    uncertain: str = ""
+    uncertainties: list[Uncertainty] = field(default_factory=list)
     deliver: str = ""
     gaps: str = ""  # `none`, `some`, or empty when the Gaps section is neither
     gap_rows: int = 0
@@ -342,6 +382,16 @@ class Triage:
     owner_section: bool = False
     owner_none: bool = False
     owners: list[OwnerEntry] = field(default_factory=list)
+
+    @property
+    def working(self) -> list[Uncertainty]:
+        """The uncertainty rows the run answers before the plan (`Blocks` and `Shapes`)."""
+        return [u for u in self.uncertainties if u.working]
+
+    @property
+    def readable(self) -> list[Uncertainty]:
+        """The working rows a reading session can answer: routed to the code, the documents or a public source."""
+        return [u for u in self.working if u.route in READ_ROUTES]
 
 
 def _field(lines: list[str], name: str) -> str:
@@ -376,6 +426,26 @@ def parse_triage(text: str) -> Triage:
         sort, gap = SORT_END.search(ln.rstrip()), GAP_ID.search(ln)
         if gap:
             t.sorts[gap.group(0)] = sort.group(1).lower() if sort else ("findable" if COVERED_WORDS.search(ln) else "")
+    intent = low.get("intent", [])
+    for name in INTENT_FIELDS:
+        t.intent[name.lower()] = _field(intent, name)
+    for ln in intent:
+        if (a := ASSUMPTION.match(ln)):
+            t.assumptions[a.group(1)] = bool(IF_WRONG.search(a.group(2)))
+    listed = [ln for ln in low.get("uncertainties", []) if ln.strip()]
+    for ln in listed:
+        if (u := UNCERTAINTY_ROW.match(ln)) is None or any(u.group(1) == seen.id for seen in t.uncertainties):
+            continue
+        rest = u.group(3).strip().strip("|").strip()
+        impact, route = UNCERTAINTY_IMPACT.search(rest), UNCERTAINTY_ROUTE.search(rest)
+        t.uncertainties.append(Uncertainty(
+            id=u.group(1), category=" ".join(u.group(2).lower().split()), text=ln.strip(),
+            impact=impact.group(1).lower() if impact else "", route=route.group(1).lower() if route else ""))
+        t.sorts[u.group(1)] = "owner decision" if t.uncertainties[-1].route == "owner" else "findable"
+    if t.uncertainties:
+        t.uncertain = "some"
+    elif len(listed) == 1 and re.fullmatch(r"\W*none\W*", listed[0], re.I):
+        t.uncertain = "none"
     owner = [ln for ln in low.get(OWNER_HEADING.lower(), []) if ln.strip()]
     t.owner_section = OWNER_HEADING.lower() in low
     t.owner_none = len(owner) == 1 and bool(re.fullmatch(r"\W*none\W*", owner[0], re.I))
@@ -419,6 +489,47 @@ def parse_reading_list(text: str) -> list[ReadingItem]:
     return items
 
 
+def uncertainty_rows(text: str) -> list[str]:
+    """The lines of a triage note's Uncertainties section that open a row, unchanged and in order."""
+    low = {k.lower(): v for k, v in sections(text).items()}
+    return [ln for ln in low.get("uncertainties", []) if UNCERTAINTY_ROW.match(ln)]
+
+
+def intent_problems(note: Triage) -> list[tuple[str, str, str]]:
+    """What is wrong with a note's Intent and Uncertainties sections, as (place, message, fix); empty when both
+    hold what the task-notes rule asks. Measured from the note alone."""
+    bad: list[tuple[str, str, str]] = []
+    for name in INTENT_FIELDS[:3]:
+        if not note.intent.get(name.lower()):
+            bad.append(("Intent", f"the Intent section has no `{name}:` line with words after it",
+                        f"add `- {name}: …`"))
+    stated = note.intent.get("assumptions", "")
+    if not note.assumptions and not re.fullmatch(r"\W*none\W*", stated, re.I):
+        bad.append(("Intent", "the Intent section has neither `Assumptions: None` nor assumption rows `A1`, `A2`, …",
+                    "write `- Assumptions: None`, or one row `A<n>: <assumption>. If wrong: <cost>` for each"))
+    for aid, costed in note.assumptions.items():
+        if not costed:
+            bad.append((aid, f"assumption {aid} does not say what it costs if it is wrong",
+                        f"end {aid} with `If wrong: <what it costs>`"))
+    if not note.uncertain:
+        bad.append(("Uncertainties", "the Uncertainties section is neither `None` nor rows `U1`, `U2`, …",
+                    "write `None`, or one row for each open question"))
+    for u in note.uncertainties:
+        if u.category not in UNCERTAINTY_CATEGORIES:
+            bad.append((u.id, f"row {u.id} names the category `{u.category}`, not one of "
+                              f"{', '.join(UNCERTAINTY_CATEGORIES)}", f"open {u.id} with one of the categories"))
+        if not u.impact:
+            bad.append((u.id, f"row {u.id} states no impact after its question",
+                        f"add a sentence that opens `Blocks`, `Shapes` or `Detail` to {u.id}"))
+        if u.route not in UNCERTAINTY_ROUTES:
+            bad.append((u.id, f"row {u.id} does not end `Route:` with one of {', '.join(UNCERTAINTY_ROUTES)}",
+                        f"end {u.id} with `Route: <where the answer is looked for>`"))
+        elif u.impact and (u.impact == "detail") != (u.route == "plan"):
+            bad.append((u.id, f"row {u.id} is `{u.impact.capitalize()}` with the route `{u.route}`: a `Detail` row "
+                              "goes to `plan`, and no other row does", f"change the impact or the route of {u.id}"))
+    return bad
+
+
 def quick_problems(note: Triage) -> list[str]:
     """Why a note may not take the quick lane; empty when it may. Measured from the note alone."""
     bad = []
@@ -426,6 +537,8 @@ def quick_problems(note: Triage) -> list[str]:
         bad.append("the quick lane needs `None` under Gaps")
     if note.deliver != "code":
         bad.append("the quick lane delivers code")
+    if note.working:
+        bad.append(f"the quick lane takes no open question that blocks or shapes the change ({note.working[0].id})")
     if len(note.criteria) > QUICK_MAX["criteria"]:
         bad.append(f"{len(note.criteria)} acceptance criteria, over {QUICK_MAX['criteria']}")
     if not note.change:
