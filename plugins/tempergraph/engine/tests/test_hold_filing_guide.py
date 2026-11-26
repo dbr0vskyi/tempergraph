@@ -1,9 +1,8 @@
-"""The guide's section "Hold filing" held against the built CLI and catalog, and the twelfth criterion of i171b."""
+"""The guide's section "Hold filing" held against the built CLI and catalog, and the checks of the twelfth
+criterion of the friction-pattern task: no workflow in the specs, a source on every parameter."""
 
 from __future__ import annotations
 
-import contextlib
-import json
 import re
 from pathlib import Path
 
@@ -13,77 +12,74 @@ from tempergraph import settings
 from tempergraph.cli.main import VERBS, main
 from tempergraph.improve import params
 
-PLUGINS = Path(__file__).resolve().parents[2].parent  # plugins/
-GUIDE = PLUGINS / "tempergraph" / "docs" / "guides" / "improving-workflows.guide.md"
-SPECS = PLUGINS / "tempergraph" / "docs" / "specs"
-PLAN_SPECS = ("friction-filing-decisions", "self-improvement", "loop-issues", "improvement-proposals",
-              "run-settings-and-overrides", "run-options")
+from .conftest import DOCS, workflow_names
+
+GUIDE = DOCS / "guides" / "improving-workflows.guide.md"
+SPECS = (
+    "friction-filing-decisions", "self-improvement", "loop-issues", "improvement-proposals",
+    "run-settings-and-overrides", "run-options",
+)
 
 
 def section() -> str:
     text = GUIDE.read_text(encoding="utf-8")
-    body = text.split("\n## Hold filing\n", 1)[1]
-    return body.split("\n## ", 1)[0]
+    match = re.search(r"^## Hold filing\n(.*?)(?=^## )", text, re.S | re.M)
+    assert match, 'the guide has no section "Hold filing"'
+    return match.group(1)
 
 
 def help_of(verb: str, capsys: pytest.CaptureFixture[str]) -> str:
-    with contextlib.suppress(SystemExit):
-        main([verb, "--help"])
+    capsys.readouterr()
+    main([verb, "--help"])
     return capsys.readouterr().out
 
 
-def test_the_guide_names_the_three_holds_with_what_they_still_run() -> None:  # PRP-AC16, ROP-AC12
+def test_the_guide_names_the_three_holds_the_cli_and_the_catalog_have(
+        capsys: pytest.CaptureFixture[str]) -> None:  # PRP-AC16, ROP-AC12 (task AC 10)
     text = section()
-    assert "loop_autonomy" in settings.CATALOG and "`loop_autonomy`" in text
-    for level in ("record", "file", "propose", "trial"):
-        assert level in text
-    assert "`TEMPERGRAPH_AUTONOMY=record`" in text
-    assert "`tempergraph config paths`" in text and "config" in VERBS
+    assert "loop_autonomy" in text and "loop_autonomy" in settings.CATALOG  # the setting
     assert "`--dry-run`" in text
-    for words in ("still runs", "still spends", "autonomy_record", "would_file", "loop_judged"):
-        assert words in text or words.replace("still spends", "it still spends") in text, words
-
-
-def test_dry_run_is_on_run_and_on_resume_as_the_guide_says(capsys: pytest.CaptureFixture[str]) -> None:  # ROP-AC12
-    text = section()
+    assert "--dry-run" in help_of("run", capsys) and "--dry-run" in help_of("resume", capsys)
     assert "tempergraph run <workflow>" in text and "tempergraph resume <workflow> <thread> --dry-run" in text
-    for verb in ("run", "resume"):
-        assert "--dry-run" in help_of(verb, capsys), verb
+    assert "TEMPERGRAPH_AUTONOMY=record" in text
+    assert "tempergraph config paths" in text
+    main(["config", "paths", "--help"])  # `paths` is an action of `config`
+    capsys.readouterr()
+    for level in ("record", "file", "propose", "trial"):
+        assert f"`{level}`" in text
+    for what in ("autonomy_record", "would_file", "loop_judged", "loop.jsonl"):  # what each still records
+        assert what in text
+    assert "still run" in text and "still spends" in text
 
 
-def test_config_paths_is_a_command_of_the_cli(capsys: pytest.CaptureFixture[str]) -> None:  # PRP-AC16
-    assert "paths" in help_of("config", capsys)
-
-
-def test_every_command_of_the_section_is_a_verb_of_the_cli() -> None:  # ROP-AC12
-    spans = re.findall(r"`([^`]+)`", section())
+def test_every_command_of_the_section_is_a_verb_of_the_cli() -> None:  # PRP-AC16 (task AC 10)
+    spans = re.findall(r"`([^`]*)`", section())
     commands = [s for s in spans if s.startswith("tempergraph ")]
     assert commands
     for command in commands:
         assert command.split()[1] in VERBS, command
 
 
-def test_the_guide_names_the_mute_by_a_duplicate_close_for_mute_days() -> None:  # ISS-AC3
+def test_the_guide_says_a_duplicate_close_mutes_for_mute_days() -> None:  # ISS-AC3 (task AC 10)
     text = section()
-    assert "not planned or as a duplicate" in text and "`mute.days`" in text
-    assert params.value("mute.days") == 30 and "30 days" in text
+    assert "not planned" in text and "duplicate" in text and "`mute.days`" in text
+    assert f"{params.value('mute.days'):g} days" in text
     assert "muted" in text
 
 
-def test_the_specs_of_the_run_name_no_workflow_package() -> None:  # FFD-AC1, ISS-AC12, PRP-AC16, ROP-AC12
-    names = set()
-    for manifest in PLUGINS.glob("*/tempergraph.json"):
-        names.add(json.loads(manifest.read_text(encoding="utf-8")).get("name"))
-        names.add(manifest.parent.name)
-    names -= {None, "tempergraph", "tempergraph-monitor"}
+def test_the_specs_of_the_change_name_no_workflow() -> None:  # FFD-AC1, ISS-AC12, PRP-AC16, ROP-AC12 (task AC 12)
+    names = workflow_names()
     assert names
-    for slug in PLAN_SPECS:
-        text = (SPECS / f"{slug}.spec.md").read_text(encoding="utf-8").lower()
-        text = text.replace("temperspec's format", "")  # the spec format's name in a purpose line, not a package
+    for spec in SPECS:
+        text = (DOCS / "specs" / f"{spec}.spec.md").read_text(encoding="utf-8")
+        text = text.replace("temperspec's format", "")  # the spec method's own name, not a workflow of this change
         for name in names:
-            assert not re.search(rf"(?<![\w-]){re.escape(str(name).lower())}(?![\w-])", text), (slug, name)
+            assert not re.search(rf"(?<![\w-]){re.escape(name)}(?![\w])", text), (spec, name)
 
 
-def test_every_parameter_record_has_a_source_and_the_new_one_is_there() -> None:  # ISS-AC12
-    assert all(p.source for p in params.PARAMS.values())
-    assert params.PARAMS["seen_again.max_per_issue_per_day"].source == "ISS-B13"
+def test_every_parameter_has_a_source_and_the_comment_bound_is_one() -> None:  # ISS-AC12, FFD-AC1 (task AC 12)
+    assert params.PARAMS
+    for name, param in params.PARAMS.items():
+        assert param.source, name
+    bound = params.PARAMS["seen_again.max_per_issue_per_day"]
+    assert bound.value == 1 and "ISS-B13" in bound.source

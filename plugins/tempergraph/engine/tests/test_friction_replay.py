@@ -1,4 +1,6 @@
-"""A replay of five runs: causes a judge attributes in one run only file nothing (SIL-AC34, SIL-AC35)."""
+"""A replay of five runs of a fixture workflow through the loop child, with a scripted judge and the memory code host:
+the three causes the judge attributes in one run only file nothing at any exit, and the cause it attributes in every
+run files one issue at the third exit and is commented within the bound (SIL-AC34, SIL-AC35; task AC 11)."""
 
 from __future__ import annotations
 
@@ -13,44 +15,48 @@ from tempergraph.improve.codehost import MemoryCodeHost
 from .test_loop_child import friction_ticket, loop_rows
 from .test_run import registry
 
-ONE_RUN = ("agent_decided:escalation", "check_fail:draft", "retries_spent")
-EVERY_RUN = "slow_step"
-CAUSES = (*ONE_RUN, EVERY_RUN)
+NOISE = ("agent_decided:escalation", "check_fail:suite", "retries_spent")  # the review's three causes
+STEADY = "empty_output"  # the fourth cause, attributed in every run
+CAUSES = (*NOISE, STEADY)
+ATTRIBUTED_IN = {"agent_decided:escalation": 1, "check_fail:suite": 3, "retries_spent": 5}  # one run each
 
 
-def fp(cause: str) -> str:
-    return record.fingerprint("workflow", "demo", cause, "draft")
-
-
-def scripted(run: int) -> Any:
-    """Cause i of the three is attributed in run i + 2 only (runs 2 to 4); the fourth cause in every run, at 0.5."""
+def scripted_judge() -> Any:
+    """One reply for each exit, in order: the cause of each fingerprint in the prompt is answered by its run."""
+    fps = {record.fingerprint("workflow", "demo", cause, "draft"): cause for cause in CAUSES}
+    exits = {"n": 0}
 
     def reply(req: Any) -> Any:
-        rows = [{"fingerprint": fp(c), "attributed": i == run - 2, "confidence": 0.5} for i, c in enumerate(ONE_RUN)]
-        rows.append({"fingerprint": fp(EVERY_RUN), "attributed": True, "confidence": 0.5})
+        exits["n"] += 1
+        run = exits["n"]
+        asked = [ln.split("`")[1] for ln in req.prompt.splitlines() if ln.startswith("- `") and "cause" in ln]
+        rows = [{"fingerprint": fp, "confidence": 0.5,
+                 "attributed": fps[fp] == STEADY or ATTRIBUTED_IN.get(fps[fp]) == run} for fp in asked]
         return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
 
     return reply
 
 
-def test_a_cause_attributed_in_one_run_files_nothing_and_a_cause_in_every_run_files_once() -> None:  # SIL-AC34, SIL-AC35
-    import tempfile
-
-    root = Path(tempfile.mkdtemp()) / ".tempergraph"
+def test_five_runs_file_one_issue_for_the_steady_cause_and_nothing_for_the_others(
+        tmp_path: Path) -> None:  # SIL-AC34, SIL-AC35, ISS-AC12 (task AC 11)
+    root = tmp_path / ".tempergraph"
     host = MemoryCodeHost()
-    reg = registry(standin("claude", judges=[scripted(n) for n in range(1, 6)]))
-    ones = {fp(c) for c in ONE_RUN}
-    outs = [child.process(friction_ticket(root, n, CAUSES), reg, host) for n in range(1, 6)]
-    for n, out in enumerate(outs, start=1):  # the three causes: nothing filed or commented at any exit
-        for r in out["results"]:
-            if r.get("fingerprint") in ones:
-                assert r["op"] == "recorded", (n, r)
-    ops = [[r["op"] for r in o["results"] if r.get("fingerprint") not in ones] for o in outs]
-    assert ops[0] == ops[1] == ["recorded"] and ops[2] == ["filed"]
-    assert ops[3] == ["commented"] and ops[4] == ["comment_capped"]
-    assert len(host.issues) == 1 and len(host.comments) <= params.value("seen_again.max_per_issue_per_day")
-    for issue in host.issues:
-        assert not any(c in issue["body"] for c in ONE_RUN)
+    reg = registry(standin("claude", judges=[scripted_judge()] * 5))
+    ops: list[list[tuple[str, str]]] = []
+    for n in range(1, 6):
+        out = child.process(friction_ticket(root, n, CAUSES), reg, host)
+        causes_of = {record.fingerprint("workflow", "demo", c, "draft"): c for c in CAUSES}
+        ops.append([(causes_of[r["fingerprint"]], r["op"]) for r in out["results"] if "fingerprint" in r])
+        # at no exit does a cause of the three file or get a comment
+        assert not [c for c, op in ops[-1] if c in NOISE and op in ("filed", "commented", "comment_capped")], n
+        issues_now = len(host.issues)
+        assert issues_now == (0 if n < 3 else 1), n  # one issue, at the third exit
+    assert len(host.issues) == 1 and STEADY in host.issues[0]["body"]
+    for cause in NOISE:  # no issue body or comment names a cause of the three
+        assert all(cause not in text for text in [i["body"] for i in host.issues] + [c["body"] for c in host.comments])
+    bound = int(params.value("seen_again.max_per_issue_per_day"))
+    assert len(host.comments) == bound  # the fourth exit comments; the fifth is over the bound
     rows = [r for n in range(1, 6) for r in loop_rows(root, f"F-{n}")]
-    assert len([r for r in rows if r["kind"] == "issue_commented"]) == 1
-    assert len([r for r in rows if r["kind"] == "loop_result" and r["op"] == "comment_capped"]) == 1
+    assert len([r for r in rows if r["kind"] == "issue_commented"]) == bound
+    capped = [r for r in rows if r["kind"] == "loop_result" and r.get("op") == "comment_capped"]
+    assert len(capped) == 5 - 3 - bound and all("body" not in r and "text" not in r for r in capped)
