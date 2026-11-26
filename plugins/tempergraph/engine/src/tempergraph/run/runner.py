@@ -458,8 +458,12 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         degraded = (final.get("run") or {}).get("degraded") or None  # FLX-B9: a fallback was taken
         deg = {"degraded": True, "degraded_unit": degraded.get("unit")} if degraded else {}
         outcome.degraded = bool(degraded)
+        capped: dict[str, Any] = {}
+        if outcome.reason == "attempt_cap":  # CMP-B20: the exit says what repeated
+            capped = ctx.report()
+            outcome.payload = {**(outcome.payload or {}), **capped}
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
-                  cost_so_far=cost_so_far(cost.to_json()), **deg)
+                  cost_so_far=cost_so_far(cost.to_json()), **deg, **capped)
         try:
             write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                               "exit_code": int(outcome.exit_code),

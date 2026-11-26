@@ -99,6 +99,108 @@ def test_a_step_that_fails_its_gate_stops_at_the_cap_under_a_larger_retry_budget
     assert [r["unit"] for r in started] == ["draft"] * 3  # the first attempt, then two counted retries
 
 
+KEYS = ("attempts_counted", "trips_back", "repeated")
+
+
+def _cap_catalog(spec: WorkflowSpec) -> Any:
+    from tempergraph.catalog import Catalog
+
+    return Catalog(specs={"demo": spec})
+
+
+def _loop_spec() -> WorkflowSpec:
+    spec = two_step()
+    units = dict(spec.units)
+    units["review"] = dataclasses.replace(units["review"], gate=dataclasses.replace(units["review"].gate, loop_budget=10))
+    return dataclasses.replace(spec, units=units)
+
+
+def _retry_spec() -> WorkflowSpec:
+    spec = two_step()
+    units = dict(spec.units)
+    units["draft"] = dataclasses.replace(units["draft"], gate=dataclasses.replace(units["draft"].gate, retry_budget=10))
+    return dataclasses.replace(spec, units=units)
+
+
+def _expected(records: list[dict[str, Any]]) -> dict[str, Any]:
+    """What the run log of one invocation shows: its counted attempts, its trips back and each repeated unit."""
+    starts: dict[str, int] = {}
+    for r in records:
+        if r["kind"] == "attempt_start" and r["session_kind"] in ("step", "retry"):
+            starts[r["unit"]] = starts.get(r["unit"], 0) + 1
+    trips: dict[str, int] = {}
+    for r in records:
+        if r["kind"] == "gate" and r["token"] == "BACK":
+            unit = r["route_target"].split(".")[0]  # the node `draft.step` enters the unit `draft`
+            trips[unit] = trips.get(unit, 0) + 1
+    return {"starts": starts, "trips": trips}
+
+
+def _check_report(doc: dict[str, Any], records: list[dict[str, Any]], counted: int) -> None:
+    exp = _expected(records)
+    assert doc["attempts_counted"] == counted
+    assert doc["trips_back"] == sum(exp["trips"].values())
+    for entry in doc["repeated"]:
+        assert entry["item"] is None
+        assert entry["attempts"] == exp["starts"][entry["unit"]]
+        assert entry["trips_back"] == exp["trips"].get(entry["unit"], 0)
+    assert doc["repeated"], doc
+
+
+def test_the_exit_at_the_cap_says_what_repeated(repo: Path) -> None:  # CMP-AC14 (CMP-B20)
+    from .test_cli import cli
+
+    back = verdict_block("UNMET", defect_in="notes")
+    ex = standin("claude", steps=[DRAFT, REVIEW] * 6, judges=[judge(), judge(back)] * 6)
+    code, doc, _ = cli(repo, ex, "run", "demo", "x", "--task-id", "L-1", "--set", "run.attempt_cap=2", "--json",
+                       catalog=_cap_catalog(_loop_spec()))
+    assert code == 4 and doc["reason"] == "attempt_cap", doc
+    (rec,) = [r for r in log(repo, task="L-1") if r["kind"] == "run_exit"]
+    assert {k: rec[k] for k in KEYS} == {k: doc["payload"][k] for k in KEYS}
+    _check_report(rec, log(repo, task="L-1"), 2)
+    assert rec["trips_back"] >= 1
+
+    code, doc, _ = cli(repo, standin("claude", steps=[DRAFT] * 8, judges=[judge(UNMET)] * 8), "run", "demo", "x",
+                       "--task-id", "R-1", "--set", "run.attempt_cap=2", "--json", catalog=_cap_catalog(_retry_spec()))
+    assert code == 4 and doc["reason"] == "attempt_cap", doc
+    recs = log(repo, task="R-1")
+    (rec,) = [r for r in recs if r["kind"] == "run_exit"]
+    assert {k: rec[k] for k in KEYS} == {k: doc["payload"][k] for k in KEYS}
+    _check_report(rec, recs, 2)
+    assert rec["trips_back"] == 0 and rec["repeated"] == [{"unit": "draft", "item": None, "attempts": 3,
+                                                          "trips_back": 0}]
+
+
+def test_a_resumed_invocation_counts_from_zero_and_reports_it(repo: Path) -> None:  # CMP-AC14 (CMP-B20)
+    from .test_cli import cli
+
+    cat = _cap_catalog(_retry_spec())
+    ex = standin("claude", steps=[DRAFT] * 12, judges=[judge(UNMET)] * 12)
+    code, _, _ = cli(repo, ex, "run", "demo", "x", "--task-id", "R-2", "--set", "run.attempt_cap=2", "--json", catalog=cat)
+    assert code == 4
+    first = len([r for r in log(repo, task="R-2") if r["kind"] == "run_exit"])
+    code, doc, _ = cli(repo, ex, "resume", "demo", "R-2", "--set", "run.attempt_cap=2", "--json", catalog=cat)
+    assert code == 4 and doc["reason"] == "attempt_cap", doc
+    recs = log(repo, task="R-2")
+    exits = [r for r in recs if r["kind"] == "run_exit"]
+    assert len(exits) == first + 1
+    assert {k: exits[-1][k] for k in KEYS} == {k: doc["payload"][k] for k in KEYS}
+    assert exits[-1]["attempts_counted"] == 2  # not 4: the count starts at 0 in the new invocation
+    cut = max(i for i, r in enumerate(recs) if r["kind"] == "run_exit")
+    prev = max(i for i, r in enumerate(recs[:cut]) if r["kind"] == "run_exit")
+    _check_report(exits[-1], recs[prev + 1:cut], 2)
+
+
+def test_an_exit_with_another_reason_carries_none_of_the_keys(repo: Path) -> None:  # CMP-AC14 (CMP-B20)
+    from .test_cli import cli
+
+    code, doc, _ = cli(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]), "run", "demo", "x",
+                       "--task-id", "F-1", "--json", catalog=_cap_catalog(two_step()))
+    assert code == 0
+    (rec,) = [r for r in log(repo, task="F-1") if r["kind"] == "run_exit"]
+    assert not [k for k in KEYS if k in rec] and not [k for k in KEYS if k in (doc.get("payload") or {})]
+
+
 def fails_once(ctx: Any) -> CheckResult:
     if ctx.attempt == 1:
         return CheckResult(result="FAIL", evidence="no", findings=[CheckFinding(status="fail", criterion="c-s",

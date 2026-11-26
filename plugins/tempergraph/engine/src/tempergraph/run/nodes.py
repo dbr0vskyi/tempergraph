@@ -110,6 +110,8 @@ class RunContext:
     main_checkout: Path | None = None
     attempts_started: int = 0
     counted: dict[tuple[str, str | None], int] = field(default_factory=dict)  # counted attempts by unit and item (CMP-B19)
+    started: dict[tuple[str, str | None], int] = field(default_factory=dict)  # every attempt started, counted or not
+    trips: dict[str, int] = field(default_factory=dict)  # trips back, by the unit they entered (CMP-B20)
     origin: str = "cli"
     stage: str = "local-dev"  # PRO-B7, PRO-B4
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
@@ -125,9 +127,17 @@ class RunContext:
     def count_attempt(self, unit: str, item: str | None, attempt: int, visit: int) -> None:
         """CMP-B19: an attempt counts against the cap only when its unit, item or slot has attempted before in the
         thread, as a retry or in a visit after a trip back."""
+        self.started[(unit, item)] = self.started.get((unit, item), 0) + 1
         if attempt > 1 or visit > 1:
             self.attempts_started += 1
             self.counted[(unit, item)] = self.counted.get((unit, item), 0) + 1
+
+    def report(self) -> dict[str, Any]:
+        """CMP-B20: what repeated in this invocation, for the exit at the attempt cap."""
+        repeated = [{"unit": u, "item": i, "attempts": self.started.get((u, i), n),
+                     "trips_back": self.trips.get(u, 0)} for (u, i), n in self.counted.items()]
+        return {"attempts_counted": self.attempts_started, "trips_back": sum(self.trips.values()),
+                "repeated": repeated}
 
     @property
     def thread(self) -> str:
@@ -1910,6 +1920,9 @@ class EngineNodes:
         self.ctx.log.write("gate", unit=unit, item=((state.get("attempts") or {}).get(unit) or {}).get("item"),
                            verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
+        if r["token"] == "BACK":
+            to = ((state.get("judgements") or {}).get(unit) or {}).get("back_to") or r["node"]
+            self.ctx.trips[to] = self.ctx.trips.get(to, 0) + 1
         done = self._audits.pop((unit, ((state.get("attempts") or {}).get(unit) or {}).get("item")), None)
         if done is not None:  # JDG-B7: the audit record follows the gate of the judgement it audits
             self.ctx.log.write("audit_judge", unit=unit, **done)
