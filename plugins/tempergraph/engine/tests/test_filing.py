@@ -3,6 +3,7 @@ B7, SIL-B19, SIL-B20, AC-3, AC-4)."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,63 @@ def test_pattern_rule() -> None:  # SIL-B3, IMD-B1 local scope
     assert decide(out, old, "team/notes").reason == "pattern_not_met"  # outside 30 days
     eng = Candidate(finding=finding(side="engine", cause="engine_error"), lens="outcome", calibrated=True)
     assert decide(eng, [], "team/notes").action == "file"  # one clear engine fault is enough
+
+
+NOW = datetime(2026, 11, 24, 12, 0, tzinfo=UTC)
+
+
+def seen(*threads: str, **kw: Any) -> list[dict[str, Any]]:
+    """The fingerprint recorded in other runs: one finding per thread, each with its own request digest."""
+    return [finding(thread=f"demo/{t}", request_digest=f"r-{t}", **kw) for t in threads]
+
+
+def attributed(conf: float | None, ok: bool = True, **kw: Any) -> Candidate:
+    return Candidate(finding=finding(**kw), confidence=conf, attributed=ok, request_digest="r-now")
+
+
+def test_friction_files_by_the_pattern_count_or_by_confidence() -> None:  # SIL-AC34, SIL-AC35, AC 1, AC 2, AC 3
+    hist = seen("T-2", "T-3")
+    d = decide(attributed(0.5), hist, "team/notes", now=NOW)
+    assert d.action == "file" and d.reason == "pattern_met" and d.counts["runs"] == 3 and d.counts["requests"] == 3
+    assert d.repo == "team/notes"
+    low = decide(attributed(0.5), seen("T-2"), "team/notes", now=NOW)  # two runs: below the count
+    assert low.action == "record" and low.reason == "below_floor"
+    assert decide(attributed(0.5), [], "team/notes", now=NOW).reason == "below_floor"
+    one = decide(attributed(0.9), [], "team/notes", now=NOW)  # by confidence, with no pattern figure
+    assert one.action == "file" and one.reason == "fault" and one.counts == {}
+    same_request = [finding(thread=f"demo/T-{n}", request_digest="r-now") for n in (2, 3)]  # three runs, one request
+    assert decide(attributed(0.5), same_request, "team/notes", now=NOW).reason == "below_floor"
+    old = seen("T-2", "T-3", at="2026-01-01T00:00:00+00:00")  # outside `pattern_rule.window_days`
+    assert decide(attributed(0.5), old, "team/notes", now=NOW).reason == "below_floor"
+    # a finding the judge marked not attributed never files, at any confidence, with the count met
+    no = decide(attributed(0.9, ok=False), hist, "team/notes", now=NOW)
+    assert no.action == "record" and no.reason == "below_floor"
+    assert decide(attributed(0.5, ok=False), hist, "team/notes", now=NOW).action == "record"
+    # no answer from the judge: recorded `not_judged` even with the count met (SIL-B35)
+    nj = decide(attributed(None, ok=False), hist, "team/notes", now=NOW)
+    assert nj.action == "record" and nj.reason == "not_judged"
+
+
+def test_a_count_met_friction_finding_follows_dry_run_sides_and_dedup(tmp_path: Path) -> None:
+    # SIL-AC36, SIL-AC37, SIL-AC34, AC 6
+    hist = seen("T-2", "T-3")
+    d = decide(attributed(0.5), hist, "team/notes", now=NOW)
+    host = MemoryCodeHost()
+    res = filing.file([d], host, Outbox.at(tmp_path), dry_run=True)  # SIL-AC36
+    assert [r["op"] for r in res] == ["would_file"] and not host.issues and not host.comments
+    eng = decide(attributed(0.5, side="engine", cause="engine_error"), seen("T-2", "T-3", side="engine",
+                                                                              cause="engine_error"),
+                 "team/notes", now=NOW)
+    ex = decide(attributed(0.5, side="executor:claude", cause="unknown_tool_name:Foo"),
+                seen("T-2", "T-3", side="executor:claude", cause="unknown_tool_name:Foo"), "team/notes", now=NOW)
+    assert eng.action == ex.action == "file" and eng.repo == ex.repo == filing.ENGINE_REPOSITORY  # SIL-AC37
+    assert d.repo == "team/notes"
+    host_side = decide(attributed(0.5, side="host", cause="slow_host"),
+                       seen("T-2", "T-3", side="host", cause="slow_host"), "team/notes", now=NOW)
+    assert host_side.action == "record" and host_side.reason == "host" and host_side.repo is None
+    box = Outbox.at(tmp_path)
+    assert filing.file([d], host, box)[0]["op"] == "filed"
+    assert filing.file([d], host, box)[0]["op"] == "commented" and len(host.issues) == 1 and len(host.comments) == 1
 
 
 def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3

@@ -362,9 +362,13 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         else:
             cost["estimated_only"] += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
         judged = parse(res.text) if res.ok else {}
+        answers = [{"fingerprint": str(f.get("fingerprint")),  # SIL-B36: what the judge answered, none of its text
+                    "confidence": judged[str(f.get("fingerprint"))]["confidence"],
+                    "attributed": judged[str(f.get("fingerprint"))]["attributed"]}
+                   for f in faults if str(f.get("fingerprint")) in judged]
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_judged", "lens": "friction", "executor": ex.name,
                            "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
-                           "session_id": res.session_id})
+                           "session_id": res.session_id, "answers": answers})
     limited: list[dict[str, Any]] = []  # SIL-B25: the reviews that failed as `usage_limit`, with the reported reset
     categories: frozenset[str] = frozenset()
     if str(t.get("review") or "off") != "off" and not capped:  # SRV-B13, SRV-B14, SRV-B15, SIL-B17: before deciding and filing

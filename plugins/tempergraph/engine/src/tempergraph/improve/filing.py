@@ -1,4 +1,5 @@
-"""Filing findings to the repository that owns the fault (SIL-B2, B3, B6, B7, SIL-B19, SIL-B20, ISS-B7 to B10).
+"""Filing findings to the repository that owns the fault (SIL-B2, B3, B6, B7, SIL-B18, SIL-B19, SIL-B20, SIL-B35,
+ISS-B7 to B10, ISS-B12).
 
 Publishing code: it reads findings (metadata) and the context the loop child built from the run log's ids, enums
 and numbers (`issue_context`), and never imports or opens the evidence file. An issue's title and body are built
@@ -76,9 +77,29 @@ def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
     return issue_repository or None
 
 
+def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime | None) -> tuple[dict[str, int], bool]:
+    """SIL-B3: the runs, distinct requests and machines that record the candidate's fingerprint inside the window,
+    and whether they meet the pattern rule. Both lenses count here (SIL-B18)."""
+    f = c.finding
+    now = now or datetime.now(UTC)
+    since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
+    same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
+    runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
+    reqs = {str(h.get("request_digest")) for h in same if h.get("request_digest")}
+    if c.request_digest:
+        reqs.add(c.request_digest)
+    counts = {"runs": len(runs), "requests": len(reqs),
+              "machines": len({str(h.get("machine")) for h in same} | {str(f.get("machine"))})}
+    met = len(runs) >= params.value("pattern_rule.min_runs") and len(reqs) >= params.value(
+        "pattern_rule.min_distinct_requests")
+    return counts, met
+
+
 def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository: str,
            now: datetime | None = None) -> Decision:
-    """Whether a candidate files, or is only recorded, and why (SIL-B12 to SIL-B16, B3, B7)."""
+    """Whether a candidate files, or is only recorded, and why (SIL-B12 to SIL-B16, B3, B7). A friction finding
+    files only when its judge attributed it and either its confidence is at or above the floor or its fingerprint
+    meets the pattern rule (SIL-B18); one the judge gave no answer for is `not_judged` and never files (SIL-B35)."""
     f = c.finding
     repo = repository(f, issue_repository)
     if f.get("class") != "fault":
@@ -88,21 +109,20 @@ def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository:
     escape = str(f.get("cause") or "").split(":", 1)[0] == "outcome_escape"  # SIL-B34: the pattern rule alone
     if c.lens == "outcome" and not c.calibrated and not escape:
         return Decision(action="record", reason="uncalibrated", candidate=c)  # SIL-B7
-    if c.lens == "friction" and (c.confidence is None
-                                 or c.confidence < params.value("friction.file_confidence") or not c.attributed):
-        return Decision(action="record", reason="not_judged" if c.confidence is None else "below_floor", candidate=c)
+    if c.lens == "friction":
+        if c.confidence is None:
+            return Decision(action="record", reason="not_judged", candidate=c)  # SIL-B35
+        if not c.attributed:
+            return Decision(action="record", reason="below_floor", candidate=c)
+        counts, met = _pattern(c, history, now)
+        if met:  # SIL-B18: the count files at any confidence
+            return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts)
+        if c.confidence >= params.value("friction.file_confidence"):
+            return Decision(action="file", reason="fault", candidate=c, repo=repo)
+        return Decision(action="record", reason="below_floor", candidate=c)
     if c.lens == "outcome" and f.get("side") == "workflow":  # SIL-B3; one clear engine fault is enough
-        now = now or datetime.now(UTC)
-        since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
-        same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
-        runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
-        reqs = {str(h.get("request_digest")) for h in same if h.get("request_digest")}
-        if c.request_digest:
-            reqs.add(c.request_digest)
-        counts = {"runs": len(runs), "requests": len(reqs),
-                  "machines": len({str(h.get("machine")) for h in same} | {str(f.get("machine"))})}
-        if len(runs) < params.value("pattern_rule.min_runs") or len(reqs) < params.value(
-                "pattern_rule.min_distinct_requests"):
+        counts, met = _pattern(c, history, now)
+        if not met:
             return Decision(action="record", reason="pattern_not_met", candidate=c, repo=repo,
                             counts={**counts, "scope_local": 1})
         return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts)

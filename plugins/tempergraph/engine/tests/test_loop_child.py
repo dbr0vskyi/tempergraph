@@ -203,6 +203,92 @@ def test_outcome_lens_files_only_when_calibrated_and_patterned(tmp_path: Path) -
     assert [r["op"] for r in out["results"]] == ["commented"] and len(host.issues) == 1
 
 
+def friction_ticket(root: Path, n: int, causes: tuple[str, ...] = ("slow_step",)) -> dict[str, Any]:
+    """The ticket of run `demo/F-<n>`: one friction fault for each cause, the same fingerprint in every run."""
+    from tempergraph.improve import record
+
+    rows = []
+    for cause in causes:
+        fp = record.fingerprint("workflow", "demo", cause, "draft")
+        rows.append({"kind": "finding", "thread": f"demo/F-{n}", "workflow": "demo", "unit": "draft", "cause": cause,
+                     "class": "fault", "side": "workflow", "count": 1, "remedy": "r", "fingerprint": fp,
+                     "at": datetime.now(UTC).isoformat(timespec="seconds"), "request_digest": f"r{n}", "machine": "m"})
+    path = record.findings_path(root, "demo", f"F-{n}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema_version": 1, "thread": f"demo/F-{n}", "findings": rows}))
+    return {"ticket_id": f"f{n}", "thread": f"demo/F-{n}", "workflow": "demo", "task_id": f"F-{n}",
+            "state_root": str(root), "issue_repository": "team/notes", "dry_run": False, "executor": "claude",
+            "fingerprints": [r["fingerprint"] for r in rows], "lenses": {"friction": True, "outcome": False}}
+
+
+def judged_row(root: Path, n: int) -> dict[str, Any]:
+    (row,) = [r for r in loop_rows(root, f"F-{n}") if r["kind"] == "loop_judged"]
+    return row
+
+
+def test_a_friction_finding_files_by_the_pattern_count(tmp_path: Path) -> None:  # SIL-AC34, AC 7
+    root = tmp_path / ".tempergraph"
+    host = MemoryCodeHost()
+    reg = registry(standin("claude", judges=[judge_says(0.5) for _ in range(4)]))
+    for n in (1, 2):  # two runs, each judged at 0.5: recorded, nothing filed
+        out = child.process(friction_ticket(root, n), reg, host)
+        assert [r["reason"] for r in out["results"]] == ["below_floor"] and not host.issues
+    out = child.process(friction_ticket(root, 3), reg, host)  # the third run, a third request: one issue
+    assert [r["op"] for r in out["results"]] == ["filed"] and len(host.issues) == 1
+    evidence = host.issues[0]["body"].split("## Evidence\n", 1)[1].split("\n## ", 1)[0]
+    assert "runs 3" in evidence and "requests 3" in evidence
+    out = child.process(friction_ticket(root, 4), reg, host)  # a fourth run: a comment, no second issue
+    assert [r["op"] for r in out["results"]] == ["commented"]
+    assert len(host.issues) == 1 and len(host.comments) == 1
+
+
+def test_a_count_met_finding_files_nothing_without_an_attribution(tmp_path: Path) -> None:  # SIL-AC35, AC 3
+    def reply_for_another(req: Any) -> Any:
+        rows = [{"fingerprint": "0000111122223333", "attributed": True, "confidence": 0.9}]
+        return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
+
+    cases = {
+        "not_attributed": (judge_says(0.9, attributed=False), "below_floor"),
+        "session_failed": (SessionResult(ok=False, usage=Usage(reported_cost_usd=0.01)), "not_judged"),
+        "no_block": (answer("no block here"), "not_judged"),
+        "left_out": (reply_for_another, "not_judged"),
+    }
+    for name, (reply, reason) in cases.items():
+        root = tmp_path / name / ".tempergraph"
+        host = MemoryCodeHost()
+        for n in (1, 2):  # the same fingerprint recorded in two other runs, each with its own request
+            friction_ticket(root, n)
+        out = child.process(friction_ticket(root, 3), registry(standin("claude", judges=[reply])), host)
+        assert [r["op"] for r in out["results"]] == ["recorded"], name
+        assert [r["reason"] for r in out["results"]] == [reason], name
+        assert not host.issues and not host.comments, name
+
+
+def test_loop_judged_holds_what_the_judge_answered_and_none_of_its_text(tmp_path: Path) -> None:  # SIL-AC38, AC 5
+    from tempergraph.improve import record
+
+    causes = ("slow_step", "retry_burst", "empty_output")
+    fps = [record.fingerprint("workflow", "demo", c, "draft") for c in causes]
+    words = "zebra-explanation-91"
+
+    def two_of_three(req: Any) -> Any:
+        rows = [{"fingerprint": fps[0], "attributed": True, "confidence": 0.5, "why": f"{words} first"},
+                {"fingerprint": fps[1], "attributed": False, "confidence": 0.7, "why": f"{words} second"}]
+        return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
+
+    root = tmp_path / ".tempergraph"
+    child.process(friction_ticket(root, 1, causes), registry(standin("claude", judges=[two_of_three])),
+                  MemoryCodeHost())
+    row = judged_row(root, 1)
+    assert row["answers"] == [{"fingerprint": fps[0], "confidence": 0.5, "attributed": True},
+                              {"fingerprint": fps[1], "confidence": 0.7, "attributed": False}]
+    assert words not in child.loop_log(root, "demo", "F-1").read_text()
+    root2 = tmp_path / "failed" / ".tempergraph"  # a failed session leaves an empty list
+    failed = SessionResult(ok=False, usage=Usage(reported_cost_usd=0.01))
+    child.process(friction_ticket(root2, 1, causes), registry(standin("claude", judges=[failed])), MemoryCodeHost())
+    assert judged_row(root2, 1)["answers"] == [] and judged_row(root2, 1)["ok"] is False
+
+
 # -- a review that fails is counted; a usage-limit failure is run again once (SIL-B24 to SIL-B26) --------------------
 
 
