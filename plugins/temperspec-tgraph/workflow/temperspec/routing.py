@@ -40,42 +40,45 @@ def route_setup(view: Any) -> str:
 
 
 def route_triage(view: Any) -> str:
-    """A quick task goes straight to code; no gap goes to the plan; a task whose every gap a spec answers takes the
-    short visit; any other gap, and a docs-only task, goes to the full discovery, whose entry is `owner_questions`:
-    it lists what the owner is asked, `ask_route` sends a run with a question to the pause and any other to
-    `read_gap` (spec `owner-questions`, OWQ-B1, OWQ-B2)."""
+    """A quick task goes straight to code; a task with no gap and no open question that blocks or shapes it goes to
+    the plan; a task whose every gap a spec answers takes the short visit; any other task, and a docs-only one, goes
+    to the full discovery, whose entry is the reading sessions at `read_gap`. The one pause comes after them (spec
+    `owner-questions`, OWQ-B1)."""
     route = view.values.get("route")
     if route == "discovery" and view.values.get("covered") == "yes":
         return "discovery_short"
-    return {"quick": "code", "plan": "plan"}.get(route, "owner_questions")
+    return {"quick": "code", "plan": "plan"}.get(route, "read_gap")
 
 
 def route_ask(view: Any) -> str:
-    """A run whose list of questions holds one goes to the pause `ask_owner`; every other run goes on to the reading
-    sessions at `read_gap` with no pause (OWQ-B1, OWQ-B2). `owner_questions` leaves the key `empty` only when its list
+    """A run whose list of questions holds one goes to the pause `ask_owner`; every other run goes on to the writing
+    session `discovery` with no pause (OWQ-B1, OWQ-B2). `owner_questions` leaves the key `empty` only when its list
     holds no question, and a script's keys reach a route as artifact keys, as `setup_needed` does for `route_setup`;
     a value `empty` of `yes` is read as well. A run with neither goes to the pause, whose own reader refuses a list
     it cannot read, so a failed list is never skipped in silence."""
-    return "read_gap" if "empty" in view.artifact_keys or view.values.get("empty") == "yes" else "ask_owner"
+    return "discovery" if "empty" in view.artifact_keys or view.values.get("empty") == "yes" else "ask_owner"
 
 
 def route_short(view: Any) -> str:
     """A short visit that confirmed every gap goes to the plan; one that found a gap not answered hands it to the
-    full discovery, whose entry is `read_gap` (skipped with no item for fewer than two gaps). An unreadable value
-    takes the longer path."""
+    full discovery, whose entry is `read_gap` (skipped with no item for fewer than two rows to read). An unreadable
+    value takes the longer path."""
     return "plan" if view.values.get("settled") == "yes" else "read_gap"
 
 
 def gap_items(ctx: Any) -> list[dict[str, str]]:
-    """The items of `read_gap`: one for each gap row of the triage note, with the id `G<n>` of its first number
-    and the row as its text, in the order of the rows. A later row with a number already seen is dropped. Fewer
+    """The items of `read_gap`: one for each gap row of the triage note, then one for each open question that
+    blocks or shapes the change and is routed to the code, the documents or a public source, with the id `G<n>` or
+    `U<n>` and the row as its text, in the order of the rows. A later row with an id already seen is dropped. Fewer
     than two rows give no item, so no reading session starts (PRL-B2)."""
-    rows = specfmt.gap_rows(Path(ctx.artifact).read_text(encoding="utf-8", errors="replace"))
+    text = Path(ctx.artifact).read_text(encoding="utf-8", errors="replace")
     items: dict[str, str] = {}
-    for row in rows:
+    for row in specfmt.gap_rows(text):
         number = re.search(r"G\d+", row)
         if number is not None and number.group(0) not in items:
             items[number.group(0)] = row.strip()
+    for question in specfmt.parse_triage(text).readable:
+        items.setdefault(question.id, question.text)
     return [{"id": gid, "text": text} for gid, text in items.items()] if len(items) >= 2 else []
 
 
@@ -219,13 +222,31 @@ def _labelled(options: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return [(lab or chr(ord("a") + i), text) for i, (lab, text) in enumerate(options)]
 
 
+NOT_ANSWERED = re.compile(r"^\W*not answered\b", re.I)
+LEAST_CHANGE = "Take the reading that changes the least of what exists"
+
+
+def _findings(ctx: Any) -> dict[str, str]:
+    """Row id -> the findings line of its reading session, for the items of `read_gap` that left one."""
+    out: dict[str, str] = {}
+    for channel in (getattr(ctx, "values", None) or {}, getattr(ctx, "artifacts", None) or {}):
+        for key, value in ((channel.get("read_gap") or {}) if isinstance(channel, dict) else {}).items():
+            m = re.fullmatch(r"gap_finding\[([GU]\d+)\]", str(key))
+            if m:
+                out.setdefault(m.group(1), str(value))
+    return out
+
+
 def owner_questions(ctx: Any) -> dict[str, str]:
-    """The script unit after triage: the questions of the one pause, as JSON in the engine's `Question` shape
-    (OWQ-B2 to OWQ-B6). Each owner decision of the triage note is one `choice` question named by its gap's id in
-    lower case, with the labels of its options as choices, its default, and the gap, the question and the labelled
-    options as its wording; under `always` each gap row that says findable and does not say `Covered by` then gets a
-    question with the choices `right` and `wrong`. At most 20, the decisions first. `never` lists none. It says whether
-    the list holds no question by leaving the key `empty` (`yes`) only then, which `ask_route` reads."""
+    """The script unit after the reading sessions: the questions of the one pause, as JSON in the engine's `Question`
+    shape (OWQ-B2 to OWQ-B6, OWQ-B11). Each owner decision of the triage note (for a gap row or an open question
+    routed to the owner) is one `choice` question named by its row's id in lower case, with the labels of its options
+    as choices, its default, and the row, the question and the labelled options as its wording. Each open question
+    that blocks the change and that its reading session reported as `Not answered` is then one `text` question whose
+    default is the reading that changes the least. Under `always` each gap row that says findable and does not say
+    `Covered by` then gets a question with the choices `right` and `wrong`. At most 20, the decisions first. `never`
+    lists none. It says whether the list holds no question by leaving the key `empty` (`yes`) only then, which
+    `ask_route` reads."""
     workdir = Path(ctx.workdir)
     pointer = ((ctx.artifacts or {}).get("triage") or {}).get("triage_note")
     try:
@@ -246,6 +267,17 @@ def owner_questions(ctx: Any) -> dict[str, str]:
             seen.add(name)
             questions.append({"name": name, "text": _wording(entry.gap, entry.question, options), "kind": "choice",
                               "choices": [lab for lab, _ in options], "required": True, "default": chosen})
+        findings = _findings(ctx)
+        for open_question in note.readable:
+            name = open_question.id.lower()
+            if open_question.impact != "blocks" or name in seen or not NOT_ANSWERED.match(
+                    findings.get(open_question.id, "")):
+                continue
+            seen.add(name)
+            row_text = re.sub(r"^\W+", "", open_question.text)
+            asked = f"The code and the documents do not answer this. Answer in your own words. {row_text}"
+            questions.append({"name": name, "text": _shorten(asked, MAX_WORDING), "kind": "text", "required": True,
+                              "default": LEAST_CHANGE})
         if conversation == "always":
             for row in specfmt.gap_rows(text):
                 gap = specfmt.GAP_ID.search(row)

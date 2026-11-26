@@ -98,11 +98,11 @@ def test_the_gap_reading_unit_is_a_concurrent_read_only_map() -> None:  # AC 1, 
     assert set(unit.step.produces) == {"gap_finding"} and unit.step.produces["gap_finding"].max_chars == 1500
     assert isinstance(unit.gate.judge, JudgeSpec) and unit.gate.check is None
     order = list(SPEC.order)
-    assert order.index("discovery_short") < order.index("owner_questions") < order.index("ask_route")
-    assert order.index("ask_route") < order.index("ask_owner") < order.index("read_gap") < order.index("discovery")
+    assert order.index("discovery_short") < order.index("read_gap") < order.index("owner_questions")
+    assert order.index("owner_questions") < order.index("ask_route") < order.index("ask_owner") < order.index("discovery")
     triage_targets = SPEC.units["triage"].route_targets
-    assert "owner_questions" in triage_targets and "read_gap" not in triage_targets and "discovery" not in triage_targets
-    assert "read_gap" in SPEC.units["ask_route"].route_targets
+    assert "read_gap" in triage_targets and "owner_questions" not in triage_targets and "discovery" not in triage_targets
+    assert "discovery" in SPEC.units["ask_route"].route_targets
     assert "read_gap" in SPEC.units["discovery_short"].route_targets
     assert "discovery" not in SPEC.units["discovery_short"].route_targets
     writer = SPEC.units["discovery"]
@@ -665,8 +665,8 @@ def test_the_records_agree_with_the_gap_reading_unit() -> None:  # AC 5, PRL-AC1
     _check_unit_records("read_gap", ["gap_finding"], True)
     flow = json.loads((ROOT / "blueprint.json").read_text())["flow"]
     assert flow["read_gap"] == {"map": {"over": "triage.triage_note"}}
-    assert "owner_questions" in flow["triage"]["route"] and "read_gap" not in flow["triage"]["route"]
-    assert "read_gap" in flow["ask_route"]["route"] and "read_gap" in flow["discovery_short"]["route"]
+    assert "read_gap" in flow["triage"]["route"] and "owner_questions" not in flow["triage"]["route"]
+    assert "discovery" in flow["ask_route"]["route"] and "read_gap" in flow["discovery_short"]["route"]
     assert _sizing("discovery")["reads"] == ["answers", "gap_finding", "triage_note"]  # sorted, as compare.py reads it
 
 

@@ -13,10 +13,10 @@ Units:
 - [setup](setup.spec.md): Write the overview spec and one spec per component
 - [triage](triage.spec.md): Read the task, find the gaps, pick the route
 - [discovery_short](discovery-short.spec.md): Confirm the cited behaviours; write the hand-off
-- [owner_questions](owner-questions.spec.md): List the questions the one pause asks the owner
-- [ask_route](ask-route.spec.md): Pause when there is a question; otherwise go on to the reading sessions
-- [ask_owner](ask-owner.spec.md): Pause once for the owner's answers; defaults at the deadline
 - [read_gap](read-gap.spec.md): Read one gap's documents and code; report findings
+- [owner_questions](owner-questions.spec.md): List the questions the one pause asks the owner
+- [ask_route](ask-route.spec.md): Pause when there is a question; otherwise go on to the writing session
+- [ask_owner](ask-owner.spec.md): Pause once for the owner's answers; defaults at the deadline
 - [discovery](discovery.spec.md): Close each gap with a spec, record or research note
 - [plan](plan.spec.md): Design requirements and phases; state complexity
 - [code_mode](code-mode.spec.md): Pick one code session or the expand step from the plan check's facts

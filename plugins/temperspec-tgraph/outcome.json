@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 26,
+  "revision": 27,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -414,14 +414,14 @@
       ]
     },
     "triage": {
-      "statement": "The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps and the size of the task",
+      "statement": "The triage note states the task's acceptance criteria, its intent, the questions it leaves open, the gaps in the specs, and a route that follows the gaps, the open questions and the size of the task",
       "criteria": [
         {
           "id": "ts-tri-form",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The triage note has each section the triage rule requires",
-          "check_method": "Read the note's headings against the rule's list",
+          "text": "The triage note has each section the triage rule requires, states the task's intent (goal, in scope, out of scope, assumptions each with what it costs if wrong) and lists each open question as a row with one of the fixed categories, an impact (Blocks, Shapes or Detail) and a route (code, docs, source, owner or plan), a Detail row and no other going to plan",
+          "check_method": "Read the note's headings against the rule's list, and its Intent and Uncertainties sections against the rule's fields, categories, impacts and routes",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -431,8 +431,8 @@
           "id": "ts-tri-route",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The route follows the gap list: discovery with a gap, plan or quick with none, and quick only within the quick lane's limits and never on a return to triage",
-          "check_method": "Compare the route with the gap list and the delivery; for quick, measure the note's criteria count and its Change section against the limits, resolve its commands, and read the visit number",
+          "text": "The route follows the gap list and the open questions: discovery with a gap or with a question that blocks or shapes the change, plan or quick with neither, and quick only within the quick lane's limits and never on a return to triage",
+          "check_method": "Compare the route with the gap list, the impacts of the uncertainty rows and the delivery; for quick, measure the note's criteria count and its Change section against the limits, resolve its commands, and read the visit number",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -517,6 +517,29 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-tri-uncertain",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "Every question the task leaves open about its own intent that would change which behaviours are written is an uncertainty row, and no row's impact is lower than what rests on its answer",
+          "check_method": "Read the task against each category of the rule's scan (goal, scope, actors, data, names, side effects, failures, limits, life cycle, dependencies, existing behaviour, terms); compare what it leaves open with the rows and their impacts",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "request"
+            ],
+            "scale": {
+              "met": "each open question that would change the behaviours written is a row, and each row's impact fits what rests on its answer",
+              "partial": "each such question is a row, but one is marked Detail although its answer changes which behaviours are written",
+              "unmet": "the task leaves open a question that changes which behaviours are written and no row lists it",
+              "evidence": "per category that the task leaves open: the words of the task, and the row or its absence",
+              "seeds": [
+                "met-ts-tri-uncertain",
+                "unmet-ts-tri-uncertain"
+              ]
+            }
+          }
         },
         {
           "id": "ts-tri-covered",
@@ -1014,6 +1037,17 @@
           "verified_by": "check",
           "text": "The hand-off of a task that goes on to a plan has a reading list with one item for each file the plan will need, naming an existing file, the line ranges or ids that matter and one line on why",
           "check_method": "Read the hand-off's reading list: each item names a file that exists, with its ranges or ids and a reason",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-uncertain",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every open question of the triage note that blocks or shapes the change has one line under the hand-off's Uncertainties closed that says how it ended: answered with where it was read, the owner's answer, or an assumption with what it costs if wrong",
+          "check_method": "Read the uncertainty rows of the triage note that say Blocks or Shapes; find each id under the hand-off's Uncertainties closed with Answered, Owner or Assumed, and If wrong on an assumption",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:discovery_check"
@@ -1925,7 +1959,8 @@
     "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-ran from the gate's own command runs.",
     "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch.",
     "The triage check given no conversation value reads no sort: the engine's fixture rung gives a check no settings, so ts-tri-owner is not applicable to each triage fixture, and the cases of `never`, `blocking` and `always` are proved by the package's tests.",
-    "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions)."
+    "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions).",
+    "The eleven categories of the uncertainty scan, the three impacts and the five routes are first values with no measured run behind them; ts-tri-uncertain is a warning until runs show how often its judge and the owner agree (research note spec-decision-and-discovery-formats)."
   ],
   "revisions": [
     {
@@ -2082,6 +2117,12 @@
       "origin": "authored",
       "at": "2026-11-26T21:00:00.000Z",
       "note": "spec format: a spec's `Depends on` (outgoing only, held to the links of the behaviours and criteria a run adds or changes) and `Does not own` (each row names the owning spec) are part of the structure check (ts-spec-form, ts-dis-form, ts-set-form); a listed spec nothing links is a lead (ts-dis-depends); the capability list prints who uses each spec; no Responsibilities, Used by or Out of scope section"
+    },
+    {
+      "revision": 27,
+      "origin": "authored",
+      "at": "2026-11-26T22:00:00.000Z",
+      "note": "discovery of intent: the triage note states the task's intent and lists its open questions as uncertainty rows with a category, an impact and a route (ts-tri-form reads both sections and ts-tri-route the rows; ts-tri-uncertain is a warning until it is measured), the reading sessions also read the rows routed to the code, the documents or a source, the one pause moves after them and asks each blocking question the reading could not answer, and the hand-off says how each row ended (ts-dis-uncertain); specs triage, read-gap, owner-questions, ask-route, discovery, conversation, parallel-reading; decision record the-owner-is-asked-once-after-the-reading-sessions"
     }
   ]
 }

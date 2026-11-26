@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+710ed360072f",
-  "docs_digest": "81dfd9a977a381e6dab290753af8eae02ded765407ca463774303be1dfa59f66",
-  "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+  "workflow_version": "0.1.0+eb88521d754b",
+  "docs_digest": "28543070c86bbeac8a1f4358312be9adf1035a221fef2111981677ed4c8fb6e7",
+  "shape_digest": "8e1c8b6ebcc28166eeb1fbb22a45f48920523ad73575f2f7577784189f415216",
   "entries_applied": [
     {
       "id": "E0.2.0-1",
@@ -91,20 +91,18 @@
     "readiness:needs-work|outcome||",
     "readiness:needs-work|phase||",
     "readiness:needs-work|setup||",
-    "readiness:needs-work|triage||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
     "validate:criterion-overlap|phase||",
     "validate:criterion-overlap|setup||",
-    "validate:criterion-overlap|triage||",
     "validate:criterion-overlap|||",
     "validate:template-key-not-on-every-path|code||",
     "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 26,
+  "outcome_revision": 27,
   "baseline": {
     "error": 0,
-    "warning": 39
+    "warning": 38
   },
-  "stamped_at": "2026-11-26T17:29:54.482Z"
+  "stamped_at": "2026-11-26T18:14:36.965Z"
 }

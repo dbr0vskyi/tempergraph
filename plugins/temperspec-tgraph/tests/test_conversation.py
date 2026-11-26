@@ -135,8 +135,9 @@ def test_an_entry_with_its_options_one_per_line_is_read() -> None:  # CONV-AC2
 # -- phase 2: the triage check refuses an incomplete sort ---------------------------------------------------
 
 TRIAGE_CHECKS = ROOT / "evals" / "checks" / "triage"
-HEAD = ("# Triage: T\n\n## Task\n\nx\n\n## Acceptance criteria\n\n1. One\n\n## Existing documents\n\n- None\n\n"
-        "## Gaps\n\n")
+INTENT = ("## Intent\n\n- Goal: g\n- In scope: i\n- Out of scope: o\n- Assumptions: None\n\n")
+HEAD = ("# Triage: T\n\n## Task\n\nx\n\n## Acceptance criteria\n\n1. One\n\n" + INTENT
+        + "## Existing documents\n\n- None\n\n## Uncertainties\n\nNone\n\n## Gaps\n\n")
 TAIL = "\n## Route\n\n- Deliver: code\n- Route: discovery\n"
 SORTED = ("- G1 spec gap: a. Searched `docs/specs/`: nothing. Findable\n"
           "- G2 decision needed: b. Searched `docs/specs/`: nothing. Owner decision\n")

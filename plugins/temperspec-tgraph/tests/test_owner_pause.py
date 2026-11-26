@@ -207,20 +207,20 @@ def _names(out: Any) -> list[str]:
 # -- OWQ-AC7: what the units declare --------------------------------------------------------------------------------
 
 
-def test_owq_ac7_the_three_units_are_declared_after_the_short_visit_and_before_the_reading() -> None:  # AC 5
+def test_owq_ac7_the_three_units_are_declared_after_the_reading_and_before_the_writing_session() -> None:  # AC 5
     questions, route, ask = (SPEC.units[n] for n in ("owner_questions", "ask_route", "ask_owner"))
     assert questions.kind == "script" and questions.script is not None and questions.script.call is not None
     assert set(questions.script.produces) == {"question_list", "empty"}
-    assert route.kind == "route" and set(SPEC.units["ask_route"].route_targets) == {"ask_owner", "read_gap"}
+    assert route.kind == "route" and set(SPEC.units["ask_route"].route_targets) == {"ask_owner", "discovery"}
     assert ask.kind == "ask" and ask.ask is not None
     assert ask.ask.questions_from == "question_list" and tuple(ask.ask.context) == ("triage_note",)
     assert (ask.ask.deadline_s, ask.ask.on_deadline) == (86400, "defaults") and ask.ask.check is not None
     for unit in SPEC.units.values():
         assert not unit.gate.approval  # no gate asks for an approval: the one pause is the ask
     order = list(SPEC.order)
-    assert order.index("discovery_short") < order.index("owner_questions") < order.index("ask_route")
-    assert order.index("ask_route") < order.index("ask_owner") < order.index("read_gap")
-    assert "owner_questions" in SPEC.units["triage"].route_targets
+    assert order.index("discovery_short") < order.index("read_gap") < order.index("owner_questions")
+    assert order.index("owner_questions") < order.index("ask_route") < order.index("ask_owner") < order.index("discovery")
+    assert "read_gap" in SPEC.units["triage"].route_targets and "owner_questions" not in SPEC.units["triage"].route_targets
 
 
 # -- OWQ-AC1, OWQ-AC2: one pause, with the questions of the note ------------------------------------------------------
@@ -231,7 +231,7 @@ def test_owq_ac1_a_note_with_three_owner_decisions_pauses_once_with_three_questi
     out = _begin(_repo(tmp_path / "r"), ex)
     assert out is not None and out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "input", out
     assert _names(out) == ["g1", "g2", "g3"] and out.payload["questions"][0]["choices"] == ["a", "b"]
-    assert ex.count("read_gap") == 0 and ex.count("discovery") == 0  # no reading session before the answers
+    assert ex.count("read_gap") == 3 and ex.count("discovery") == 0  # the reading is done, nothing is written yet
     assert len(_records(tmp_path / "r", "pause")) == 1
 
 
@@ -240,7 +240,7 @@ def test_owq_ac1_two_of_three_answers_leave_the_pause_open_for_the_third(tmp_pat
     _begin(repo, ex)
     held = _again(repo, ex, answers={"g1": "b", "g2": "a"})
     assert held is not None and held.exit_code is ExitCode.PAUSED and held.payload["missing"] == ["g3"]
-    assert _answers_file(repo)["answers"] == {"g1": "b", "g2": "a"} and ex.count("read_gap") == 0
+    assert _answers_file(repo)["answers"] == {"g1": "b", "g2": "a"} and ex.count("discovery") == 0
     done = _again(repo, ex, answers={"g3": "b"})
     assert done is not None and done.exit_code is ExitCode.FINISHED, getattr(done, "message", None)
     assert _answers_file(repo)["answers"] == {"g1": "b", "g2": "a", "g3": "b"} and ex.count("discovery") == 1
@@ -317,7 +317,7 @@ def test_owq_ac8_applying_the_deadline_before_it_is_refused_with_exit_code_2(tmp
     _begin(repo, ex)
     early = _again(repo, ex, apply_deadline=True)
     assert early is not None and early.exit_code is ExitCode.USAGE and early.reason == "deadline_not_passed"
-    assert ex.count("read_gap") == 0
+    assert ex.count("discovery") == 0
 
 
 def test_owq_ac8_after_the_deadline_the_run_goes_on_with_the_answers_and_the_defaults(tmp_path: Path) -> None:  # AC 5
@@ -338,7 +338,7 @@ def test_owq_ac5_a_reading_called_wrong_keeps_the_pause_open_also_after_the_dead
     assert _names(first) == ["g2", "g1"]
     held = _again(repo, ex, answers={"g2": "b", "g1": "wrong"})
     assert held is not None and held.exit_code is ExitCode.PAUSED
-    assert any("G1" in p for p in held.payload["check_problems"]) and ex.count("read_gap") == 0
+    assert any("G1" in p for p in held.payload["check_problems"]) and ex.count("discovery") == 0
     _expire(repo)
     late = _again(repo, ex, apply_deadline=True)
     assert late is not None and late.exit_code is ExitCode.PAUSED
@@ -362,8 +362,8 @@ def test_the_records_agree_with_the_three_units() -> None:  # AC 7
     assert units["ask_route"]["kind"] == "route" and units["ask_owner"]["kind"] == "ask"
     assert "answers" in units["ask_owner"]["produces"]
     flow = data["flow"]
-    assert "owner_questions" in flow["triage"]["route"] and "read_gap" not in flow["triage"]["route"]
-    assert sorted(flow["ask_route"]["route"]) == ["ask_owner", "read_gap"]
+    assert "read_gap" in flow["triage"]["route"] and "owner_questions" not in flow["triage"]["route"]
+    assert sorted(flow["ask_route"]["route"]) == ["ask_owner", "discovery"]
     decisions = json.loads((ROOT / "authoring.json").read_text(encoding="utf-8"))["decisions"]
     text = json.dumps(decisions)
     for unit in ("owner_questions", "ask_route", "ask_owner"):
