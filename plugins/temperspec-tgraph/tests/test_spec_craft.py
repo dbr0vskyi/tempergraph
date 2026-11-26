@@ -159,7 +159,7 @@ def test_long_vague_or_unfinished_behaviours_are_leads(tmp_path: Path) -> None: 
 def test_the_rules_and_prompts_say_it() -> None:  # ts-dis-wording, ts-dis-specname, ts-dis-general
     spec_rule = (ROOT / "rules" / "spec.rule.md").read_text()
     assert "## Naming a spec" in spec_rule and "at most 500 characters" in spec_rule and "`TBD`" in spec_rule
-    assert "does not own" in spec_rule
+    assert "## Does not own" in spec_rule
     extraction = (ROOT / "rules" / "extraction.rule.md").read_text()
     for phrase in ("`tested`", "`read`", "`stated`", "## Invariants", "## Suspected bugs", "## Budget"):
         assert phrase in extraction, phrase

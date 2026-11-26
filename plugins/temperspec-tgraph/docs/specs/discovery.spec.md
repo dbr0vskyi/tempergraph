@@ -21,6 +21,7 @@ Part of the [overview](overview.spec.md). A triage note that lists two or more g
 - [ ] ts-dis-literal Every line the discovery step added to a spec in words that tie it to the task is reported to the judge as a lead
 - [ ] ts-dis-wording A behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder that discovery put into a spec reaches the judge as a lead
 - [ ] ts-dis-specname A spec created in discovery is named for its capability: no task id, issue number or leading work verb in its file name, no task id or issue number in its title
+- [ ] ts-dis-depends A spec that discovery edited and lists under `Depends on` a spec that none of its behaviours or criteria links reaches the judge as a lead
 - [ ] ts-dis-general Every behaviour written or edited in discovery states a general rule of its capability that reads true to someone who never saw the task and can be read only one way
 - [ ] ts-dis-scope No document the discovery step wrote covers a concept outside the task's gaps
 - [ ] ts-dis-narrow Every discovery prompt tells the session to search for ids and names, to read the line ranges it needs instead of whole files, and to stop reading once each gap has its answer
