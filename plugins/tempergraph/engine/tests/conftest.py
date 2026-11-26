@@ -82,6 +82,7 @@ def _isolated_home(request: pytest.FixtureRequest, tmp_path_factory: pytest.Temp
         "TEMPERGRAPH_CALLER_APP",
         "TEMPERGRAPH_SUPERVISOR_TOKEN",
         "TEMPERGRAPH_SESSION_KEY",  # a suite run from inside an engine session is not a step driving the engine (PRV-B13)
+        "TEMPERGRAPH_AUTONOMY",  # a machine setting of `record` would make every loop test only record, never file (SIL-B2)
     ):
         monkeypatch.delenv(var, raising=False)
     if "live" in request.node.keywords:
