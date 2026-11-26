@@ -1519,9 +1519,15 @@ class EngineNodes:
                 att["repeated_evidence"] = cres.evidence
                 write["judgements"] = {unit: {"verdict": str(Verdict.ESCALATE), "reason": "check_repeat"}}
             else:
-                write["judgements"] = {unit: {"verdict": str(Verdict.RETRY), "reason": "check_fail", "blockers": [
-                    {"criterion": f.criterion or "check", "place": f.place, "problem": f.message, "fix": f.fix}
-                    for f in cres.findings if f.status == "fail"] or [{"criterion": "check", "problem": "check FAIL"}]}}
+                blockers = [{"criterion": f.criterion or "check", "place": f.place, "problem": f.message, "fix": f.fix}
+                            for f in cres.findings if f.status == "fail"]
+                if g.judge is None and g.on_fail == "back" and blockers and len(g.back_targets) == 1:  # HUM-B15
+                    write["judgements"] = {unit: {"verdict": str(Verdict.BACK), "back_to": g.back_targets[0],
+                                                  "reason": "check_fail", "blockers": blockers}}
+                else:
+                    write["judgements"] = {unit: {"verdict": str(Verdict.RETRY), "reason": "check_fail",
+                                                  "blockers": blockers or [{"criterion": "check",
+                                                                            "problem": "check FAIL"}]}}
             return write
         if g.judge is None:  # a script unit gated by its check alone
             write["judgements"] = {unit: {"verdict": str(Verdict.PROCEED), "reason": "check_only"}}

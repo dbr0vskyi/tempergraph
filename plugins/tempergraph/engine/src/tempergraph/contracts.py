@@ -158,7 +158,7 @@ class GateSpec:
     check_timeout_s: int = 1800
     judge: JudgeSpec | None = None
     criteria: tuple[Criterion, ...] = ()
-    on_fail: Literal["retry", "stop", "fallback"] = "retry"
+    on_fail: Literal["retry", "stop", "fallback", "back"] = "retry"
     on_budget_spent: Literal["stop", "ask", "fallback"] = "ask"
     fallback: str | None = None
     approval: bool = False
