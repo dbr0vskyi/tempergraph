@@ -151,7 +151,7 @@ WHEN the scaffold and check verbs run THE engine CLI SHALL offer `blueprint chec
 
 WHEN rung 7 runs for a package whose workflow name is registered from another path that is another checkout of the same package THE engine SHALL pass the rung without writing the registry, another checkout being a working tree of the same git repository that holds the package folder at the same place in it.
 
-- GIVEN a workflow registered from the main checkout of a repository and a linked worktree of it that holds the package at the same place WHEN `author verify` runs on the package folder of the worktree with the default home THEN rung 7 passes with a note naming the registered path and the entry still names the main checkout, byte for byte as before
+- GIVEN a workflow registered from the main checkout of a repository and a linked worktree of it that holds the package at the same place WHEN `author verify` runs on the package folder of the worktree with the default home THEN rung 7 passes with a note naming the registered path and the entry still names the main checkout, byte for byte as it was
 - GIVEN the same registry WHEN `workflows register` runs on the package folder of the worktree THEN it exits 2 with `name-taken`, as [UPD-B24](engine-update.spec.md) says
 - GIVEN the same registry WHEN `author verify` runs on the package folder of the main checkout THEN rung 7 passes and refreshes the entry in place, as [UPD-B24](engine-update.spec.md) says for a path registered again
 
@@ -159,7 +159,7 @@ WHEN rung 7 runs for a package whose workflow name is registered from another pa
 
 WHEN rung 7 runs for a package whose workflow name, or its private import name ([UPD-B24](engine-update.spec.md)), is registered from a path that is not another checkout of the same package THE engine SHALL fail the rung with the finding `name-taken`, writing nothing to the registry.
 
-- GIVEN a workflow `notes` registered from a folder of one repository and a package named `notes` in a folder of another repository WHEN `author verify` runs on that folder THEN rung 7 fails with `name-taken` naming the registered path, exit 2, and the entry is byte for byte as before
+- GIVEN a workflow `notes` registered from a folder of one repository and a package named `notes` in a folder of another repository WHEN `author verify` runs on that folder THEN rung 7 fails with `name-taken` naming the registered path, exit 2, and the entry is byte for byte as it was
 - GIVEN a workflow registered from the main checkout and a package of the same name in a linked worktree of that repository at another place in it WHEN `author verify` runs on it THEN rung 7 fails with `name-taken`
 
 ## Acceptance criteria

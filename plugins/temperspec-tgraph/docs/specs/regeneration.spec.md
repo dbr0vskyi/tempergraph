@@ -32,7 +32,7 @@ WHEN the regeneration unit starts THE workflow SHALL read the regenerations of t
 
 WHEN `tempergraph.regenerations.json` exists and is not valid JSON, has a `schema_version` other than 1, or holds a regeneration with no `name`, no `command`, no `inputs` or no `outputs` THE regeneration unit SHALL pause the run at once, naming the file and what is wrong with it.
 
-- GIVEN a file that is not valid JSON WHEN the unit starts THEN the run pauses, the pause names the file, and the code step is not entered
+- GIVEN a file that is not valid JSON WHEN the unit starts THEN the run pauses, the pause names the file, and no trip back to the code step is made
 - GIVEN a file with `schema_version` 2, or a regeneration with no `command` WHEN the unit starts THEN the run pauses and names what is wrong
 - GIVEN a repository with no `tempergraph.regenerations.json` WHEN the unit starts THEN the run does not pause for the file
 
@@ -61,7 +61,7 @@ WHEN a path is an output of a regeneration THE regeneration unit SHALL not count
 
 ### RGN-B8 A run with nothing due passes with nothing run
 
-WHEN the repository has no `tempergraph.regenerations.json`, or declares no regeneration, or no input of a regeneration it declares is a path the run has changed, THE regeneration unit SHALL pass with no command run, no file written and no commit made.
+WHEN the repository has no `tempergraph.regenerations.json`, or declares no regeneration, or declares none that is due (RGN-B6), THE regeneration unit SHALL pass with no command run, no file written and no commit made.
 
 - GIVEN a repository with no `tempergraph.regenerations.json` WHEN the unit runs THEN no command starts, the workspace is as it was, no commit is added and the run goes on
 - GIVEN a file whose `regenerations` list is empty WHEN the unit runs THEN the same holds
