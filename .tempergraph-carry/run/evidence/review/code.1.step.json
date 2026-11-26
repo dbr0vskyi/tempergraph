@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.step",
+  "view_chars": 27065,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        83,
+        86,
+        89,
+        92,
+        93
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The plan's Completed marks were written in several edits per phase (truncated edits needed repair) although the prompt asks for one edit per phase."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        140,
+        145,
+        146
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The code report was edited after the final preview run, which changes the tree and forces the gate to rerun every command."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        116,
+        137
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "test_worktree_cleanup fails because the sandbox temp path contains 'tg-', so tests_passed is no for a reason outside the change."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        112,
+        122,
+        123,
+        134,
+        136,
+        137
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The preview output did not name the second failing test, so the session ran the whole suite itself, hit the background time limit, and lost over an hour of idle time."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        61,
+        63,
+        114
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Shell calls used a pipe and 2>&1 that the prompt says are refused, and the shell accepted them, so the prompt and the tool disagree."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        114,
+        117,
+        126,
+        127
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "A ruff import-order error in the new test file was found only by the preview because the phase test runs do not include lint."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Open task-notes.rule.md and plan.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Write test files before the phase's source files",
+      "status": "followed",
+      "turns": [
+        52,
+        54,
+        60,
+        66
+      ]
+    },
+    {
+      "item": "After each phase run only the phase's test files",
+      "status": "followed",
+      "turns": [
+        61,
+        63,
+        78
+      ]
+    },
+    {
+      "item": "One plan edit of Completed marks per phase",
+      "status": "not_followed",
+      "turns": [
+        83,
+        86,
+        89,
+        92,
+        93
+      ]
+    },
+    {
+      "item": "Check specs outside the plan's front matter and list them in the report",
+      "status": "followed",
+      "turns": [
+        96,
+        97,
+        99,
+        102
+      ]
+    },
+    {
+      "item": "Make one preview run and change no file after it",
+      "status": "not_followed",
+      "turns": [
+        105,
+        140,
+        145,
+        146
+      ]
+    },
+    {
+      "item": "Plain single commands, no pipes or redirections",
+      "status": "not_followed",
+      "turns": [
+        61,
+        63,
+        114
+      ]
+    },
+    {
+      "item": "Skills and subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

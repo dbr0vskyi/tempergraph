@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G6.1.step",
+  "view_chars": 5142,
+  "observations": [
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        2,
+        4,
+        5,
+        8,
+        9,
+        12
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The reader searched for pause_kind/input six times with near-identical patterns after the first search already showed the term absent from code and specs; the prompt could say to stop and report absence after two empty searches."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Limits: read only, no shell, no writes, inside working directory",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "item": "Procedure step 2: read narrowly (search ids first, then line ranges)",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        7
+      ]
+    },
+    {
+      "item": "Web only for research-needed gaps",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Handover: gap_finding single line ending with ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        13
+      ]
+    }
+  ],
+  "none_found": false
+}

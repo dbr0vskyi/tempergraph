@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G6.1.judge",
+  "view_chars": 3775,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        10
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge admitted it could not confirm the status.py line 86 cite, never opened that file, and still graded both criteria MET instead of PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

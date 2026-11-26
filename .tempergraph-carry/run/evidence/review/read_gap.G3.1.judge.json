@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G3.1.judge",
+  "view_chars": 4183,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5,
+        13,
+        14
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge said it checked each cited file at its lines, but the spec lines it cites (compiler-and-flow.spec.md 105 and CMP-AC8 at 137) and its negative result for docs/specs came from grep output, not from opening the spec file."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

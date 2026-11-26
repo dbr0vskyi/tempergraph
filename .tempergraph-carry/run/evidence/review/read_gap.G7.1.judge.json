@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G7.1.judge",
+  "view_chars": 4558,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        1,
+        15
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded both criteria MET and cited the triage row at line 35 although it only saw that row through a grep (turn 1) and never read the triage note, which the brief says should be PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

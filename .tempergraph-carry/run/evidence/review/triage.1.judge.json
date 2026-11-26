@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.judge",
+  "view_chars": 5091,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        5,
+        7,
+        8,
+        9,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.65,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded the gap list MET from grep output alone and never opened a spec file, although the intent requires opening what a search finds."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge says it only spot-checked the gap list and did not repeat every search the note reports, which the intent explicitly requires."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        4,
+        5,
+        7,
+        8
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Four near-identical greps for the same terms were run with small variations and added little, ending in an 11-character result."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        11
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Criteria 1-4, 7 and 8 are said to rest on engine check findings, but the turns do not show those findings quoted, so the covered-id and owner-decision grades may be unverified."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

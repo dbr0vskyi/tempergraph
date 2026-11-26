@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G8.1.step",
+  "view_chars": 4954,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Read-only: no file written, no command run",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "item": "Read the gap's row in the triage note, then the documents it names",
+      "status": "unclear",
+      "turns": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Read the code the gap concerns, searching ids and names first",
+      "status": "followed",
+      "turns": [
+        2,
+        5,
+        6,
+        8
+      ]
+    },
+    {
+      "item": "Use the web only for a cited public source",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Report findings with file names and line ranges or ids",
+      "status": "followed",
+      "turns": [
+        9
+      ]
+    },
+    {
+      "item": "End with ARTIFACT gap_finding line of at most 1,500 characters",
+      "status": "unclear",
+      "turns": [
+        9
+      ]
+    }
+  ],
+  "none_found": true
+}

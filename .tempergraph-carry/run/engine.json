@@ -6,7 +6,7 @@
   },
   "last_on": {
     "engine_version": "0.2.0",
-    "engine": "0.2.0-3d01d61d4214"
+    "engine": "0.2.0-452f22870d18"
   },
   "pinned": null,
   "history": [
@@ -15,6 +15,14 @@
       "engine": "0.2.0-3d01d61d4214",
       "workflow_version": "0.1.0+e0e2769b32e5",
       "shape_digest": "af10a279a7aa48ae0e70bea4212e4bc273728af0f93cc86cdd17b107e10c7e9b",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T03:02:17.460Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-452f22870d18",
+      "workflow_version": "0.1.0+b85aa6864224",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
       "checkpoint_format": 1,
       "units": {
         "prepare": {
@@ -130,17 +138,24 @@
           ]
         },
         "code_join": {
-          "kind": "script",
-          "digest": "f9cb728937dfeea2",
+          "kind": "route",
+          "digest": "d9031d08d2529e4f",
           "produces": []
+        },
+        "independent_review": {
+          "kind": "step",
+          "digest": "dcafce222bde4a25",
+          "produces": [
+            "findings"
+          ]
         },
         "outcome": {
           "kind": "step",
-          "digest": "cf893fdb1ba5aa2e",
+          "digest": "a0d1c59865863c90",
           "produces": []
         }
       },
-      "started_at": "2026-11-26T03:02:17.460Z"
+      "started_at": "2026-11-26T06:42:22.974Z"
     }
   ]
 }

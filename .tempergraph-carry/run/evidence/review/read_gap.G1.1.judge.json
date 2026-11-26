@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.judge",
+  "view_chars": 3900,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        10,
+        11
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded from grep output for the test and fixture citations (including the loose run-paused.jsonl:57) without opening those files, which the intent says should cap the grade at PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.2.retry",
+  "view_chars": 12373,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        10,
+        12
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The check's fix said to give each listed document a docs row, but the session deleted the Docs to update entries instead; the prompt should say what to do with specs that discovery already edited, so the plan step and the ts-plan-links check agree."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "plan.rule.md opened with read",
+      "status": "followed",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "item": "documents.rule.md opened with read",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "start from hand-off reading list",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "edit existing plan in place on a trip back",
+      "status": "followed",
+      "turns": [
+        10
+      ]
+    },
+    {
+      "item": "every document under Docs to update gets a docs row",
+      "status": "unclear",
+      "turns": [
+        10,
+        12
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G4.1.step",
+  "view_chars": 5464,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Procedure: read the gap row in the triage note, then the named documents",
+      "status": "followed",
+      "turns": [
+        1,
+        6,
+        7
+      ]
+    },
+    {
+      "item": "Procedure: read the code narrowly (search ids and names first, read needed ranges)",
+      "status": "followed",
+      "turns": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Procedure: use the web only for a research-needed gap",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Limits: only read, no file written and no command run",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Limits: work on own gap's row only (G4)",
+      "status": "followed",
+      "turns": [
+        1,
+        14
+      ]
+    },
+    {
+      "item": "What to hand over: gap_finding as one line of at most 1,500 characters ending with an ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        14
+      ]
+    },
+    {
+      "item": "What to hand over: findings name each file with line ranges or ids",
+      "status": "followed",
+      "turns": [
+        14
+      ]
+    }
+  ],
+  "none_found": true
+}

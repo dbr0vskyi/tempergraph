@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "view_chars": 35194,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        13,
+        15,
+        20,
+        21,
+        37,
+        137
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Peak context hit about 373k with 170 turns above 200k and about 293k tokens spent before the first write, driven by whole-file reads of capabilities.md and large specs; give the step a narrower reading list or a pre-digested extract."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        23,
+        26,
+        27,
+        29,
+        30,
+        31,
+        32,
+        34,
+        109,
+        110,
+        112,
+        113,
+        114,
+        116,
+        117,
+        118,
+        208,
+        209,
+        210,
+        211,
+        214,
+        215,
+        216,
+        217,
+        248,
+        249,
+        250,
+        251
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "With no shell the step measured byte budgets by bisecting with Grep regex probes, about 30 calls; a file-size or line-count tool would replace them."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        37,
+        47,
+        60,
+        80,
+        120,
+        151,
+        161,
+        165,
+        180
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The gap findings already cited file and line facts, yet the step re-read much of the same code at length before writing; the prompt could say to trust the findings unless a specific claim is marked unconfirmed."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        271,
+        272,
+        283,
+        284,
+        289,
+        290
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Many small edits corrected the new spec and the hand-off after drafting (wrong sizes, cross-references, vague sentences), suggesting a final consistency pass was missing before writing."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        131,
+        178
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "One Grep was denied for reaching outside the working directory and one failed on an unsupported -c flag; both were recovered quickly."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "rule files opened with the read tool before writing documents",
+      "status": "followed",
+      "turns": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        11
+      ]
+    },
+    {
+      "item": "write documents only",
+      "status": "followed",
+      "turns": [
+        183,
+        186,
+        195,
+        200,
+        205,
+        245
+      ]
+    },
+    {
+      "item": "close every gap and nothing more",
+      "status": "unclear",
+      "turns": [
+        183,
+        195,
+        200,
+        205
+      ]
+    },
+    {
+      "item": "web_search and web_fetch",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "skills and subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

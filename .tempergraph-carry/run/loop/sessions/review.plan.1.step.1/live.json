@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.plan.1.step.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 1981,
+  "turns_so_far": 1,
+  "pgid": 2473429,
+  "last_event_at": "2026-11-26T06:43:16.513Z",
+  "updated_at": "2026-11-26T06:43:16.513Z",
+  "pid": 2449243,
+  "ended": false
+}

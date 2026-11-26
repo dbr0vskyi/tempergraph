@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G8.1.judge",
+  "view_chars": 3729,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        8
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge saw the G8 triage row only through a Grep result (turn 2), never opened the triage note, and still quoted it with a line number as if read, against the brief's rule that search-printed lines alone grade PARTIAL."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        6,
+        8
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.65,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge admitted it did not check the SIL-B33 mention, which has no line range (the defect ts-rdg-cited names), yet graded both criteria MET instead of PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

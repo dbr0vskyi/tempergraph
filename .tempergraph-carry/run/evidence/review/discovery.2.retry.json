@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.retry",
+  "view_chars": 30468,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        8,
+        17,
+        24,
+        25,
+        28,
+        68
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Peak context reached 324k tokens and 117 turns ran above 200k, with 251k tokens read before the first write, mostly from the full 51k-character capabilities file and whole specs and code files read on a retry that overlapped the prior attempt by 0.8."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        51,
+        52,
+        55,
+        56,
+        57,
+        59,
+        60,
+        61,
+        174,
+        175,
+        177,
+        178
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "With no shell the agent binary-searched file byte sizes through about a dozen regex searches to check the spec size limit, so a size-check tool or a stated size in the hand-off would save these turns."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        112,
+        113,
+        114,
+        115,
+        117,
+        118,
+        119,
+        211,
+        212,
+        213
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The step has no way to run the ts-dis-form check, so the agent rebuilt its patterns by hand in grep (one try failed on look-around) and could not confirm the result."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        39,
+        40,
+        42,
+        44,
+        85,
+        86,
+        87
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The agent re-read checks.py and gate.py in several slices, which the digest flags as repeats, when the retry could have been told which lines of the prior attempt's findings to trust."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "documents.rule.md read before writing",
+      "status": "followed",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "spec.rule.md read before writing a spec",
+      "status": "followed",
+      "turns": [
+        6
+      ]
+    },
+    {
+      "item": "task-notes.rule.md read",
+      "status": "followed",
+      "turns": [
+        10
+      ]
+    },
+    {
+      "item": "extraction.rule.md read",
+      "status": "followed",
+      "turns": [
+        13
+      ]
+    },
+    {
+      "item": "decision.rule.md read",
+      "status": "followed",
+      "turns": [
+        14
+      ]
+    },
+    {
+      "item": "research.rule.md read",
+      "status": "followed",
+      "turns": [
+        15
+      ]
+    },
+    {
+      "item": "Write documents only",
+      "status": "followed",
+      "turns": [
+        140,
+        143,
+        158,
+        208
+      ]
+    },
+    {
+      "item": "Hand-off lists changed documents with full paths",
+      "status": "followed",
+      "turns": [
+        207,
+        208
+      ]
+    },
+    {
+      "item": "Close every gap G1-G8",
+      "status": "unclear",
+      "turns": [
+        140,
+        143,
+        144,
+        146,
+        160,
+        189,
+        193,
+        196
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.read_gap.G2.1.judge.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 1729,
+  "turns_so_far": 1,
+  "pgid": 2546094,
+  "last_event_at": "2026-11-26T06:47:19.729Z",
+  "updated_at": "2026-11-26T06:47:19.729Z",
+  "pid": 2449243,
+  "ended": false
+}

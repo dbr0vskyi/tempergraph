@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.step",
+  "view_chars": 9973,
+  "observations": [
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        1,
+        17
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The prompt reached the step with the unresolved placeholder ⟨missing:settings.conversation⟩, and the session chose 'Owner decisions: none' without flagging that the setting was missing."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        4,
+        5,
+        7,
+        10,
+        12,
+        13,
+        17
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The note lists session-review, finalizer-contract and the ADR as existing documents although the session only grepped them and never opened them, against the instruction to read what it finds."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "task-notes.rule.md opened with read tool",
+      "status": "followed",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "documents.rule.md opened with read tool",
+      "status": "followed",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "item": "Read the documents found that cover the task",
+      "status": "unclear",
+      "turns": [
+        6,
+        9,
+        13
+      ]
+    },
+    {
+      "item": "Conversation setting value used for owner-decision handling",
+      "status": "unclear",
+      "turns": [
+        1,
+        17
+      ]
+    }
+  ],
+  "none_found": false
+}

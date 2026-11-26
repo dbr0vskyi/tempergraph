@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.step",
+  "view_chars": 5332,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Read triage row and named documents",
+      "status": "followed",
+      "turns": [
+        1,
+        7
+      ]
+    },
+    {
+      "item": "Read code narrowly: search ids first, then line ranges",
+      "status": "followed",
+      "turns": [
+        3,
+        4,
+        6,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Web only for research-needed gaps",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Read only: no writes, no commands",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Hand over gap_finding with file names and line ranges, ending in an ARTIFACT line",
+      "status": "followed",
+      "turns": [
+        13
+      ]
+    },
+    {
+      "item": "Stay in working directory",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        9,
+        10,
+        11
+      ]
+    }
+  ],
+  "none_found": true
+}

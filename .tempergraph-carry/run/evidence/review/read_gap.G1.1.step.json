@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.step",
+  "view_chars": 5355,
+  "observations": [],
+  "conformance": [
+    {
+      "item": "Read only: no file written, no command run",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Search ids and names first, then read narrow line ranges",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Stay inside the working directory",
+      "status": "followed",
+      "turns": [
+        3,
+        5,
+        6,
+        8,
+        9
+      ]
+    },
+    {
+      "item": "Work on gap G1 only",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        13
+      ]
+    },
+    {
+      "item": "Use the web only for a cited research-needed gap",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Name each file relied on with line ranges or ids",
+      "status": "followed",
+      "turns": [
+        13
+      ]
+    },
+    {
+      "item": "End with one-line ARTIFACT gap_finding of at most 1,500 characters",
+      "status": "unclear",
+      "turns": [
+        13
+      ]
+    }
+  ],
+  "none_found": true
+}

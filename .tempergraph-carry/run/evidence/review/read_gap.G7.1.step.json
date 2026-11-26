@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G7.1.step",
+  "view_chars": 5839,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        2,
+        4,
+        5,
+        7
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Two Read calls used the parameter name `path` instead of `file_path` and were rejected, then repeated correctly; the tool description or prompt could state the parameter name."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        5,
+        6
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "digest.py was read in two successive ranges, a small reread that costs little."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Read only: no file written, no command run",
+      "status": "followed",
+      "turns": [
+        1,
+        13
+      ]
+    },
+    {
+      "item": "Work on the gap's row only",
+      "status": "followed",
+      "turns": [
+        1,
+        3,
+        13
+      ]
+    },
+    {
+      "item": "Read narrowly: search ids and names first, then line ranges",
+      "status": "followed",
+      "turns": [
+        1,
+        3,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "item": "Web only for research-needed gaps",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "End with ARTIFACT gap_finding line of at most 1,500 characters",
+      "status": "unclear",
+      "turns": [
+        13
+      ]
+    },
+    {
+      "item": "Name each file with line ranges or ids",
+      "status": "followed",
+      "turns": [
+        13
+      ]
+    },
+    {
+      "item": "Report what was seen without declaring the answer correct",
+      "status": "followed",
+      "turns": [
+        13
+      ]
+    }
+  ],
+  "none_found": false
+}

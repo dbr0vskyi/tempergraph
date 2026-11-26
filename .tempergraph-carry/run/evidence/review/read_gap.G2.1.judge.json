@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.judge",
+  "view_chars": 3720,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        6,
+        8
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded both criteria MET while admitting it only grepped the spec headings and never read the lines under SIL-B11, SIL-B12 and SIL-B4, which the findings cite."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3,
+        6,
+        8
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge rushed ('quickly') and took search-printed lines as enough evidence, although the intent says search-only evidence caps a criterion at PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

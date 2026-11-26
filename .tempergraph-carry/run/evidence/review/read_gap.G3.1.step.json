@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G3.1.step",
+  "view_chars": 5507,
+  "observations": [
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        1,
+        4,
+        8,
+        11
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The same attempt_cap search was run four times with overlapping patterns, two of them returning large outputs, where one scoped search followed by targeted reads would do."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        12,
+        14
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Turn 14 re-ran turn 12's person_stop/run_exit/cost_cap/SIL-AC7 search and returned almost nothing."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        7,
+        16
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "runner.py was read twice, which may be two different line ranges but is counted as a reread."
+    },
+    {
+      "category": "prompt_misread",
+      "turns": [
+        18
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The closing summary cites tests as a basis though no test file was opened in the visible turns, so the 'tested' basis label may be unsupported."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Read only: no file written, no command run",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        10,
+        11,
+        12,
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "item": "Stay inside the working directory",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        6,
+        7,
+        15
+      ]
+    },
+    {
+      "item": "Read the triage row, then the documents it names",
+      "status": "followed",
+      "turns": [
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Read narrowly: search for ids first, then read line ranges",
+      "status": "unclear",
+      "turns": [
+        1,
+        4,
+        8,
+        11
+      ]
+    },
+    {
+      "item": "Use the web only for research-needed gaps",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "End with ARTIFACT gap_finding line of at most 1,500 characters",
+      "status": "unclear",
+      "turns": [
+        18
+      ]
+    }
+  ],
+  "none_found": false
+}

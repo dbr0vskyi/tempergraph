@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.judge",
+  "view_chars": 7777,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        4,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only 2 of the 5 changed documents and admitted it skipped the overview spec and the other self-improvement and session-review specs, so the brief should require opening every changed file before any MET."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        2,
+        4,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.75,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "For the SIL-B14 and SRV-B12 behaviour sentences, which grep output had cut off, the judge relied on the hand-off's description instead of reading the lines in the file."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        6
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "All criteria were graded MET although some rested on search-only lines, which the intent says to grade PARTIAL, so the behaviour and generality criteria should demand a quoted file line with its path and line number."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G4.1.judge",
+  "view_chars": 3700,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        9
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.9,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge used only Grep and Glob, never the declared read tool (declared_unused includes read, no files_reread or reads recorded), yet the intent requires opening each named file at its line ranges, so it graded MET from search output alone."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        9
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.85,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge admits in turn 9 that it did not open improve/causes.py:26-84 or the FIN-B1/B2/B3 lines and relied on grep hits, but the intent says evidence from only search-printed lines should be PARTIAL, not MET."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        5,
+        6,
+        9
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge accepted the findings' claims about status.py:185 and the FIN contract as matching based on grep snippets, without confirming the cited line ranges say what the findings claim; ts-rdg-cited was graded MET on the same basis."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        7,
+        9
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The turn 7 grep for finalize|manual returned only 16 characters, which is nearly empty, and the judge still treated improve/*.py search results as support for the claim about causes.py."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}
