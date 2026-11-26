@@ -312,6 +312,55 @@ def test_probe_signed_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     assert not p.ok and p.reason == "signed_out" and p.version == "2.1.329"
 
 
+def test_ecc_ac16_probe_fails_when_help_lists_no_strict_mcp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC16 (ECC-B21)
+    S.fake_claude(tmp_path, monkeypatch, {"help": "--permission-prompts --tools --bare"})
+    p = ClaudeExecutor(bindings=BindingTable()).probe()
+    assert not p.ok and p.reason == "probe_failed"
+    assert p.version == "2.1.329" and p.path
+    assert p.facts["missing_flags"] == ["--strict-mcp-config"]
+
+
+def test_ecc_ac16_probe_passes_when_help_lists_strict_mcp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC16
+    S.fake_claude(tmp_path, monkeypatch, {"help": "--tools --strict-mcp-config"})
+    for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(v, raising=False)
+    p = ClaudeExecutor(bindings=BindingTable()).probe()
+    assert p.ok
+    assert "--strict-mcp-config" in p.facts["flags"]
+
+
+def _operator_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None) -> None:
+    home = tmp_path / "opshome"
+    home.mkdir()
+    if content is not None:
+        (home / ".claude.json").write_text(content)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+
+
+_DECLARED = ("read", "mcp:tracker/get_issue", "mcp:wiki/get_page", "mcp:tracker/list")
+
+
+def test_ecc_ac17_undefined_mcp_servers_names_each_declared_server_the_operator_does_not_define(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17 (ECC-B22)
+    ex = ClaudeExecutor(bindings=BindingTable())
+    _operator_home(tmp_path, monkeypatch, json.dumps({"mcpServers": {"tracker": {"command": "t"}}}))
+    assert ex.undefined_mcp_servers(_DECLARED) == ["wiki"]
+    assert ex.undefined_mcp_servers(("read", "bash")) == []
+
+
+def test_ecc_ac17_undefined_mcp_servers_is_empty_when_all_are_defined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17
+    _operator_home(tmp_path, monkeypatch, json.dumps({"mcpServers": {"tracker": {"command": "t"}, "wiki": {"command": "w"}}}))
+    assert ClaudeExecutor(bindings=BindingTable()).undefined_mcp_servers(_DECLARED) == []
+
+
+@pytest.mark.parametrize("content", [None, "not json"])
+def test_ecc_ac17_an_unreadable_configuration_leaves_every_declared_server_undefined(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None) -> None:  # ECC-AC17
+    _operator_home(tmp_path, monkeypatch, content)
+    assert ClaudeExecutor(bindings=BindingTable()).undefined_mcp_servers(_DECLARED) == ["tracker", "wiki"]
+
+
 def test_run_step_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rec = tmp_path / "rec.json"
     S.fake_claude(tmp_path, monkeypatch, {"record": str(rec), "lines": [
@@ -453,7 +502,7 @@ def _step_with_operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, servers
         S.set_scenario(path, {"lines": [S.init(), S.result()], "exit": exit_code, "record": str(rec)})
         kind = "step" if i == 0 else "retry"
         results.append(ex.run_step(req(tmp_path, kind=kind, tools=tools, session_dir=sdir), EventSink()))
-        recs.append(json.loads(rec.read_text()))
+        recs.append(json.loads(rec.read_text()) if rec.exists() else {})  # a refused launch starts no session
     return results, recs, seen_cfg, scratch
 
 
@@ -461,14 +510,15 @@ def test_ecc_ac14_a_step_and_a_retry_get_a_private_config_of_the_declared_server
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # ECC-AC14 (with ECC-AC12 through run_step)
     tracker = {"command": "tracker-mcp", "args": ["-q"], "env": {"K": "v"}}
-    servers = {"tracker": tracker, "mailer": {"command": "mail-mcp"}}
+    wiki = {"command": "wiki-mcp"}
+    servers = {"tracker": tracker, "wiki": wiki, "mailer": {"command": "mail-mcp"}}
     results, recs, seen_cfg, scratch = _step_with_operator(
         tmp_path, monkeypatch, servers, tools=("read", "mcp:tracker/get_issue", "mcp:wiki/get_page"))
     assert len(seen_cfg) == 2
     for res, rec, (path, content) in zip(results, recs, seen_cfg, strict=True):  # type: ignore[misc]
         argv = rec["argv"]
         assert "--strict-mcp-config" in argv and "--mcp-config" in argv  # type: ignore[operator]
-        assert content == {"mcpServers": {"tracker": tracker}}  # as defined; not wiki (undefined), not mailer
+        assert content == {"mcpServers": {"tracker": tracker, "wiki": wiki}}  # every declared server; not mailer
         assert not Path(str(path)).exists() and not Path(str(path)).parent.exists()
         assert flag(list(res.argv), "--mcp-config") == "<private>"
         assert str(path) not in json.dumps(list(res.argv)) and Path(str(path)).parent.name not in json.dumps(list(res.argv))
@@ -485,20 +535,35 @@ def test_ecc_ac14_a_step_without_an_mcp_tool_gets_no_config(tmp_path: Path, monk
     assert all("--mcp-config" not in r.argv for r in results)
 
 
-def test_ecc_ac14_no_session_folder_or_undefined_server_means_strict_with_no_config(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _, recs, seen_cfg, _ = _step_with_operator(
+def test_ecc_ac18_no_scratch_folder_refuses_the_launch_and_starts_no_session(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC18 (ECC-B23)
+    results, recs, seen_cfg, _ = _step_with_operator(
         tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",),
         with_session_dir=False, times=1)
-    assert "--strict-mcp-config" in recs[0]["argv"] and "--mcp-config" not in recs[0]["argv"]  # type: ignore[operator]
-    assert seen_cfg == []
+    assert not results[0].ok and results[0].error_kind == "refused" and "tracker" in results[0].text
+    assert recs == [{}] and seen_cfg == []
+    assert not results[0].argv
 
 
-def test_ecc_ac14_an_undefined_server_means_strict_with_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _, recs, seen_cfg, _ = _step_with_operator(
-        tmp_path, monkeypatch, {"other": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=1)
-    assert "--strict-mcp-config" in recs[0]["argv"] and "--mcp-config" not in recs[0]["argv"]  # type: ignore[operator]
-    assert seen_cfg == []
+def test_ecc_ac18_an_undefined_server_refuses_a_step_and_a_retry_naming_each_server(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC18 (ECC-B23)
+    results, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path, monkeypatch, {"other": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=2)
+    for res in results:
+        assert not res.ok and res.error_kind == "refused" and "tracker" in res.text and "other" not in res.text
+    assert recs == [{}, {}] and seen_cfg == []
+    (tmp_path / "two").mkdir()
+    results, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path / "two", monkeypatch, {"other": {"command": "t"}},
+        tools=("mcp:tracker/get_issue", "mcp:wiki/get_page"), times=1)
+    assert "tracker" in results[0].text and "wiki" in results[0].text and recs == [{}]
+
+
+def test_ecc_ac18_a_defined_server_with_a_scratch_folder_starts_one_session(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC18 (ECC-B23)
+    results, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=1)
+    assert results[0].ok and recs[0]["argv"] and len(seen_cfg) == 1
 
 
 def test_ecc_ac14_a_failed_step_launch_leaves_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

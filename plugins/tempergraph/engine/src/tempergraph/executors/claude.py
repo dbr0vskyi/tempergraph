@@ -13,7 +13,7 @@ import json
 import os
 import re
 import shutil
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -404,6 +404,10 @@ class ClaudeExecutor:
             return self._probe
         helptext = run_probe([path, "--help"]).stdout
         flags = sorted(f for f in PROBED_FLAGS if f in helptext)
+        if "--strict-mcp-config" not in flags:
+            self._probe = ProbeReport(ok=False, reason="probe_failed", version=m.group(1), path=path,
+                                      facts={"flags": flags, "missing_flags": ["--strict-mcp-config"]})
+            return self._probe
         auth = run_probe([path, "auth", "status"])
         logged_in = False
         try:
@@ -434,13 +438,18 @@ class ClaudeExecutor:
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
         declared = mcpconfig.declared_servers(req.tools)
-        servers = mcpconfig.operator_servers(req.workdir) if declared and self.mcp_config is None else {}
-        kept = {s: t for s, t in declared.items() if s in servers}
-        base = mcpconfig.scratch_base(req.session_dir) if kept else None
-        if not kept or base is None:  # strict, and no config: no declared server can be given (ECC-B19)
+        if not declared or self.mcp_config is not None:
             argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
             return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
-        with mcpconfig.private_config(kept, servers, base, direct=True) as cfg:  # removed on every exit path
+        servers = mcpconfig.operator_servers(req.workdir)
+        undefined = [s for s in declared if s not in servers]
+        base = mcpconfig.scratch_base(req.session_dir)
+        if undefined or base is None:  # a declared server is never dropped silently (ECC-B23)
+            why = ("MCP server not defined in the operator's configuration: " + ", ".join(undefined)
+                   if undefined else "no scratch folder for the private MCP config; declared servers: "
+                   + ", ".join(declared))
+            return SessionResult(ok=False, error_kind="refused", text=why)
+        with mcpconfig.private_config(declared, servers, base, direct=True) as cfg:  # removed on every exit path
             argv, applied = step_argv(req, model, fallback, self._flags(), cfg)
             res = self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
         return _mask_private(res)
@@ -465,6 +474,12 @@ class ClaudeExecutor:
                               mcp_config=cfg)
             res = self._run(req, argv, (), env, sink, idle_s=None)
         return _mask_private(res)
+
+    def undefined_mcp_servers(self, tools: Sequence[str], workdir: Path | None = None) -> list[str]:
+        """ECC-B22: each declared MCP server the operator's own configuration does not define, in first-seen order;
+        an unreadable configuration defines none."""
+        defined = mcpconfig.operator_servers(workdir if workdir is not None else Path.cwd())
+        return [s for s in mcpconfig.declared_servers(tools) if s not in defined]
 
     def unreachable_views(self, views: ViewSet, workdir: Path) -> dict[str, str]:
         """ECC-B15: each viewed MCP server with no working proxy, with its reason; checked before the judge prompt."""

@@ -201,6 +201,33 @@ def test_executor_compatibility_table() -> None:
     assert executor_compat.row("antigravity", "1.0")["state"] == "no_table"
 
 
+def test_lif_ac13_confirmed_versions_are_recorded() -> None:
+    # Proves LIF-AC13 (LIF-B18).
+    import re
+
+    from tempergraph.contracts import ProbeReport
+    from tempergraph.executors.preflight import preflight
+    from tempergraph.executors.registry import Registry
+    from tempergraph.executors.standins import standin
+
+    from .fixtures.workflows import two_step
+
+    data = json.loads((Path(executor_compat.__file__).parent / "data" / "executor_compat.json").read_text("utf-8"))
+    seen = 0
+    for name, entry in data["executors"].items():
+        for version in re.findall(r"P-CC-\d+ confirmed on (\d+\.\d+\.\d+)", entry.get("facts", "")):
+            seen += 1
+            assert version in entry["recorded"]
+            assert executor_compat.row(name, version)["state"] == "recorded"
+            assert executor_compat.finding(name, version) is None
+            ex = standin(name)
+            ex.probe_report = ProbeReport(ok=True, version=version)
+            r = Registry()
+            r.register(ex)
+            assert "executor-version-untested" not in {f.code for f in preflight(two_step(), r).warnings}
+    assert seen
+
+
 def test_preflight_warns_and_executors_shows_the_row(repo: Path) -> None:
     """LIF-AC4: read by preflight and shown by `executors`."""
     from tempergraph.contracts import ProbeReport

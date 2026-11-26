@@ -94,7 +94,11 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
         if untested is not None and untested not in rep.warnings:
             rep.warnings.append(untested)
         if not p.ok:
-            rep.refusals.append(Finding("executor-probe-failed", unit, f"executor {name!r}: {p.reason}"))
+            msg = f"executor {name!r}: {p.reason}"
+            missing = p.facts.get("missing_flags") if isinstance(p.facts, dict) else None
+            if missing:
+                msg += "; this CLI lists no " + ", ".join(missing)
+            rep.refusals.append(Finding("executor-probe-failed", unit, msg))
         return p.ok
 
     def judge_of(unit: str, ex: str, j: JudgeSpec, tools: Sequence[str]) -> None:
@@ -168,6 +172,14 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
         if any(t.startswith("skill:") for t in st.tools) and not c.hosts_authoring_surface:
             rep.warnings.append(Finding("authoring-surface-missing", unit,
                                         f"executor {ex!r} loads no skills", "warning"))
+        undefined_of = getattr(registry.get(ex), "undefined_mcp_servers", None)  # optional, as `unreachable_views`
+        if undefined_of is not None:
+            missing_servers = undefined_of(tuple(st.tools))
+            if missing_servers:
+                rep.refusals.append(Finding("mcp-server-undefined", unit,
+                                            f"step {unit!r} declares MCP server(s) {', '.join(missing_servers)} that "
+                                            "the operator's own MCP configuration does not define; define them there "
+                                            "(a repository `.mcp.json` does not count)"))
         if u.gate.judge is not None:
             judge_of(unit, ex, u.gate.judge, st.tools)
     return rep
