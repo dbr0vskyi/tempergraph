@@ -2,7 +2,16 @@
 
 ## Purpose
 
-One short paragraph: what the capability is for and who depends on it.
+One short paragraph: what the capability is for.
+
+## Depends on
+
+- `session-store.spec.md`: reads and ends session records
+- Outside: the system clock
+
+## Does not own
+
+- Signing in and creating a session: `sign-in.spec.md`
 
 ## Behaviours
 

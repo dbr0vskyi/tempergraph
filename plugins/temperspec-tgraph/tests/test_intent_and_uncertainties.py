@@ -246,4 +246,4 @@ def test_the_outcome_record_holds_the_criteria_and_their_revision() -> None:
     assert (triage["ts-tri-uncertain"]["severity"], triage["ts-tri-uncertain"]["verified_by"]) == ("warning", "judge")
     assert (discovery["ts-dis-uncertain"]["severity"], discovery["ts-dis-uncertain"]["verified_by"]) == ("blocker", "check")
     entry = next(r for r in o["revisions"] if "discovery of intent" in r.get("note", ""))
-    assert entry["origin"] == "authored" and o["revision"] >= entry["revision"] == 26
+    assert entry["origin"] == "authored" and o["revision"] >= entry["revision"] == 27

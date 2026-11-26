@@ -5,6 +5,7 @@ fails when a rule and this module disagree on a heading or a pattern."""
 
 from __future__ import annotations
 
+import posixpath
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -13,6 +14,14 @@ SPEC_CAP_LINES = 400
 # The repository's spec budget is at most 400 lines and at most 30 KB; "over" means strictly more.
 SPEC_CAP_BYTES = 30 * 1024
 SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
+DEPENDS = "Depends on"  # optional, between Purpose and Behaviours: what the capability uses, outgoing only
+NOT_OWNED = "Does not own"  # optional, after Depends on: rules a reader could expect here, each with its owner
+SPEC_ORDER = ("Purpose", DEPENDS, NOT_OWNED, "Behaviours", "Acceptance criteria", "Open questions")
+# Sections the spec rule leaves out on purpose: the behaviour headings are the responsibilities, "used by" is
+# generated into the capability list, and a task's scope lives in its triage note.
+SPEC_NO_SECTION = ("Responsibilities", "Used by", "Out of scope")
+OUTSIDE = re.compile(r"^\s*[-*]\s+Outside:\s*\S", re.IGNORECASE)
+SPEC_PATH = re.compile(r"\]\(\s*<?([^)\s>]+\.spec\.md)>?\s*\)|`([^`\s]+\.spec\.md)`")
 TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Intent", "Existing documents", "Uncertainties", "Gaps", "Route")
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions", "Reading list")
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
@@ -238,6 +247,16 @@ def parse_spec(text: str, defined_elsewhere: Mapping[str, Sequence[str]] | None 
                 if c.group(1) in spec.criteria:
                     spec.problems.append((n, f"criterion id {c.group(1)} is defined twice", "use a new id"))
                 spec.criteria[c.group(1)] = SpecCriterion(line=n, proves=proves, text=c.group(3))
+    for n, line in enumerate(text.splitlines(), 1):
+        m = HEADING.match(line)
+        if m and len(m.group(1)) == 2 and m.group(2).strip().lower() in {h.lower() for h in SPEC_NO_SECTION}:
+            spec.problems.append((n, f"a spec has no `## {m.group(2).strip()}` section",
+                                  ("list what this spec uses under `## Depends on` and rules another spec owns under "
+                                   "`## Does not own`; a task's scope goes in its triage note")))
+    order = [h for h in sections(text) if h.lower() in {o.lower() for o in SPEC_ORDER}]
+    ranks = [[o.lower() for o in SPEC_ORDER].index(h.lower()) for h in order]
+    if ranks != sorted(ranks) and not headings_missing(text, SPEC_HEADINGS):
+        spec.problems.append((1, "the sections are out of order", "order them " + ", ".join(SPEC_ORDER)))
     found = {h.lower() for h in sections(text)}
     if "behaviours" in found and not spec.behaviours:
         spec.problems.append((1, "no behaviour is defined", "add `### PREFIX-B1 name` with its WHEN … SHALL line"))
@@ -262,6 +281,58 @@ def parse_spec(text: str, defined_elsewhere: Mapping[str, Sequence[str]] | None 
         if not crit.proves:
             spec.problems.append((crit.line, f"{cid} names no behaviour", "add the behaviour id in brackets"))
     return spec
+
+
+def spec_paths(text: str) -> list[str]:
+    """The spec files a text links: a markdown link target or a code span ending `.spec.md`, as written."""
+    return [a or b for a, b in SPEC_PATH.findall(text)]
+
+
+@dataclass
+class SpecRow:
+    line: int
+    text: str
+    paths: list[str]
+    outside: bool = False
+
+
+def spec_rows(text: str, heading: str) -> list[SpecRow]:
+    """The list items of one section of a spec (`Depends on` or `Does not own`), with the spec paths each names."""
+    rows: list[SpecRow] = []
+    inside = False
+    for n, line in enumerate(text.splitlines(), 1):
+        m = HEADING.match(line)
+        if m:
+            inside = len(m.group(1)) == 2 and m.group(2).strip().lower() == heading.lower()
+            continue
+        if inside and re.match(r"^\s*[-*]\s+\S", line):
+            rows.append(SpecRow(line=n, text=line.strip(), paths=spec_paths(line), outside=bool(OUTSIDE.match(line))))
+    return rows
+
+
+def linking_blocks(text: str) -> dict[str, str]:
+    """Behaviour id or criterion id -> its block, the places where a spec's links to other specs count: every
+    behaviour block, and every acceptance criterion's line."""
+    out = dict(behaviour_blocks(text))
+    inside = False
+    for line in text.splitlines():
+        m = HEADING.match(line)
+        if m and len(m.group(1)) == 2:
+            inside = m.group(2).strip().lower() == "acceptance criteria"
+        elif inside and (c := CRITERION_LINE.match(line)):
+            out[c.group(1)] = " ".join(line.split())
+    return out
+
+
+def resolve_spec(spec_path: str, target: str, known: set[str]) -> str | None:
+    """A linked spec path as a repository path: against the linking spec's folder first, then the repository's
+    root, then a file name only one known spec has; None when no known spec matches."""
+    target = target.split("#", 1)[0]
+    for cand in (posixpath.normpath(posixpath.join(posixpath.dirname(spec_path), target)), posixpath.normpath(target)):
+        if cand in known:
+            return cand
+    same = [k for k in known if posixpath.basename(k) == posixpath.basename(target)]
+    return same[0] if len(same) == 1 else None
 
 
 DEFINITION = re.compile(rf"^\s*(?:#{{1,6}}\s+|\|\s*|[-*]\s+(?:\[[ xX]\]\s+)?)?\*{{0,2}}({ID}-(?:B|AC)\d+)\b")
@@ -831,8 +902,17 @@ INVENTORY_PURPOSE_MAX = 300
 
 def inventory(specs: Sequence[tuple[str, str]]) -> str:
     """The capability list: for each spec (path, text), its path, its title, the first sentence of its Purpose (or
-    its earlier layout's Overview) and its behaviour headings, without statements or scenarios. Generated from the
+    its earlier layout's Overview), the specs that name it under `## Depends on` (its "used by", never written by hand)
+    and its behaviour headings, without statements or scenarios. Generated from the
     specs, never edited by hand (documents rule 3), so triage and discovery can find the spec that owns a rule."""
+    known = {path for path, _ in specs}
+    used_by: dict[str, set[str]] = {}
+    for path, text in specs:
+        for row in spec_rows(text, DEPENDS):
+            for target in row.paths:
+                hit = resolve_spec(path, target, known)
+                if hit and hit != path:
+                    used_by.setdefault(hit, set()).add(path)
     out = ["# Capabilities", "",
            "Generated from the repository's specs at the start of the run. Do not edit: change a spec instead.", ""]
     for path, text in specs:
@@ -850,6 +930,8 @@ def inventory(specs: Sequence[tuple[str, str]]) -> str:
         out += [f"## `{path}`: {title}", ""]
         if first:
             out += [first, ""]
+        if used_by.get(path):
+            out += ["Used by: " + ", ".join(f"`{u}`" for u in sorted(used_by[path])), ""]
         heads = [f"- {m.group(1)}{m.group(2).rstrip()}" for m in map(BEHAVIOUR_HEAD.match, text.splitlines()) if m]
         out += (heads or ["- (no behaviours)"]) + [""]
     return "\n".join(out)
