@@ -143,3 +143,6 @@ WHEN the plan step and the expand step are briefed THE workflow SHALL tell each 
 - RGN-AC13 (RGN-B13): The evidence of the code gate and of a phase gate lists an output that only the unit's commits changed as written by the regeneration and not among the changed paths, and lists it among them after a step edited it, and a quick-lane run whose change is only the files the triage note names, beside such an output, is not sent back to triage
 - RGN-AC14 (RGN-B14): The plan prompt and the expand prompt each name `tempergraph.regenerations.json` and say that a file listed there as an output gets no task row
 - RGN-AC15 (RGN-B15): The plan prompt and the expand prompt each say that the outcome revision and the digests of a stamp and a diagram are never edited by hand
+- [ ] ts-rgn-declaration The repository's declaration of regenerations is absent or usable
+- [ ] ts-rgn-ran Every regeneration whose input the run changed ran to an end
+- [ ] ts-rgn-passed No regeneration failed
