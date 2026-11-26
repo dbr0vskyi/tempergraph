@@ -86,6 +86,29 @@ def test_daily_cap_skips_the_judges_and_records(repo: Path, monkeypatch: pytest.
         r for r in log if r["kind"] == "loop_skipped").items()
 
 
+def test_daily_cap_leaves_a_count_met_finding_not_judged(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # SIL-AC35 (SIL-B35, SIL-B20), AC 6: the pattern count alone files nothing when the cap skipped the judge
+    from tempergraph.improve import record
+
+    stable_ticket(repo, "A-4", monkeypatch)
+    root = repo / ".tempergraph"
+    doc = json.loads(tickets()[0].read_text())
+    mine = [f for f in record.read_findings(root, "demo", "A-4") if f.get("fingerprint") in doc["fingerprints"]]
+    assert mine and all(f.get("class") == "fault" for f in mine)
+    for n in range(3):  # the same fingerprints recorded in three other runs, each with its own request
+        path = record.findings_path(root, "demo", f"H-{n}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        rows = [{**f, "thread": f"demo/H-{n}", "request_digest": f"h{n}", "at": now_iso()} for f in mine]
+        path.write_text(json.dumps({"schema_version": 1, "thread": f"demo/H-{n}", "findings": rows}))
+    ledger(root, {"kind": "loop", "workflow": "demo", "cost": {"reported": 50.0}})
+    host = MemoryCodeHost()
+    ex = standin("claude")  # no scripted judge: a judge session would fail the test
+    (out,) = child.drain(registry=registry(ex), host=lambda: host)
+    assert not ex.calls and not host.issues and not host.comments
+    assert out["results"] and all(r["op"] == "recorded" for r in out["results"])
+    assert {r["reason"] for r in out["results"]} == {"not_judged"}
+
+
 def test_autonomy_record_files_nothing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # PRP-B11
     stable_ticket(repo, "A-2", monkeypatch, autonomy="record")
     host = MemoryCodeHost(down=True)  # any call would raise

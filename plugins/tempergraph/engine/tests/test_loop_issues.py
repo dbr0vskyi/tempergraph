@@ -234,6 +234,32 @@ def test_the_body_names_the_parent_and_the_pattern(tmp_path: Path) -> None:  # I
     assert [ln for ln in text.splitlines() if ln.startswith("## ")] == SECTIONS
 
 
+def test_a_count_filed_issue_shows_the_pattern_figures(tmp_path: Path) -> None:  # ISS-AC11, AC 4
+    def hist(*ns: int) -> list[dict[str, Any]]:
+        return [finding(thread=f"demo/T-{n}", request_digest=f"r{n}") for n in ns]
+
+    cases = {"outcome": Candidate(finding=finding(), lens="outcome", calibrated=True, request_digest="r1"),
+             "friction": Candidate(finding=finding(), confidence=0.5, attributed=True, request_digest="r1")}
+    for lens, cand in cases.items():
+        host = MemoryCodeHost()
+        d = decide(cand, hist(2, 3), REPO, now=NOW)
+        assert d.action == "file" and d.reason == "pattern_met", lens
+        assert [r["op"] for r in filing.file([d], host, Outbox.at(tmp_path))] == ["filed"]
+        evidence = section(host.issues[0]["body"], "## Evidence")
+        assert "runs 3" in evidence and "requests 3" in evidence and "machines" in evidence, lens
+        d4 = decide(cand, hist(2, 3, 4), REPO, now=NOW)  # a fourth run: the "seen again" comment
+        assert [r["op"] for r in filing.file([d4], host, Outbox.at(tmp_path))] == ["commented"]
+        assert len(host.issues) == 1
+        again = section(host.comments[0]["body"], "## Evidence")
+        assert "runs 4" in again and "requests 4" in again, lens
+    host = MemoryCodeHost()  # filed by confidence from one run: no figure of the pattern rule
+    one = decide(Candidate(finding=finding(), confidence=0.9, attributed=True, request_digest="r1"), [], REPO, now=NOW)
+    filing.file([one], host, Outbox.at(tmp_path))
+    evidence = section(host.issues[0]["body"], "## Evidence")
+    assert "count" in evidence and "fingerprint" in evidence
+    assert not any(w in evidence for w in ("runs", "requests", "machines"))
+
+
 # -- phase 3: the loop reads close reasons back ---------------------------------------------------------------
 
 @dataclass(kw_only=True)

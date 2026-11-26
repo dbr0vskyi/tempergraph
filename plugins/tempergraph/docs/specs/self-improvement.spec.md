@@ -112,47 +112,29 @@ WHEN the loop child claims a ticket THE loop child SHALL run one friction judge 
 
 - GIVEN a ticket WHEN the child ends THEN `loop.jsonl` holds `loop_started` and `loop_judged`, and the ledger holds one `loop` row with its cost
 
-### SIL-B25 A review that hit a usage limit is run again once the limit has passed
+### SIL-B36 The loop records what its friction judge answered
 
-WHEN the loop child's session review has ended with reviews failed as `usage_limit` whose `resets_at` falls at most `review.retry_wait_hours` after that moment (6, provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)) THE loop child SHALL run each of those reviews once more, in plan order ([SRV-B24](session-review.spec.md)) and within the money caps ([SRV-B21, SRV-B25](session-review.spec.md)), starting no earlier than the latest of those reset times and marking every record of a retry `retry` true ([the decision record](../adr/a-review-that-hit-a-usage-limit-is-run-again-once.adr.md)).
+WHEN the friction judge's session ends THE loop child SHALL write in the `loop_judged` record an `answers[]` entry for each finding the judge answered for, holding the finding's fingerprint, `confidence` and `attributed` and no other part of the reply, and an empty `answers[]` when it answered for none.
 
-- GIVEN 16 reviews failed as `usage_limit` with `resets_at` 2 hours ahead WHEN the session review has ended THEN the child starts no retry before that instant, then runs the 16 once more in plan order, and every record of a retry has `retry` true
-- GIVEN reviews failed as `usage_limit` with `resets_at` 1 hour and 2 hours ahead WHEN the session review has ended THEN every retry starts no earlier than the later instant
-- GIVEN a retry that fails as `usage_limit` again WHEN it ends THEN its `review_failed` has `retry` true and the review is not run a third time
-- GIVEN a retry whose estimate passes a money cap WHEN it is decided THEN it and every later retry are `review_skipped` with reason `budget` and stay failed
+- GIVEN a judge that answers for two of three findings, one attributed at 0.5 and one not attributed at 0.7 WHEN the child ends THEN `loop_judged` holds two `answers[]` entries with those fingerprints, confidences and attributions and none for the third finding
+- GIVEN a judge reply that explains each answer in a sentence WHEN the child ends THEN no word of an explanation is in `loop.jsonl`
+- GIVEN a judge session that fails WHEN the child ends THEN `loop_judged` holds an empty `answers[]`
 
-### SIL-B26 A usage limit that will not pass soon is not waited for
+### SIL-B18 Filing by attribution or by count
 
-WHEN a review failed as `usage_limit` with no `resets_at` or one later than `review.retry_wait_hours` after its session review ended, or ran in the foreground (a person's `improve review`, or the loop run inline with `TEMPERGRAPH_LOOP=inline`), THE engine SHALL leave it failed and start no wait for it.
+WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings to the engine repository, workflow findings to the workflow's `issue_repository`, and a friction finding only when its judge attributed it (confirmed the side it names) and either its confidence is at or above `friction.file_confidence` (0.75) or its fingerprint meets the pattern rule of SIL-B3, opening each issue body with the hidden line `<!-- tempergraph:fp=<fingerprint> -->`.
 
-- GIVEN a review failed as `usage_limit` with `resets_at` 40 hours ahead WHEN the session review has ended THEN the child starts no wait and no retry, and its summary counts the review under `usage_limit`
-- GIVEN a review failed as `usage_limit` with no `resets_at` WHEN the session review has ended THEN the child starts no wait and no retry
-- GIVEN reviews failed as `usage_limit` with `resets_at` 2 hours and 40 hours ahead WHEN the session review has ended THEN the first is retried after its reset and the second stays failed
-- GIVEN `improve review` run by a person whose reviews fail as `usage_limit` WHEN it ends THEN it returns at once with `review_failed` records of that class and no retry
-- GIVEN `TEMPERGRAPH_LOOP=inline` and reviews failed as `usage_limit` with `resets_at` 2 hours ahead WHEN the run exits THEN the loop starts no wait and returns
+- GIVEN a friction finding attributed at 0.6 whose fingerprint is recorded in two runs WHEN filing runs THEN it is recorded and not filed
+- GIVEN a friction finding attributed at 0.5 whose fingerprint is recorded in three runs with three distinct requests in 30 days WHEN filing runs THEN one issue is filed
+- GIVEN that finding marked not attributed at 0.9 WHEN filing runs THEN it is recorded and not filed
 
-### SIL-B22 The loop's summary
+### SIL-B35 A finding its judge gave no answer for is not filed
 
-WHEN the loop child ends THE loop child SHALL write one `loop_summary` record to the thread's `loop.jsonl` with `recorded` (the findings the thread holds), `filed` (the issues this child opened or commented on) and `top[]`, at most three kept review observations of the thread, the highest `confidence` first and ties in plan order ([SRV-B24](session-review.spec.md)), each with `category`, `unit` and `confidence` and no note text.
+WHEN the friction judge gave no answer for a friction finding (its session failed, its reply could not be read, the daily cap skipped the judge, or the reply left the finding out) THE loop SHALL record the finding `not_judged` and file nothing for it, even when its fingerprint meets the pattern rule of SIL-B3.
 
-- GIVEN a child that leaves 14 findings, files none and keeps five observations with confidence 0.7, 0.7, 0.55, 0.5 and 0.45 WHEN it ends THEN `loop_summary` has `recorded` 14, `filed` 0 and `top[]` of the first three, each with category, unit and confidence and none with a note
-- GIVEN a child that keeps no observation WHEN it ends THEN `loop_summary` has an empty `top[]`
-
-### SIL-B24 The summary counts the reviews that failed
-
-WHEN the loop child ends, which is after the last retry of SIL-B25, THE loop child SHALL write in its `loop_summary` record `review_failed`, the number of reviews that ended failed counted by `error_class` ([SRV-B29](session-review.spec.md)) and empty when none did, a review having ended failed when the latest `review_done` or `review_failed` record of its reviewed session is `review_failed`, and a `review_failed` record that names no session counting as one review.
-
-- GIVEN a child that finds nothing and whose 16 reviews all end `review_failed` as `usage_limit` WHEN it ends THEN `loop_summary` has `review_failed` with `usage_limit` 16, `recorded` as the thread holds and an empty `top[]`
-- GIVEN two reviews failed as `unparsed` and one as `timed_out` WHEN the child ends THEN `review_failed` holds `unparsed` 2 and `timed_out` 1
-- GIVEN a review that failed as `usage_limit` and ended `review_done` on its retry WHEN the child ends THEN `loop_summary` does not count it
-- GIVEN a child whose review raised before any session ended WHEN it ends THEN `review_failed` holds `error` 1
-- GIVEN a child none of whose reviews failed WHEN it ends THEN `review_failed` is empty
-
-### SIL-B18 Filing by attribution
-
-WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings to the engine repository, workflow findings to the workflow's `issue_repository`, and a friction finding only when its judge attributed it at or above `friction.file_confidence` (0.75), opening each issue body with the hidden line `<!-- tempergraph:fp=<fingerprint> -->`.
-
-- GIVEN a friction finding attributed at 0.6 WHEN filing runs THEN it is recorded and not filed
+- GIVEN a friction finding whose fingerprint is recorded in three runs with three distinct requests and a judge session that failed WHEN filing runs THEN the finding is recorded `not_judged` and no issue or comment is made
+- GIVEN stable mode with the day's spend at `daily_cap_usd` and such a finding WHEN the loop child runs THEN the judge is skipped, the finding is recorded `not_judged` and nothing is filed
+- GIVEN a judge reply that answers for the other findings of the run and not for this one WHEN filing runs THEN the finding is recorded `not_judged` and nothing is filed
 
 ### SIL-B2 De-duplication by cause
 
@@ -211,19 +193,21 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC11 (SIL-B5): A measurement makes no model call and writes only one comment and at most one reopen
 - SIL-AC12 (SIL-B21): Each cost rule is produced by a fixture ledger, and a saving under 10 USD a month is not filed
 - SIL-AC13 (SIL-B17): The ticket carries `loop_effort`, `max` when unset, and the friction judge, every reviewer session and the proposer's step and judge are asked at that effort
-- SIL-AC14 (SIL-B22): A fixture loop child leaves one `loop_summary` record with the counts of findings recorded and filed and at most three kept observations by confidence, each with category, unit and confidence and none with note text
 - SIL-AC15 (SIL-B23): The fixture run of BUD-AC8 that pauses on `check_repeat` exits with `check_repeat` among the findings of its unit and in its `finding_recorded` record
-- SIL-AC16 (SIL-B24): A fixture loop child that finds nothing and whose reviews all end `review_failed` as `usage_limit` leaves a `loop_summary` with `review_failed` holding `usage_limit` and their number, a review that failed and then ended `review_done` on its retry is not counted, and a child with no failed review has an empty `review_failed`
-- SIL-AC17 (SIL-B25, SIL-B26): A fixture loop child on a fake clock whose reviews all return `usage_limit` true with `resets_at` 2 hours ahead starts no retry before that instant, runs each review once more in plan order with `retry` true on every record of a retry, never a third time, and writes its summary after the last retry; with `resets_at` 40 hours ahead or none, from `improve review`, or inline, it starts no wait and no retry
 - SIL-AC29 (SIL-B10, SIL-B33): Against a fake code host, a stable-mode fixture whose `met` run has a pull request with a review in state `changes_requested` gets one `outcome_escape` finding for the `outcome` unit at the next final exit of the workflow and one `loop_lens` record for the outcome lens with that run's thread, and no model session starts
 - SIL-AC30 (SIL-B16, SIL-B33): A kept review observation of a run on a unit that holds its `outcome_escape` finding makes that finding carry `review:<category>` and `review_weight`, and an observation on a unit with no such finding changes none
 - SIL-AC31 (SIL-B34): With an outcome judge that has no calibration score, `outcome_escape` findings for one unit of three fixture runs with three distinct requests in 30 days file one issue and those of two runs file none
 - SIL-AC32 (SIL-B33): A run of a fixture package whose steps commit, one of them through a shell command, and whose finalizer returns the url of a pull request, read against a fake code host that shows a person's follow-up commit on the file that step wrote, is an escape in `outcome show` and holds one `outcome_escape` finding for the unit of that step, and for each of two units when the commit changes a file of each
 - SIL-AC33 (SIL-B33): Against a fake code host, a run whose pull request a first read shows with a review in state `changes_requested` and a later read shows with a follow-up commit on a file unit `a` wrote holds one `outcome_escape` finding for the `outcome` unit and one for `a`, and a third read adds none
+- SIL-AC34 (SIL-B18, SIL-B2): Against a fake code host, friction findings of one fingerprint that a fixture judge attributes at 0.5 in three runs with three distinct requests file one issue, those of two runs file none, and a fourth run adds one "seen again" comment and no second issue
+- SIL-AC35 (SIL-B18, SIL-B35, SIL-B20): A friction finding whose fingerprint is recorded in three runs with three distinct requests files nothing when its judge marked it not attributed at 0.9, and is recorded `not_judged` and files nothing when the judge session fails, when its reply leaves the finding out and when the daily cap skips the judge
+- SIL-AC36 (SIL-B18, SIL-B6): A dry run lists a friction finding that meets the pattern rule as one that would file and makes no issue and no comment
+- SIL-AC37 (SIL-B18, SIL-B11): A friction finding that meets the pattern rule files to the engine's repository when its side is the engine or an executor, to the workflow's `issue_repository` when its side is the workflow, and is recorded and not filed when its side is `host`
+- SIL-AC38 (SIL-B36): A fixture loop child whose judge answers for two of three findings leaves a `loop_judged` record whose `answers[]` holds the fingerprint, `confidence` and `attributed` of those two and no other text of the reply, and a child whose judge session fails leaves an empty `answers[]`
 
 ## Open questions
 
-- Keep or drop the 0.75 confidence floor for filing a new friction issue? It may carry no signal; FBK's `confidence_bands` will give the data. Owner: owner. Until answered: kept, as parameter `friction.file_confidence`.
+- Keep or drop the 0.75 confidence floor for filing a new friction issue? On nine threads of real work measured on 2026-11-25 the friction judge answered for 64 findings, with a highest confidence of 0.70, a median of 0.50 and 16 answers `attributed: false`, so none of them reached the floor; FBK's `confidence_bands` will give more data. Owner: owner. Until answered: kept, as parameter `friction.file_confidence`.
 - Is the loop a compiled built-in workflow? Release 1 runs it as a fixed engine program with one judged session per ticket, so it gets no gate of its own; the outcome lens reuses the calibrated outcome judge and files only while JCL holds that judge `accepted` and only by the pattern rule. Owner: engine owner.
 - Is 7 days the right window for a lost runner (`lost_runner.window_days`)? It keeps the first `status` after an upgrade from starting a loop for every old dead thread. Until answered: 7, as a parameter with provenance `default_no_data`. Owner: owner.
 - Is a lost runner a stable-mode signal of its own? SIL-B10 and [SRV-B16](session-review.spec.md) name the signals that fire the lenses in stable mode, and a lost runner is none. Until answered: it is not, so a stable-mode lost runner starts the loop only when its segment holds a signal. Owner: owner.

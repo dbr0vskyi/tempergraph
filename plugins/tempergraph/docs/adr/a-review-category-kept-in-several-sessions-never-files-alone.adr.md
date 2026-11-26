@@ -32,7 +32,7 @@ For: two runs are better independent evidence than one. Against: a workflow run 
 
 ## Consequences
 
-- `improve backlog` shows a repeated review category after one run, beside the model-free causes, and the loop summary can name the top observations ([SIL-B22](../specs/self-improvement.spec.md)).
+- `improve backlog` shows a repeated review category after one run, beside the model-free causes, and the loop summary can name the top observations ([SIL-B22](../specs/loop-summary-and-review-retries.spec.md)).
 - A reader must tell a counted fact from a reading. The cause name carries the category and the trust tier (`review_repeat:`), the finding carries no note, and `review_weight` is shown beside the score and not added to it ([PRP-B12](../specs/improvement-proposals.spec.md)).
 - Risk: the reviewer's bias, repeated across sessions, inflates a cluster. Limits: the threshold is a parameter with provenance `default_no_data` ([IMD-B23](../specs/improvement-data.spec.md)); an observation that fails the citation check counts for nothing; the finding never files; and `environment_fault` and `request_ambiguous`, which no workflow change can fix, are recorded as `infra` and `designed` and stay out of the backlog.
 - It answers the open question of research `does-the-improvement-loop-find-what-a-reviewer-finds` whether one run is enough: one run is enough to record, and no number of runs is enough to file on a review alone.

@@ -92,6 +92,14 @@ WHEN the loop writes `## Run log` THE loop SHALL show the last segment's run-log
 - GIVEN 55 records of the unit WHEN the excerpt is written THEN it holds the last 40 and says 16 were left out
 - GIVEN a record of another unit WHEN the excerpt is written THEN it is not shown
 
+### ISS-B12 Pattern figures in the evidence
+
+WHEN the loop opens an issue or adds a "seen again" comment for a finding that files by the pattern rule of [SIL-B3](self-improvement.spec.md) THE loop SHALL write, on the line of each unit of that finding under `## Evidence`, the numbers of runs, distinct requests and machines that the rule counted.
+
+- GIVEN a finding that filed with its fingerprint in three runs with three distinct requests on two machines WHEN its issue body is read THEN the line of its unit under `## Evidence` shows 3 runs, 3 requests and 2 machines
+- GIVEN that issue open WHEN a fourth run with a fourth request files a finding of the fingerprint THEN the "seen again" comment's `## Evidence` shows 4 runs and 4 requests
+- GIVEN a friction finding attributed at 0.9 whose fingerprint is recorded in one run WHEN it files THEN the line of its unit under `## Evidence` shows its count and fingerprint and no figure of the pattern rule
+
 ## Acceptance criteria
 
 - ISS-AC1 (ISS-B1): Against a fake code host, a workflow-side, an engine-side and an executor-side finding each open an issue with the default labels and their side label, a workflow's declared `issue_labels` replaces the default list for its workflow-side findings only, and a declared value that is not a list of names leaves the default labels
@@ -104,6 +112,7 @@ WHEN the loop writes `## Run log` THE loop SHALL show the last segment's run-log
 - ISS-AC8 (ISS-B8, ISS-B11): Against a fake code host and a fixture run log, an issue shows the run's and the loop's engine versions, the workflow version, executor, CLI version, model, alias, mode, Python and OS, the thread, exit code, reason and cost, and the status, logs and rerun commands of its thread and unit, and a "seen again" comment holds the same sections; end to end, a loop child's issue shows the engine version, the thread and run-log lines
 - ISS-AC9 (ISS-B9): Against a fake code host, one filing of three causes reads the open and the closed list once each, and an issue opened by one filing is commented on by the next; the GitHub client reads the list of issues by the loop's label and state, makes no search, and leaves out pull requests
 - ISS-AC10 (ISS-B10): A canary placed in a fixture run log's request, notes, evidence, gap, transcript, changed paths and in free-text values of listed keys reaches no issue or comment, the excerpt keeps the last 40 lines and counts the rest, and another unit's records are not shown
+- ISS-AC11 (ISS-B12): Against a fake code host, the issue of an outcome finding and the issue of a friction finding that each file by the pattern rule from three runs with three distinct requests show 3 runs, 3 requests and the machines counted under `## Evidence`, the "seen again" comment of a fourth run shows 4 runs and 4 requests, and the issue of a friction finding attributed at 0.9 from one run shows no figure of the pattern rule
 
 ## Open questions
 
