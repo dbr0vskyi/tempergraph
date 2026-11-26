@@ -13,7 +13,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +21,7 @@ from typing import Any
 from tempergraph.constants import ENGINE_VERSION
 from tempergraph.contracts import Capabilities
 from tempergraph.docs import write_json
+from tempergraph.git import GitError, git
 from tempergraph.model.validate import Finding, validate
 from tempergraph.package.importer import private_name
 from tempergraph.package.loader import LoadedPackage, PackageNotLoaded, load_package
@@ -152,10 +152,10 @@ def register(path: Path, caps: Mapping[str, Capabilities], *, check_only: bool =
 
 def _git_out(cwd: Path, *args: str) -> str | None:
     try:
-        done = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=30, check=False)
-    except (OSError, subprocess.SubprocessError):
+        out = git(list(args), cwd, timeout_s=30).strip()
+    except GitError:
         return None
-    return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else None
+    return out or None
 
 
 def other_checkout(root: Path, name: str, home: Path | None = None) -> Path | None:
