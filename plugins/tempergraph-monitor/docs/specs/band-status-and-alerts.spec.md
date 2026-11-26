@@ -16,7 +16,7 @@ The surfaces that are always there, so a person never has to open anything to kn
 
 ### 2.1 Run label
 
-`alias` if set, else `label`, else `<repo>/<branch-or-worktree>·<4 hex of the thread id hash>`; a batch child adds its item id; an orchestration node run adds `<orchestration>/<node>`.
+`alias` if set, else `label`, else `<repo>/<branch-or-worktree>·<4 hex of the thread id hash>` (for a run of another state root, the hash of that root and the thread id, and `<repo>` that root's repository); a batch child adds its item id; an orchestration node run adds `<orchestration>/<node>`.
 
 ### 2.2 Band row (`AbovePrompt`)
 

@@ -66,6 +66,14 @@ describe('labels and money (MBA §2.1, contract M4)', () => {
     expect(runLabel({ ...row, label: 'docs' })).toBe('docs')
     expect(runLabel(row, 'tempergraph')).toMatch(/^tempergraph\/tg\/demo\/T-1·[0-9a-f]{4}$/)
   })
+  test('one thread id in two other roots gets two labels, each with its repository (issue 145)', () => {
+    const row = status.threads[0]!
+    const a = runLabel(row, 'alpha', '/w/alpha/.tempergraph')
+    const b = runLabel(row, 'beta', '/w/beta/.tempergraph')
+    expect(a.startsWith('alpha/')).toBe(true)
+    expect(b.startsWith('beta/')).toBe(true)
+    expect(a.slice(-4)).not.toBe(b.slice(-4))
+  })
   test('estimates and gaps are never shown as reported', () => {
     expect(money({ reported: 0.1, completeness: 'complete' })).toBe('$0.10')
     expect(money({ estimated: 3.1, completeness: 'estimated' })).toBe('$3.10 est') // MBA-B3

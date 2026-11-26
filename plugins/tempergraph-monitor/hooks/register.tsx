@@ -14,7 +14,7 @@ import { costTab } from './lib/cost'
 import type { DetailDoc, RunRecord, Session, StatusDoc } from './lib/engine'
 import { isReadable } from './lib/engine'
 import {
-  fleetAlerts, fleetRows, missingRoots, monthRows, projectionText, repoName, syncedText,
+  fleetAlerts, fleetRows, missingRoots, monthRows, otherRows, projectionText, repoName, syncedText,
 } from './lib/fleet'
 import type { LiveDoc, ProjectionDoc, StatsDoc } from './lib/fleet'
 import {
@@ -270,9 +270,10 @@ async function refreshStatus($: $, now: number): Promise<void> {
   for (const row of doc.threads) {
     if (here && row.state_root && row.state_root !== here) {
       // another repository on this machine: listed with a card, never drilled into or acted on from here
-      const s = summarise(row, undefined, now)
       const repo = repoName(row.state_root)
-      others.push({ key: `other:${row.state_root}|${row.thread_id}`, repo, text: listRow(s), card: [
+      const s = summarise(row, undefined, now, repo, row.state_root)
+      others.push({ key: `other:${row.state_root}|${row.thread_id}`, repo, text: listRow(s),
+        live: Boolean(row.alive) || row.state === 'paused' || row.state === 'running', card: [
         `${row.thread_id} in ${repo}`, `state ${row.state}${s.unit ? ` at ${s.unit}` : ''}`,
         ...(row.pending_gates ?? []).map(g => `waits at ${g.unit}: ${g.resume}`),
         `Open Claude Code in ${row.state_root.replace(/[\\/]\.tempergraph$/, '')} to follow or answer this run.`] })
@@ -522,6 +523,7 @@ export const register: Register = (on, options) => {
     if (v.level === 'runs' || !v.thread) {
       const now = await $.clock.now()
       const sorted = shownRuns(list, pr.filter as Filter, pr.pinned, await read($, endedAgo), todaySeconds(now))
+      const oth = otherRows(fl.others, fl.othersOpen ?? false)
       return (
         <Box flexDirection="column">
           {header}
@@ -543,9 +545,13 @@ export const register: Register = (on, options) => {
             </Box>
           ))}
           {fl.others.length > 0 && <Text bold>Other repositories on this machine</Text>}
-          {fl.others.map(o => (
+          {oth.shown.map(o => (
             <Button key={o.key} plain label={`${o.repo}  ${o.text}`} onPress={go({ level: 'card', card: o.key })} />
           ))}
+          {oth.fold && (
+            <Button key="others-fold" plain label={oth.fold}
+              onPress={() => update($, fleet, f => ({ ...f, othersOpen: !(f.othersOpen ?? false) }))} />
+          )}
           {fl.missing.map(line => <Text dimColor>{line}</Text>)}
         </Box>
       )

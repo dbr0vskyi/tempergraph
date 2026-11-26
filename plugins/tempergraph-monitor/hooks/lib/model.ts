@@ -17,12 +17,13 @@ function hash4(text: string): string {
   return h.toString(16).padStart(8, '0').slice(0, 4)
 }
 
-/** MBA §2.1: alias, else label, else `<repo>/<branch-or-worktree>·<4 hex>`. */
-export function runLabel(row: StatusRow, repo = 'repo'): string {
+/** MBA §2.1: alias, else label, else `<repo>/<branch-or-worktree>·<4 hex>`. A row of another state root hashes
+ * that root with the thread id, so one thread id in two roots gets two labels. */
+export function runLabel(row: StatusRow, repo = 'repo', root?: string): string {
   if (row.alias) return row.alias
   if (row.label) return row.label
   const where = row.workspace?.branch || row.workspace?.path?.split('/').pop() || row.workflow
-  return `${repo}/${where}·${hash4(row.thread_id)}`
+  return `${repo}/${where}·${hash4(root ? `${root}|${row.thread_id}` : row.thread_id)}`
 }
 
 export type Mark = '▶' | '⏸' | '✗' | '✓' | '⚠' | '·'
@@ -137,7 +138,8 @@ export type RunSummary = {
   resume: string | null
 }
 
-export function summarise(row: StatusRow, detail: DetailDoc | undefined, now: number, repo?: string): RunSummary {
+export function summarise(row: StatusRow, detail: DetailDoc | undefined, now: number, repo?: string,
+                          root?: string): RunSummary {
   const units = detail?.units ?? []
   const planned = detail?.plan?.filter(p => p.kind !== 'finalizer').length ?? units.length
   const current = units.find(u => u.state === 'running') ?? units.find(u => u.state === 'paused')
@@ -150,7 +152,7 @@ export function summarise(row: StatusRow, detail: DetailDoc | undefined, now: nu
   return {
     threadId: row.thread_id,
     workflow: row.workflow,
-    label: runLabel(row, repo),
+    label: runLabel(row, repo, root),
     mark: runMark(row, detail?.health),
     state: row.state,
     alive: !!row.alive,

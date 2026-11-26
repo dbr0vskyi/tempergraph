@@ -132,7 +132,20 @@ export function repoName(stateRoot: string): string {
   return (parts.at(-1) === '.tempergraph' ? parts.at(-2) : parts.at(-1)) ?? stateRoot
 }
 
-/** `missing` lines for indexed roots whose folder is gone; the index itself is never touched. */
+/** One `missing` line for the indexed roots whose folder is gone, with their count and the first three names; the
+ * index itself is never touched. */
 export function missingRoots(roots: readonly RootEntry[] | undefined): string[] {
-  return (roots ?? []).filter(r => r.missing).map(r => `${repoName(r.path)}: missing (${r.path})`)
+  const gone = (roots ?? []).filter(r => r.missing)
+  if (gone.length === 0) return []
+  if (gone.length === 1) return [`${repoName(gone[0]!.path)}: missing (${gone[0]!.path})`]
+  const names = gone.slice(0, 3).map(r => repoName(r.path)).join(', ')
+  return [`${gone.length} state roots missing: ${names}${gone.length > 3 ? `, +${gone.length - 3} more` : ''}`]
+}
+
+/** Rows of other roots: live and waiting ones are shown, ended ones fold under one line with their count until it
+ * is opened, as the run list folds its own older runs (MRV §2.3). */
+export function otherRows<T extends { live: boolean }>(others: readonly T[], open: boolean): { shown: T[]; fold: string | null } {
+  const ended = others.filter(o => !o.live)
+  const fold = ended.length ? `${open ? '▾' : '▸'} ${ended.length} ended run${ended.length === 1 ? '' : 's'} in other repositories` : null
+  return { shown: others.filter(o => o.live || open), fold }
 }
