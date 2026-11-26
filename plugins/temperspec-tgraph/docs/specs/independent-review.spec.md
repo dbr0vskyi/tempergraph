@@ -122,4 +122,9 @@ WHEN a review lists no blocking finding THE workflow SHALL go on to the outcome 
 - IRV-AC12 (IRV-B12): A fixture run that the review sent back once is sent back by its second review to neither step, whichever file the second review's blocking finding names
 - IRV-AC13 (IRV-B13): A fixture run whose second review lists blocking findings pauses, and the pause shows each of them with its number, file, line and text and shows no finding that is not blocking
 - IRV-AC14 (IRV-B14): A fixture run with a clean change passes the review with no trip back and no pause, and so does a run whose findings are all not blocking
+- [ ] ts-rev-form Each finding names an existing file, a line inside it and a mark, in numbered order, or the section says None
+- [ ] ts-rev-session The reader opened no hand-over document of the run and wrote no file but its draft
+- [ ] ts-rev-commit Every file the step left is committed, with nothing uncommitted in the workspace
+- [ ] ts-rev-step A blocking finding on a file the change touches sends the run to the code step, any other blocking finding to the plan step
+- [ ] ts-rev-blockers No finding the reader marked blocking remains
 
