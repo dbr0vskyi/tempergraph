@@ -300,6 +300,20 @@ def test_frc_ac6_decisions_all_by_the_starting_caller_stay_designed() -> None:  
     assert f["class"] == "designed" and f["count"] == 2
 
 
+def test_sup_ac5_agent_decided_clusters_by_cause_and_only_faults_reach_the_judge(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SUP-AC5, SUP-B7, SUP-B16, FRC-AC6, AC 8
+    other = {**AGENT, "host_session": "sess-2"}
+    seen4 = rescued_by(repo, monkeypatch, "D-4", AGENT, other)
+    seen5 = rescued_by(repo, monkeypatch, "D-5", AGENT, other)
+    seen6 = rescued_by(repo, monkeypatch, "D-6", AGENT, dict(AGENT))
+    f4, f5, f6 = (decided_finding(repo, t) for t in ("D-4", "D-5", "D-6"))
+    assert f4["class"] == f5["class"] == "fault" and f4["cause"] == f5["cause"]
+    assert f4["fingerprint"] == f5["fingerprint"]
+    assert f4["fingerprint"] in seen4[0] and f5["fingerprint"] in seen5[0]
+    assert f6["class"] == "designed" and f6["cause"] == f4["cause"]
+    assert f6["fingerprint"] not in seen6[0]
+
+
 def test_frc_ac6_a_decision_by_a_caller_with_no_host_session_is_a_fault(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # FRC-AC6, AC 8
     bare = {"kind": "agent", "host": "claude-code"}
