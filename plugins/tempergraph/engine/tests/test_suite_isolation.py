@@ -446,7 +446,7 @@ from pathlib import Path
 
 from tempergraph.schedule import credentials
 
-from tests.conftest import REAL_HOME, SIGN_IN_FOLDER_VAR
+from tests.conftest import CALLER_ENGINE_VARS, REAL_HOME, SIGN_IN_FOLDER_VAR
 
 EXECUTORS = sorted(credentials.LOGIN_FILES)
 
@@ -454,7 +454,7 @@ EXECUTORS = sorted(credentials.LOGIN_FILES)
 def test_the_callers_sign_in_is_out_of_sight():
     assert all((REAL_HOME / rel).is_file() for ex in EXECUTORS for rel in credentials.LOGIN_FILES[ex])  # the caller has one
     assert Path.home() != REAL_HOME and not any(Path.home().glob(".*/*"))
-    assert not [n for n in (*credentials.CREDENTIAL_NAMES, SIGN_IN_FOLDER_VAR) if n in os.environ]
+    assert not [n for n in (*credentials.CREDENTIAL_NAMES, SIGN_IN_FOLDER_VAR, *CALLER_ENGINE_VARS) if n in os.environ]
     held = credentials.held_kinds(EXECUTORS, dict(os.environ), credentials.read_profile())
     assert held == {ex: frozenset() for ex in EXECUTORS}
 
@@ -470,14 +470,15 @@ def test_a_test_that_needs_a_sign_in_creates_it():
 
 def test_no_test_sees_the_callers_sign_in(tmp_path: Path) -> None:  # TST-AC19 (issue 185)
     """A nested run whose caller is signed in every way the credential check knows: sign-in files in its home
-    folder, a config folder with one more, and every credential variable set."""
+    folder, a config folder with one more, and every credential variable set; it also exports the engine variables
+    that change what a run does (`TEMPERGRAPH_AUTONOMY=record` and the rest of `CALLER_ENGINE_VARS`)."""
     from tempergraph.schedule import credentials
 
-    from .conftest import HOME_VARS, REAL_HOME, SIGN_IN_FOLDER_VAR
+    from .conftest import CALLER_ENGINE_VARS, HOME_VARS, REAL_HOME, SIGN_IN_FOLDER_VAR
 
     # this test's own process first: the home is not the caller's and holds no sign-in, no credential name is set
     assert Path.home() != REAL_HOME and tmp_path.parent.parent in Path.home().parents
-    assert not [n for n in (*credentials.CREDENTIAL_NAMES, SIGN_IN_FOLDER_VAR) if n in os.environ]
+    assert not [n for n in (*credentials.CREDENTIAL_NAMES, SIGN_IN_FOLDER_VAR, *CALLER_ENGINE_VARS) if n in os.environ]
     assert not any(credentials.login_cached(ex) for ex in credentials.LOGIN_FILES)
     if is_nested():
         return
@@ -489,7 +490,9 @@ def test_no_test_sees_the_callers_sign_in(tmp_path: Path) -> None:  # TST-AC19 (
     module = tmp_path / "test_sign_in_probe.py"
     module.write_text(SIGN_IN_PROBE, encoding="utf-8")
     env = {**dict.fromkeys(HOME_VARS, str(caller)), **dict.fromkeys(sorted(credentials.CREDENTIAL_NAMES), "caller-secret"),
-           SIGN_IN_FOLDER_VAR: str(folder)}
+           SIGN_IN_FOLDER_VAR: str(folder), "TEMPERGRAPH_AUTONOMY": "record", "TEMPERGRAPH_FLUSHER": "off",
+           "TEMPERGRAPH_SCHEDULE_TOKEN": "caller-token"}
+    assert set(env) - set(HOME_VARS) - credentials.CREDENTIAL_NAMES - {SIGN_IN_FOLDER_VAR} <= set(CALLER_ENGINE_VARS)
     run = nested_pytest("-n", "0", str(module), scratch=True, env=env)
     assert outcome_counts(run.stdout) == {"passed": 2}, run.stdout[-3000:] + run.stderr[-1000:]
 
