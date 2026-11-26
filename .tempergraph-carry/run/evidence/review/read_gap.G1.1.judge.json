@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.judge",
+  "view_chars": 4170,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        7,
+        8,
+        10,
+        12
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The verdict that no spec covers a review unit rests on grep lines the judge dismissed as check-preview matches, without reading the surrounding files, though the intent asks for PARTIAL when search output is the only evidence."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.judge_reask",
+  "view_chars": 3049,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        1
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.75,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded both criteria MET with file and line evidence without making any read call (reads empty, all declared tools unused), though the brief required opening each named file."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        1
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The MET evidence repeats the findings' own citations rather than lines the judge checked in the files, so the report was accepted as written."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.judge",
+  "view_chars": 3567,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        1,
+        2,
+        3,
+        5,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge never opened checks.py or parallel-reading.spec.md at the cited line ranges, although the intent requires opening each file the findings name."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        2,
+        5,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.75,
+      "check": "kept",
+      "corroborated": false,
+      "note": "ts-rdg-answers was graded MET on lines that grep printed, where the intent says to grade PARTIAL unless the file was read around the line."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}
