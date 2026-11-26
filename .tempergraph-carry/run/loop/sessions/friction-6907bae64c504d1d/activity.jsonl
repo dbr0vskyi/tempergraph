@@ -1,0 +1,1 @@
+{"t": 0.685, "n": 1, "ev": "session_started", "session_id": "a3cdd287-76bb-4f5f-8386-34d6a8acaf16", "model": "claude-sonnet-5-5", "tools": ["Glob", "Grep", "Read"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}

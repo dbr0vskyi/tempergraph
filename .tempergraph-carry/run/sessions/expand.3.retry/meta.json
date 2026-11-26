@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.3.retry",
+  "kind": "retry",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "/home/dbr0vskyi/projects/tempergraph/.tempergraph/runs/temperspec/i170c/sessions/expand.3.retry/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T20:01:12.965Z",
+  "ended_at": "2026-11-26T20:01:26.650Z",
+  "session_id": "ab436339-05de-4b67-bf2b-5fa6f120b577",
+  "model": "claude-sonnet-5-5",
+  "pgid": 3364682,
+  "cli_version": "2.1.332"
+}

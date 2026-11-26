@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "independent_review",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-rev-blockers",
+      "evidence": "UNMET: Two findings are marked blocking (findings.md:3-4). 1. plugins/tempergraph/engine/src/tempergraph/improve/child.py:507 blocking: a recorded judge answer is counted twice towards the majority of FFD-B1, against criterion 5 ('a thread adds one answer per fingerprint to the counts') and SIL-B49. `earlier = filing.recorded_answers(root, wf)` (line 444) reads every `loop.jsonl` of the workflow …",
+      "fix": "Fix the double count of the recorded answer in child.py and refresh the open-issue cache after the outbox redelivery in filing.py."
+    }
+  ]
+}
