@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.2.judge",
+  "view_chars": 4908,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        4,
+        5,
+        6,
+        8
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge read only the plan and checked the row files by search alone, so ts-phs-change ended PARTIAL instead of MET, where it needed to open each row's file and quote the line."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        8
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The verdict opens by saying all eight rows have their change in their files, but the judge also says it checked most rows only by search, so the claim goes beyond its evidence."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}
