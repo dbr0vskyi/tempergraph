@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.step",
+  "view_chars": 4957,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        2,
+        4,
+        5,
+        6
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Four near-identical greps for finding/blocking/numbered ran with small pattern changes where one or two scoped searches would have answered the gap."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        8,
+        9
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The model-free check half of the gap rests on one registration grep that returned almost nothing, and the answer says checks.py was not read past its imports."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.judge",
+  "view_chars": 4898,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        4,
+        6,
+        7
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge ran two greps on one concept and opened no spec file, then declared the whole seven-row gap list correct without repeating the search per gap or reading the specs it found."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

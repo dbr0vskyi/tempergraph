@@ -9,13 +9,14 @@
         7,
         8,
         10,
+        11,
         12
       ],
-      "remedy_class": "criterion",
-      "confidence": 0.3,
+      "remedy_class": "brief",
+      "confidence": 0.4,
       "check": "kept",
       "corroborated": false,
-      "note": "The verdict that no spec covers a review unit rests on grep lines the judge dismissed as check-preview matches, without reading the surrounding files, though the intent asks for PARTIAL when search output is the only evidence."
+      "note": "The negative claim that no spec covers a review unit was settled from grep output and one small spec read, yet both criteria were graded MET instead of PARTIAL for search-only evidence."
     }
   ],
   "conformance": [],

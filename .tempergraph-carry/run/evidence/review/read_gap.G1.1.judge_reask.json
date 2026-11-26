@@ -9,21 +9,21 @@
         1
       ],
       "remedy_class": "judge_model",
-      "confidence": 0.75,
+      "confidence": 0.85,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The judge graded both criteria MET with file and line evidence without making any read call (reads empty, all declared tools unused), though the brief required opening each named file."
+      "note": "The judge graded MET with cited file and line evidence but made no read, search or list calls, so it never opened the files the findings name, as its brief required."
     },
     {
       "category": "judge_trusts_report",
       "turns": [
         1
       ],
-      "remedy_class": "brief",
-      "confidence": 0.5,
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
       "check": "unsupported",
       "corroborated": false,
-      "note": "The MET evidence repeats the findings' own citations rather than lines the judge checked in the files, so the report was accepted as written."
+      "note": "The MET evidence repeats the findings' own file and line citations rather than quoting lines from files the judge read."
     }
   ],
   "conformance": [],

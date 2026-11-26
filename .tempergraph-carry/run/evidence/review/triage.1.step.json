@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.step",
+  "view_chars": 10247,
+  "observations": [
+    {
+      "category": "environment_fault",
+      "turns": [
+        1
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The conversation setting reached the prompt as the unfilled placeholder ⟨missing:settings.conversation⟩, so the step had no valid never/blocking/always value to sort gaps under."
+    },
+    {
+      "category": "skill_not_used",
+      "turns": [
+        7,
+        11,
+        12,
+        14,
+        15
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session globbed and grepped for specs but never visibly opened .tempergraph/capabilities.md as the prompt directs, and read only two specs before naming gap owners."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Read the task file",
+      "status": "followed",
+      "turns": [
+        1
+      ]
+    },
+    {
+      "item": "Open task-notes.rule.md and documents.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Search the capability list .tempergraph/capabilities.md",
+      "status": "unclear",
+      "turns": [
+        5,
+        14,
+        15
+      ]
+    },
+    {
+      "item": "Search spec, decision, research and plan folders for each concept",
+      "status": "followed",
+      "turns": [
+        7,
+        10,
+        14,
+        15,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "item": "Read the documents found",
+      "status": "followed",
+      "turns": [
+        11,
+        12
+      ]
+    },
+    {
+      "item": "Limits: no shell, no git, write only the triage note",
+      "status": "followed",
+      "turns": [
+        22
+      ]
+    },
+    {
+      "item": "Write the note to docs/tasks/i173.triage.md or the tasks folder beside the specs",
+      "status": "followed",
+      "turns": [
+        9,
+        22
+      ]
+    },
+    {
+      "item": "Quick lane consideration",
+      "status": "not_applicable",
+      "turns": [
+        23
+      ]
+    },
+    {
+      "item": "Owner decisions section and Findable/Owner decision labels",
+      "status": "unclear",
+      "turns": [
+        22,
+        23
+      ]
+    },
+    {
+      "item": "Report outcomes without asserting correctness",
+      "status": "unclear",
+      "turns": [
+        23
+      ]
+    }
+  ],
+  "none_found": false
+}

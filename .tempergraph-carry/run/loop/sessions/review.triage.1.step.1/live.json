@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.triage.1.step.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 1700,
+  "turns_so_far": 1,
+  "pgid": 3990962,
+  "last_event_at": "2026-11-26T02:46:54.847Z",
+  "updated_at": "2026-11-26T02:46:54.848Z",
+  "pid": 3972965,
+  "ended": false
+}
