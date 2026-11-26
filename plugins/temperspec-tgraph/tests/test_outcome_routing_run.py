@@ -82,6 +82,10 @@ class Stand:
                                             encoding="utf-8")
             return answer("Coded.\nARTIFACT code_report: report.md\nARTIFACT tests_passed: yes",
                           session_id=f"s-code-{len(self.sessions)}")
+        if unit == "independent_review":  # the reader after `code_join`: a clean change, so no trip back
+            (work / ".tempergraph" / "review").mkdir(parents=True, exist_ok=True)
+            (work / ".tempergraph" / "review" / "findings.md").write_text("## Findings\n\nNone\n", encoding="utf-8")
+            return answer("Read.", session_id=f"s-review-{len(self.sessions)}")
         raise AssertionError(f"a session of {unit} that the stand-in does not answer")
 
     def run_judge(self, req: SessionRequest, views: Any, sink: Any) -> SessionResult:

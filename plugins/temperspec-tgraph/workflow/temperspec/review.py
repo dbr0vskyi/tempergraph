@@ -156,7 +156,7 @@ def build_document(task: str, draft: str, earlier_doc: str | None, built: bool) 
 
 
 def _git(workdir: Path, *args: str) -> str:
-    done = subprocess.run(["git", *args], cwd=workdir, capture_output=True, text=True, timeout=120,  # noqa: S603, S607
+    done = subprocess.run(["git", *args], cwd=workdir, capture_output=True, text=True, timeout=120,
                           stdin=subprocess.DEVNULL, check=False)
     return done.stdout if done.returncode == 0 else ""
 

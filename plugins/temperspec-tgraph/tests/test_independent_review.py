@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from tempergraph.constants import ExitCode
 from tempergraph.package.loader import load_package
 from tempergraph.run.checks import CheckContext, GitFacts
@@ -397,7 +396,7 @@ class Stand:
         unit = req.session_key.split(".")[0]
         self.sessions.append({"kind": "judge", "unit": unit, "prompt": req.prompt})
         criteria = SPEC.units[unit].gate.criteria if unit in SPEC.units else ()
-        count = len(re.findall(r"^\d+\. \[", req.prompt, re.M)) if unit == "outcome" else max(len(criteria), 1)
+        count = len(re.findall(r"^\d+\. \[", req.prompt, re.MULTILINE)) if unit == "outcome" else max(len(criteria), 1)
         rows = [{"n": i, "status": "MET", "evidence": "stand-in", "defect_in": None, "no_change": False}
                 for i in range(1, count + 1)]
         failing: dict[str, Any] | None = None
@@ -649,7 +648,7 @@ def test_rvf_ac1_the_findings_document_is_committed_beside_the_triage_note(repo:
 
 def _ids(spec: str, prefix: str) -> tuple[set[str], set[str]]:
     text = (ROOT / "docs" / "specs" / spec).read_text()
-    return (set(re.findall(rf"^### ({prefix}-B\d+) ", text, re.M)), set(re.findall(rf"^- ({prefix}-AC\d+) ", text, re.M)))
+    return (set(re.findall(rf"^### ({prefix}-B\d+) ", text, re.MULTILINE)), set(re.findall(rf"^- ({prefix}-AC\d+) ", text, re.MULTILINE)))
 
 
 def test_the_specs_define_each_behaviour_with_a_criterion_and_the_documents_show_the_unit() -> None:
@@ -659,7 +658,7 @@ def test_the_specs_define_each_behaviour_with_a_criterion_and_the_documents_show
         behaviours, criteria = _ids(spec, prefix)
         assert behaviours == {f"{prefix}-B{n}" for n in range(1, count + 1)}, spec
         text = (ROOT / "docs" / "specs" / spec).read_text()
-        named = set(re.findall(rf"^- {prefix}-AC\d+ \(([^)]*)\)", text, re.M))
+        named = set(re.findall(rf"^- {prefix}-AC\d+ \(([^)]*)\)", text, re.MULTILINE))
         assert criteria and {b for group in named for b in re.findall(rf"{prefix}-B\d+", group)} >= behaviours, spec
     outcome = json.loads((ROOT / "outcome.json").read_text())
     assert outcome["revision"] > 23
