@@ -16,7 +16,7 @@ from tempergraph.api import Gate, Judge, Routing, Step, Value, Workflow
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import InfraCause, SessionResult, Usage
 from tempergraph.executors.standins import answer, standin
-from tempergraph.improve import child
+from tempergraph.improve import causes, child
 from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.improve.record import findings_path, read_findings
 from tempergraph.run.runner import resume
@@ -278,6 +278,26 @@ def test_frc_ac6_a_decision_by_another_agent_is_a_fault(
     assert f["class"] == "fault"
     (prompt,) = seen
     assert f["fingerprint"] in prompt
+
+
+@pytest.mark.parametrize("order", [("other", "starter"), ("starter", "other"), ("other", "other")])
+def test_frc_ac6_one_decision_of_another_agent_in_the_group_makes_the_finding_a_fault(
+        order: tuple[str, ...]) -> None:  # FRC-AC6, AC 8
+    """The same unit and cause decided twice in one segment: the class is `designed` only when every decision of the
+    group is the starting caller's, whichever decision comes last."""
+    callers = {"starter": dict(AGENT), "other": {**AGENT, "host_session": "sess-2"}}
+    ivs = [{"unit": "review", "pause_kind": "escalation", "touches": [{"class": "rescue"}],
+            "caller": {**callers[who], "decided_by": "agent"}} for who in order]
+    (f,) = causes.derive([], ivs, starter=AGENT)
+    assert f["cause"] == "agent_decided:escalation" and f["count"] == 2
+    assert f["class"] == "fault", order
+
+
+def test_frc_ac6_decisions_all_by_the_starting_caller_stay_designed() -> None:  # FRC-AC6, AC 8
+    ivs = [{"unit": "review", "pause_kind": "escalation", "touches": [{"class": "rescue"}],
+            "caller": {**AGENT, "decided_by": "agent"}} for _ in range(2)]
+    (f,) = causes.derive([], ivs, starter=AGENT)
+    assert f["class"] == "designed" and f["count"] == 2
 
 
 def test_frc_ac6_a_decision_by_a_caller_with_no_host_session_is_a_fault(

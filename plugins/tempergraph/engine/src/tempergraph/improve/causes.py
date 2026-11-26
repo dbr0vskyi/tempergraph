@@ -259,7 +259,8 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
             session = str(c.get("host_session") or "")
             same = bool(session) and session == str((starter or {}).get("host_session") or "") \
                 and str(c.get("host") or "") == str((starter or {}).get("host") or "")
-            classes[("", unit_name, code, "")] = "designed" if same else "fault"
+            key = ("", unit_name, code, "")  # one finding for the group: any decision of another agent makes it a fault
+            classes[key] = "designed" if same and classes.get(key, "designed") == "designed" else "fault"
             add(unit_name, code)
         if c.get("decided_by") == "person" and (iv.get("ruling") or any(t.get("action") in ("rewind", "rerun")
                                                                           for t in steer)):

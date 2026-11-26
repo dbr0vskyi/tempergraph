@@ -400,7 +400,10 @@ def check_paused_context(text: str, f: dict[str, Any], reason: str) -> None:
     run = text.split("## Run\n")[1].split("\n## ")[0]
     assert f"Segment started (UTC): `{f['segment_started'][:19]}`" in run
     assert "Exit code: `3`" in run and f"Exit reason: `{reason}`" in run
-    assert "unresolved_gap" in run and "next_gate=none" in run, run
+    facts = next(ln for ln in run.splitlines() if "pause=" in ln)  # ISS-B15: the facts of SIL-B37, ids and enums only
+    for word in ("pause=unresolved_gap", "unit=review", "item=-", "decision=proceed", "caller=", "ruling=not_given",
+                 "feedback=not_given", "touch=rescue", "workspace=", "next_gate=none"):
+        assert word in facts, (word, facts)
     runlog = text.split("## Run log\n")[1].split("\n## ")[0]
     assert "unit=review" in runlog and "exit_code=3" in runlog and "exit_code=0" not in runlog
 

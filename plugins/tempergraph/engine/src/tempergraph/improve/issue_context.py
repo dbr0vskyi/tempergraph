@@ -153,15 +153,23 @@ def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
 
 
-FACT_KEYS = (("pause", "reason"), ("decision", "decision"), ("ruling", "ruling"), ("touch", "touch"),
-             ("workspace", "workspace"), ("next_gate", "next_gate"))
+FACT_KEYS = (("pause", "reason"), ("unit", "unit"), ("item", "item"), ("decision", "decision"), ("caller", "caller"),
+             ("ruling", "ruling"), ("feedback", "feedback"), ("touch", "touch"), ("workspace", "workspace"),
+             ("next_gate", "next_gate"))
+
+
+def _fact_value(raw: Any) -> str | None:
+    """A fact as one id-like word, or a list of such words joined by `,` (the classes of a decision's touches, SIL-B43);
+    None when any word of it is not an id or enum."""
+    words = [_safe(w.replace(" ", "_")) for w in str(raw or "").split(",")]
+    return ",".join(words) if words and all(isinstance(w, str) and w for w in words) else None
 
 
 def _facts_line(facts: Mapping[str, str]) -> str | None:
-    """The facts of the segment's pause as `key=id` words; a value that is not an id or enum is left out."""
+    """The facts of the segment's pause (SIL-B37) as `key=id` words; a value that is not an id or enum is left out."""
     parts = []
     for name, key in FACT_KEYS:
-        v = _safe(str(facts.get(key) or "").replace(" ", "_"))
+        v = _fact_value(facts.get(key))
         if v:
             parts.append(f"{name}={v}")
     return " ".join(parts) or None
