@@ -50,17 +50,23 @@ def _unit_of(r: Mapping[str, Any]) -> str:
     return f"{r['child']}/{r.get('unit') or '-'}" if r.get("child") else str(r.get("unit") or "")
 
 
-def segment(records: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
-    start = max((i for i, r in enumerate(records) if r.get("kind") == "run_started"), default=0)
-    return list(records[start:])
+def segment(records: Sequence[Mapping[str, Any]], started: str | None = None) -> list[Mapping[str, Any]]:
+    """The segment that starts at the `run_started` whose `ts` is `started`; the last one when None or not found."""
+    starts = [i for i, r in enumerate(records) if r.get("kind") == "run_started"]
+    if started:
+        for n, i in enumerate(starts):
+            if str(records[i].get("ts") or "") == started:
+                return list(records[i:starts[n + 1] if n + 1 < len(starts) else len(records)])
+    return list(records[max(starts, default=0):])
 
 
-def log_lines(records: Sequence[Mapping[str, Any]], units: Sequence[str]) -> tuple[list[str], int]:
+def log_lines(records: Sequence[Mapping[str, Any]], units: Sequence[str], *,
+              segment_started: str | None = None) -> tuple[list[str], int]:
     """ISS-B10: the last segment's records of the finding's units and its start and exit, one line each, at most
     `LOG_LINES`; returns the lines and how many earlier matching records were left out."""
     want = set(units)
     rows: list[str] = []
-    for r in segment(records):
+    for r in segment(records, segment_started):
         kind = str(r.get("kind") or "")
         if kind not in RUN_KINDS and _unit_of(r) not in want:
             continue
@@ -92,9 +98,9 @@ def log_lines(records: Sequence[Mapping[str, Any]], units: Sequence[str]) -> tup
 
 
 def environment(records: Sequence[Mapping[str, Any]], units: Sequence[str], mode: str | None = None,
-                judge_executor: str | None = None) -> dict[str, Any]:
+                judge_executor: str | None = None, *, segment_started: str | None = None) -> dict[str, Any]:
     """ISS-B8: the versions and machine behind a finding, as names and numbers."""
-    seg = segment(records)
+    seg = segment(records, segment_started)
     started: Mapping[str, Any] = next((r for r in seg if r.get("kind") == "run_started"), {})
     want = set(units)
     mine = [r for r in seg if _unit_of(r) in want]
@@ -116,9 +122,11 @@ def environment(records: Sequence[Mapping[str, Any]], units: Sequence[str], mode
 
 
 def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
-              units: Sequence[str]) -> dict[str, Any]:
-    """ISS-B8: the run's id, how its segment ended, and the units' attempts and cost."""
-    seg = segment(records)
+              units: Sequence[str], *, segment_started: str | None = None,
+              facts: Mapping[str, str] | None = None) -> dict[str, Any]:
+    """ISS-B8: the run's id, how its segment ended, and the units' attempts and cost; with `facts` (SIL-B37) the
+    line that says what answered the segment's pause."""
+    seg = segment(records, segment_started)
     started: Mapping[str, Any] = next((r for r in seg if r.get("kind") == "run_started"), {})
     ended: Mapping[str, Any] = next((r for r in reversed(seg) if r.get("kind") == "run_exit"), {})
     want = set(units)
@@ -137,16 +145,33 @@ def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
         "request_digest": _safe(finding.get("request_digest")),
         "rerun_of": _safe(str(finding.get("rerun_of") or "").replace("/", ":")) and finding.get("rerun_of"),
         "machine": _safe(finding.get("machine")),
+        "facts": _facts_line(facts) if facts else None,
     }
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
 
 
+FACT_KEYS = (("pause", "reason"), ("decision", "decision"), ("ruling", "ruling"), ("touch", "touch"),
+             ("workspace", "workspace"), ("next_gate", "next_gate"))
+
+
+def _facts_line(facts: Mapping[str, str]) -> str | None:
+    """The facts of the segment's pause as `key=id` words; a value that is not an id or enum is left out."""
+    parts = []
+    for name, key in FACT_KEYS:
+        v = _safe(str(facts.get(key) or "").replace(" ", "_"))
+        if v:
+            parts.append(f"{name}={v}")
+    return " ".join(parts) or None
+
+
 def build(records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]], *, mode: str | None = None,
-          judge_executor: str | None = None) -> dict[str, Any]:
+          judge_executor: str | None = None, segment_started: str | None = None,
+          facts: Mapping[str, str] | None = None) -> dict[str, Any]:
     """The context of one issue or comment: the findings' units, their environment, run facts and log lines."""
     first = findings[0]
     units = [u for u in dict.fromkeys(
         (f"{f['child']}/{f.get('unit') or '-'}" if f.get("child") else str(f.get("unit") or "")) for f in findings) if u]
-    lines, left = log_lines(records, units)
-    return {"environment": environment(records, units, mode, judge_executor), "run": run_facts(records, first, units),
+    lines, left = log_lines(records, units, segment_started=segment_started)
+    return {"environment": environment(records, units, mode, judge_executor, segment_started=segment_started),
+            "run": run_facts(records, first, units, segment_started=segment_started, facts=facts),
             "log": lines, "log_left_out": left}

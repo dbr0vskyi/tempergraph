@@ -401,13 +401,13 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         earlier = filing.recorded_answers(root, wf)
     except Exception:  # noqa: BLE001 - best effort (SIL-B1)
         earlier = {}
+    try:  # SIL-B37: what answered each pause; the loop is best effort (SIL-B1), so a failed read leaves it out
+        answered = pause_facts.of(root, wf, task, faults)
+    except Exception:  # noqa: BLE001
+        answered = {}
     if (t.get("lenses") or {}).get("friction") and faults and not capped:
         ex = registry.get(str(t.get("executor") or "claude"))
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
-        try:  # SIL-B37: what answered each pause; the loop is best effort (SIL-B1), so a failed read leaves it out
-            answered = pause_facts.of(root, wf, task, faults)
-        except Exception:  # noqa: BLE001
-            answered = {}
         req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task), answered), workdir=root,
                              alias=alias_of(t), session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
                              session_dir=sdir, options=options_of(t))
@@ -458,6 +458,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
                                       earlier_answers=earlier.get(str(f.get("fingerprint")), ()),
+                                      facts=answered.get(str(f.get("fingerprint")), {}),
                                       issue_labels=t.get("issue_labels"), review_categories=categories, **context))
     for f, etask in escaped:  # SIL-B34: an escape finding files by the pattern rule, not by calibration
         cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=False, request_digest=f.get("request_digest"),

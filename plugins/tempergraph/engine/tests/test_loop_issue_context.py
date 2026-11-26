@@ -145,6 +145,31 @@ def test_the_log_shows_at_most_forty_lines_and_says_how_many_it_left_out() -> No
     assert host_ctx["log_left_out"] == 16
 
 
+def test_the_context_of_a_paused_segment_is_built_from_that_segment() -> None:  # ISS-AC13, AC 7
+    def seg(t: str, code: int, reason: str, attempt: int) -> list[dict[str, Any]]:
+        return [{"kind": "run_started", "ts": f"2026-11-25T{t}:00:00+00:00"},
+                {"kind": "attempt_start", "ts": f"2026-11-25T{t}:00:01+00:00", "unit": "plan", "attempt": attempt},
+                {"kind": "attempt_start", "ts": f"2026-11-25T{t}:00:02+00:00", "unit": "other", "attempt": attempt},
+                {"kind": "run_exit", "ts": f"2026-11-25T{t}:00:03+00:00", "exit_code": code, "reason": reason}]
+
+    records = seg("01", 3, "budget", 1) + seg("02", 3, "escalation", 2) + seg("03", 0, "finished", 3)
+    facts = {"reason": "unresolved_gap", "decision": "proceed", "ruling": "given", "touch": "rescue",
+             "workspace": "unchanged", "next_gate": "none"}
+    ctx = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00", facts=facts)
+    assert ctx["run"]["started"] == "2026-11-25T01:00:00"
+    assert ctx["run"]["exit_code"] == 3 and ctx["run"]["exit_reason"] == "budget"
+    assert ctx["run"]["facts"] == ("pause=unresolved_gap decision=proceed ruling=given touch=rescue "
+                                   "workspace=unchanged next_gate=none")
+    assert any("attempt=1" in ln for ln in ctx["log"]) and not any("attempt=2" in ln or "attempt=3" in ln
+                                                                  for ln in ctx["log"])
+    assert not any("unit=other" in ln for ln in ctx["log"])
+    last = issue_context.build(records, [finding(unit="plan")])  # a finding of the last segment: as today
+    assert last["run"]["exit_code"] == 0 and last["run"]["exit_reason"] == "finished" and "facts" not in last["run"]
+    assert any("attempt=3" in ln for ln in last["log"])
+    gone = issue_context.build(records, [finding(unit="plan")], segment_started="1999-01-01T00:00:00+00:00")
+    assert gone == last  # a segment start that is not found gives the last segment
+
+
 @pytest.mark.parametrize("value", [f"two words {CANARY}", "/a/path", "x" * 65, {"k": "a b"}, [f"{CANARY} y"]])
 def test_a_value_that_is_not_an_id_enum_or_number_is_left_out(value: Any) -> None:  # ISS-AC10, SIL-AC2
     rec = [{"kind": "run_started", "ts": "t"}, {"kind": "agent_run", "unit": "plan", "reason": value, "model": value}]

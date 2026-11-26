@@ -56,6 +56,7 @@ class Candidate:
     mode: str | None = None  # the workflow's improvement mode (ISS-B8)
     judge_executor: str | None = None  # the loop's judge executor (ISS-B8)
     earlier_answers: Sequence[bool] = ()  # the attributed flags already recorded for the fingerprint in the window
+    facts: Mapping[str, str] = field(default_factory=dict)  # what answered the finding's pause (SIL-B37), ids and enums
 
 
 @dataclass(kw_only=True)
@@ -187,7 +188,8 @@ def _context(ds: Sequence[Decision]) -> dict[str, Any]:
 
     c = ds[0].candidate
     return issue_context.build(c.records, [d.candidate.finding for d in ds], mode=c.mode,
-                               judge_executor=c.judge_executor)
+                               judge_executor=c.judge_executor,
+                               segment_started=str(c.finding.get("segment_started") or "") or None, facts=c.facts)
 
 
 def _fmt(v: Any) -> str:
@@ -204,7 +206,7 @@ ENV_NAMES = (("engine_version", "Engine version (run)"), ("loop_engine_version",
              ("judge_executor", "Loop judge executor"), ("improvement_mode", "Improvement mode"),
              ("python", "Python"), ("os", "OS"), ("arch", "Architecture"))
 RUN_NAMES = (("thread", "Run"), ("started", "Segment started (UTC)"), ("exit_code", "Exit code"),
-             ("exit_reason", "Exit reason"), ("run_cost_usd", "Run cost so far (USD)"),
+             ("exit_reason", "Exit reason"), ("facts", "What answered the pause"), ("run_cost_usd", "Run cost so far (USD)"),
              ("unit_cost_usd", "Cost of these units' sessions (USD)"), ("attempts", "Attempts per unit"),
              ("request_digest", "Request digest"), ("rerun_of", "Rerun of"), ("machine", "Machine id"))
 

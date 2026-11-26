@@ -358,6 +358,37 @@ def test_the_facts_say_a_ruling_was_given_and_never_its_words(
     assert "feedback not given" in facts_of(prompt, finding_of(repo, "F-25", "gap_escalation")["fingerprint"])
 
 
+def test_an_issue_and_a_comment_are_built_from_the_paused_segment(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC13, ISS-AC14, AC 7
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+    ex = paused_on_gap(repo, "F-40", monkeypatch)
+    finish(repo, "F-40", ex)
+    f = finding_of(repo, "F-40", "gap_escalation")
+    log = run_log(repo, "F-40")
+    exit_row = next(r for r in log if r["kind"] == "run_exit" and r["exit_code"] == 3)
+    host = MemoryCodeHost()
+    child.drain(registry=registry(standin("claude", judges=[gap_only])), host=lambda: host)
+    (issue,) = host.issues
+    check_paused_context(issue["body"], f, str(exit_row["reason"]))
+
+
+def check_paused_context(text: str, f: dict[str, Any], reason: str) -> None:
+    run = text.split("## Run\n")[1].split("\n## ")[0]
+    assert f"Segment started (UTC): `{f['segment_started'][:19]}`" in run
+    assert "Exit code: `3`" in run and f"Exit reason: `{reason}`" in run
+    assert "unresolved_gap" in run and "next_gate=none" in run, run
+    runlog = text.split("## Run log\n")[1].split("\n## ")[0]
+    assert "unit=review" in runlog and "exit_code=3" in runlog and "exit_code=0" not in runlog
+
+
+def test_a_seen_again_comment_is_built_from_the_paused_segment(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC14, AC 7
+    host, _ = drain_with_issue(repo, "F-41", "cause", monkeypatch)
+    f = finding_of(repo, "F-41", "gap_escalation")
+    reason = next(r for r in run_log(repo, "F-41") if r["kind"] == "run_exit" and r["exit_code"] == 3)["reason"]
+    check_paused_context(host.comments[0]["body"], f, str(reason))
+
+
 def test_the_brief_tells_what_the_pauses_section_is_and_how_an_answer_bears_on_attribution(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC54, AC 5
     ex = paused_on_gap(repo, "F-30", monkeypatch)
