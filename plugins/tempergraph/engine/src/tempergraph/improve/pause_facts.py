@@ -2,7 +2,7 @@
 
 Each finding is told the pause that ended its own segment (found from `segment_started`): the paused unit and item,
 the pause's reason, the decision word that answered it, the kind of caller, whether a ruling and whether feedback was
-given (never their words), the class of the decision's touch, whether the workspace changed and the verdict of the
+given (never their words), the classes of the decision's touches, whether the workspace changed and the verdict of the
 next gate of the paused unit, child and item. They come from the run log (`pause`, `workspace` and `gate` records)
 and the ledger's `intervention` rows; no feedback or ruling text, answer value, path or file content is read or
 returned (SIL-B38). A fact that cannot be read is `not recorded`, never a guess; a finding with no pause gets no row.
@@ -50,8 +50,9 @@ def _own_segment(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]
 
 
 def _touch(row: Mapping[str, Any]) -> str:
+    """SIL-B43: every class the decision touched, each once, in `TOUCH_ORDER`, joined by `,`; none is not recorded."""
     classes = {t.get("class") for t in row.get("touches") or () if isinstance(t, Mapping)}
-    return next((c for c in TOUCH_ORDER if c in classes), UNKNOWN)
+    return ",".join(c for c in TOUCH_ORDER if c in classes) or UNKNOWN
 
 
 def _facts(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]],

@@ -349,13 +349,37 @@ def test_the_facts_say_a_ruling_was_given_and_never_its_words(
     ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
     (decision,) = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == "demo/F-25"
                    and r.get("ruling")]
-    classes = [t.get("class") for t in decision.get("touches") or []]
-    want = next((c for c in ("designed", "rescue", "steer", "engine") if c in classes), pause_facts.UNKNOWN)
+    assert [t.get("class") for t in decision.get("touches") or []] == ["rescue"]  # an escalation answered `proceed`
     (row,) = [r for f, r in facts_by_finding(repo, "F-25") if f["cause"] == "gap_escalation"]
-    assert row["ruling"] == "given" and row["feedback"] == "not given" and row["touch"] == want, row
+    assert row["ruling"] == "given" and row["feedback"] == "not given" and row["touch"] == "rescue", row
     assert CANARY["ruling"] not in prompt
     assert CANARY["ruling"] not in child.loop_log(state_root_path(repo), "demo", "F-25").read_text()
     assert "feedback not given" in facts_of(prompt, finding_of(repo, "F-25", "gap_escalation")["fingerprint"])
+
+
+def test_an_escalation_answered_stop_is_told_every_touch_class_once(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC53
+    ex = paused_on_gap(repo, "F-26", monkeypatch)
+    assert stop(repo, "F-26", ex).exit_code is ExitCode.STOPPED
+    ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    (decision,) = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == "demo/F-26"
+                   and r.get("decision") == "stop"]
+    assert [t.get("class") for t in decision["touches"]] == ["rescue", "steer"]
+    (row,) = [r for f, r in facts_by_finding(repo, "F-26") if f["cause"] == "gap_escalation"]
+    assert row["decision"] == "stop" and row["touch"] == "rescue,steer", row
+    (prompt,) = judged_prompts()
+    assert "touch `rescue,steer`" in facts_of(prompt, finding_of(repo, "F-26", "gap_escalation")["fingerprint"])
+
+
+def test_the_touch_classes_of_a_decision_are_each_told_once_in_order_and_none_is_not_recorded() -> None:  # SIL-AC53
+    touch = pause_facts._touch
+    assert touch({"touches": [{"class": "steer"}, {"class": "rescue"}, {"class": "rescue"}]}) == "rescue,steer"
+    assert touch({"touches": [{"class": "engine"}, {"class": "steer"}, {"class": "designed"}]}) == \
+        "designed,steer,engine"
+    assert touch({"touches": [{"class": "rescue"}]}) == "rescue"
+    assert touch({"touches": []}) == pause_facts.UNKNOWN == "not recorded"
+    assert touch({}) == pause_facts.UNKNOWN
+    assert touch({"touches": [{"class": "bogus"}, "text"]}) == pause_facts.UNKNOWN
 
 
 def test_an_issue_and_a_comment_are_built_from_the_paused_segment(
