@@ -8,6 +8,7 @@ import pytest
 
 from tempergraph.cli import schedule_cli
 from tempergraph.schedule import store
+from tempergraph.store.layout import home_path
 
 from .conftest import hash_tree
 from .test_schedule_cli import NOW, WARSAW, home_hash, sched
@@ -20,6 +21,7 @@ SYSTEMS = ("github-actions", "gitlab-ci", "crontab")
 def _env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(schedule_cli, "CLOCK", lambda: NOW)
     monkeypatch.setattr(schedule_cli, "machine_zone", lambda: (WARSAW, "TZ"))
+    monkeypatch.setenv("HOME", str(home_path().parent))  # no cached sign-in of the machine's own user
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-the-secret-value")  # the key is in the environment: it must not reach a snippet
 
 

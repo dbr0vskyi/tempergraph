@@ -258,7 +258,9 @@ def test_tck_ac6_a_missing_credential_is_refused_counts_as_a_failure_and_starts_
     assert row["reason"] == "credential" and row["fire_id"] == "digest-0001@20261123T0900Z"
 
 
-def test_tck_ac6_the_resolver_reads_the_ticks_own_environment_for_the_executors_recorded_at_add(home: Path, tmp_path: Path) -> None:
+def test_tck_ac6_the_resolver_reads_the_ticks_own_environment_for_the_executors_recorded_at_add(home: Path, tmp_path: Path,
+                                                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(home.parent))  # no cached sign-in of the machine's own user
     entry = make("digest-0001", repo=tmp_path)
     assert tick.entry_resolver({"ANTHROPIC_API_KEY": "k"}, {})(entry).refusal is None
     gone = tick.entry_resolver({}, {})(entry)

@@ -22,6 +22,7 @@ def _clock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(schedule_cli, "CLOCK", lambda: NOW)
     monkeypatch.setattr(schedule_cli, "machine_zone", lambda: (WARSAW, "TZ"))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-x")  # the credential check of a fire reads the tick's own environment
+    monkeypatch.setenv("HOME", str(home_path().parent))  # no cached sign-in of the machine's own user
 
 
 @pytest.fixture
