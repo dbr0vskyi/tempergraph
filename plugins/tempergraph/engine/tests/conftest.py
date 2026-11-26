@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import site
 import subprocess
 import sys
 from pathlib import Path
@@ -38,19 +39,65 @@ def workflow_names() -> list[str]:
     return sorted(names)
 
 
+REAL_HOME = Path.home()
+"""The home folder of whoever started the suite, read once before any test moves `HOME`: only the session guard
+looks at it, and only at its `.tempergraph`."""
+
+HOME_VARS = ("HOME", "USERPROFILE")  # what `Path.home()` reads, on POSIX and on Windows
+SIGN_IN_FOLDER_VAR = "CLAUDE_CONFIG_DIR"  # moves the folder that holds the `claude` sign-in file
+_USER_BASE = site.getuserbase()  # a changed HOME must not hide the user's installed packages from a child process
+
+CALLER_ENGINE_VARS = (
+    "TEMPERGRAPH_STATE_ROOT",
+    "TEMPERGRAPH_CALLER",
+    "TEMPERGRAPH_CALLER_APP",
+    "TEMPERGRAPH_SUPERVISOR_TOKEN",
+    "TEMPERGRAPH_SESSION_KEY",  # a suite run from inside an engine session is not a step driving the engine (PRV-B13)
+    "TEMPERGRAPH_AUTONOMY",  # a machine that holds the improvement loop's filing must not hold a test's (issue 185)
+    "TEMPERGRAPH_SCHEDULE_TOKEN",  # a suite started by a scheduled run is not itself a scheduled fire (PRV-B13)
+    "TEMPERGRAPH_FLUSHER",  # the caller's `off` or `inline` would change what a run's exit starts
+)
+"""The engine variables of the caller that no test sees (TST-B13): each one changes what a run does, so a test that
+needs one sets it. `TEMPERGRAPH_HOME` and `TEMPERGRAPH_LOOP` are set, not cleared, by the fixture below."""
+
+GIT_CONFIG = """\
+[user]
+\tname = Test
+\temail = test@example.invalid
+[commit]
+\tgpgsign = false
+[init]
+\tdefaultBranch = main
+[maintenance]
+\tauto = false
+[gc]
+\tauto = 0
+"""
+"""The global git configuration of every test, in its temporary home: an empty home gives git no identity, and
+git's own background maintenance after a commit would hold `objects/maintenance.lock` while a test compares a
+repository before and after a command. A test's own repository configuration still wins over it."""
+
+
 @pytest.fixture(autouse=True)
-def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    """No test touches the real home folder or a real state root (WSP-AC2)."""
+def _isolated_home(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory,
+                   monkeypatch: pytest.MonkeyPatch) -> None:
+    """No test touches the real home folder or a real state root (WSP-AC2), and no test sees the caller's sign-in
+    or its engine settings (TST-B13): the user home is a temporary folder and the credential variables and
+    `CALLER_ENGINE_VARS` are unset, so a test that needs a sign-in or a setting creates it. A `live` test is the exception: it runs the real, signed-in `claude`."""
+    from tempergraph.schedule.credentials import CREDENTIAL_NAMES
+
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("TEMPERGRAPH_HOME", str(home / ".tempergraph"))
     monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")  # no detached loop child from a test run (SIL-B1)
-    for var in (
-        "TEMPERGRAPH_STATE_ROOT",
-        "TEMPERGRAPH_CALLER",
-        "TEMPERGRAPH_CALLER_APP",
-        "TEMPERGRAPH_SUPERVISOR_TOKEN",
-        "TEMPERGRAPH_SESSION_KEY",  # a suite run from inside an engine session is not a step driving the engine (PRV-B13)
-    ):
+    for var in CALLER_ENGINE_VARS:
+        monkeypatch.delenv(var, raising=False)
+    if "live" in request.node.keywords:
+        return
+    (home / ".gitconfig").write_text(GIT_CONFIG, encoding="utf-8")
+    for var in HOME_VARS:
+        monkeypatch.setenv(var, str(home))
+    monkeypatch.setenv("PYTHONUSERBASE", os.environ.get("PYTHONUSERBASE") or _USER_BASE)
+    for var in (*sorted(CREDENTIAL_NAMES), SIGN_IN_FOLDER_VAR):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -174,7 +221,7 @@ def real_folders_snapshot() -> dict[str, dict[str, str]]:
 
     snap = {"repo": repo_files_snapshot()}
     if not _DRIVEN_BY_ENGINE:
-        snap["home"] = stat_tree(Path.home() / ".tempergraph")
+        snap["home"] = stat_tree(REAL_HOME / ".tempergraph")
         snap["state_root"] = stat_tree(state_root_path(REPO_ROOT))
     return snap
 

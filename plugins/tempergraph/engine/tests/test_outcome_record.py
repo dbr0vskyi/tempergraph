@@ -92,6 +92,52 @@ def test_a_run_that_ends_before_the_gate_is_not_reached(repo: Path) -> None:
     assert [r for r in ledger(repo) if r["kind"] == "run_segment"][-1]["outcome"]["verdict"] == "not_reached"
 
 
+def test_out_ac10_what_counts_as_an_escape_and_the_escape_rate(repo: Path) -> None:
+    # OUT-AC10, OUT-B19, OUT-B26, task AC 7: the ledger rows are the engine's own, from `go` and `rerun`
+    from tempergraph.run.outcome_record import _latest, escape_threads, measures
+
+    spec = with_outcome_spec()
+    cat = Catalog(specs={"demo": spec})
+    for task in ("X-1", "X-2", "X-3"):
+        ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(MET2), judge(MET), judge(MET, sid="o")])
+        code, _, err = cli(repo, ex, "run", "demo", "notes", "--task-id", task, catalog=cat)
+        assert code == 0, err
+    ex = standin("claude", steps=[REVIEW], judges=[judge(MET), judge(MET, sid="o")])
+    code, _, err = cli(repo, ex, "rerun", "demo", "X-1", "--from", "review", catalog=cat)
+    assert code == 0, err
+    rows = ledger(repo)
+    reruns = {r["thread_id"] for r in rows if r.get("kind") == "intervention" and r.get("cause") == "rerun"}
+    assert reruns == {"demo/X-1"}
+    latest = _latest(rows, "demo")
+    assert {t: r["outcome"]["verdict"] for t, r in latest.items()} == {
+        "demo/X-1": "met", "demo/X-2": "met", "demo/X-3": "met", "demo/X-1~r1": "met"}  # the rerun is its own thread
+
+    def labelled(**verdicts: str) -> dict[str, dict[str, Any]]:
+        return {t: {**r, "outcome": {**r["outcome"], "verdict": verdicts.get(t.split("/")[1].replace("-", "_"),
+                                                                           r["outcome"]["verdict"])}}
+                for t, r in latest.items()}
+
+    later = [{"kind": "outcome_later", "thread_id": "demo/X-2", "entry": {"reviews": {"changes_requested": 1}}},
+             {"kind": "outcome_later", "thread_id": "demo/X-3", "entry": {"reviews": {}, "files": 2}}]
+    # a rerun counts a `met` run
+    assert escape_threads(latest, rows + later, reruns) == {"demo/X-1", "demo/X-2", "demo/X-3"}
+    assert escape_threads(latest, rows, reruns) == {"demo/X-1"}
+    # a `met_with_open` run is an escape by a rerun only, never by a change request or a follow-up commit on a file
+    open_ = labelled(X_1="met_with_open", X_2="met_with_open", X_3="met_with_open")
+    assert escape_threads(open_, rows + later, reruns) == {"demo/X-1"}
+    # the escape rate counts `met_with_open` runs in its denominator (OUT-B19)
+    ledger_path = repo / ".tempergraph" / "ledger.jsonl"
+    ledger_path.write_text("".join(json.dumps(r) + "\n" for r in [*rows, *later]), encoding="utf-8")
+    (rev,) = measures(spec, ledger_path)["revisions"]
+    assert rev["n"] == 4 and rev["escapes"] == 3 and rev["escape_rate"] == 0.75
+    relabelled = [({**r, "outcome": {**r["outcome"], "verdict": "met_with_open"}}
+                   if r.get("kind") == "run_segment" and r.get("thread_id") == "demo/X-3" else r)
+                  for r in [*rows, *later]]
+    ledger_path.write_text("".join(json.dumps(r) + "\n" for r in relabelled), encoding="utf-8")
+    (rev,) = measures(spec, ledger_path)["revisions"]
+    assert rev["met_rate"] == 1.0 and rev["escapes"] == 2 and rev["escape_rate"] == 0.5
+
+
 def test_outcome_show_and_candidates(repo: Path) -> None:  # OUT-B18, OUT-B19, OUT-B20, OUT-B21, C13
     spec = with_outcome_spec()
     cat = Catalog(specs={"demo": spec})

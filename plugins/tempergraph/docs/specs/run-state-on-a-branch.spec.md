@@ -18,6 +18,7 @@ WHEN a carried run pauses on one machine THE engine SHALL push one new state com
 WHEN a carried thread is pushed THE engine SHALL leave out every never-carried file and pass every text file through the run log's scrubber ([SEC-B8](security.spec.md)), counting each hit in `carry.json`.
 
 - GIVEN sessions that wrote `raw.jsonl`, evidence holding `prompts/` and a canary secret in a step's output WHEN the thread is pushed THEN the branch holds neither file and the canary appears scrubbed in `run/` ([SEC-B2](security.spec.md))
+- GIVEN local evidence holding the text of a review of the run's pull request WHEN the thread is pushed THEN no file of the branch holds that text
 
 ### CAR-B3 No trace after the finish
 
@@ -48,7 +49,7 @@ WHEN a state commit is made THE engine SHALL name the branch `tempergraph/state/
 
 ### CAR-B7 What is carried
 
-WHEN a thread's state is copied from its state root ([LOS-B7](local-observability-store.spec.md)) THE engine SHALL write into `.tempergraph-carry/` `carry.json` (schema, engine version, store layout, checkpoint format, workflow version, `seq`, `lease`, the list of files with digests); `checkpoint.sqlite` with only this thread's rows of `checkpoints/<workflow>.sqlite`; `run/`, the thread's `runs/<workflow>/<task_id>/` without `sessions/*/raw.jsonl`, `stderr.log`, `output/`, `evidence/prompts/`, `checks/` and `hooks/`, keeping `sessions/*/meta.json`, `activity.jsonl` and `digest.json`; `ledger.jsonl` with only this thread's rows; and `workspace.json`, the `WorkspaceRecord` with branch and base and paths made relative to the root rule ([WTR-B18](worktree-mode.spec.md)); never `config/`, `scratch/`, `locks/`, other threads, `authoring/`, `upgrades/`, `backups/`, `engine/` or the home folder.
+WHEN a thread's state is copied from its state root ([LOS-B7](local-observability-store.spec.md)) THE engine SHALL write into `.tempergraph-carry/` `carry.json` (schema, engine version, store layout, checkpoint format, workflow version, `seq`, `lease`, the list of files with digests); `checkpoint.sqlite` with only this thread's rows of `checkpoints/<workflow>.sqlite`; `run/`, the thread's `runs/<workflow>/<task_id>/` without `sessions/*/raw.jsonl`, `stderr.log`, `output/`, `evidence/prompts/`, `evidence/pull_request.jsonl`, `checks/` and `hooks/`, keeping `sessions/*/meta.json`, `activity.jsonl` and `digest.json`; `ledger.jsonl` with only this thread's rows; and `workspace.json`, the `WorkspaceRecord` with branch and base and paths made relative to the root rule ([WTR-B18](worktree-mode.spec.md)); never `config/`, `scratch/`, `locks/`, other threads, `authoring/`, `upgrades/`, `backups/`, `engine/` or the home folder.
 
 - GIVEN a fixture state root with every store file present WHEN it is pushed THEN no never-carried path is in the commit
 
@@ -79,7 +80,7 @@ WHEN the remote refuses the deletion at finish THE engine SHALL record it and sh
 ## Acceptance criteria
 
 - CAR-AC1 (CAR-B1, CAR-B3, CAR-B4, CAR-B5, CAR-B8, CAR-B9, CAR-B11): CAR-B1 to CAR-B4 and every case of CAR-B4 hold offline with two state roots and one bare remote repository
-- CAR-AC2 (CAR-B2, CAR-B6, CAR-B7): No state commit holds a path outside `.tempergraph-carry/`, and none of the never-carried paths (fixture with every store file present)
+- CAR-AC2 (CAR-B2, CAR-B6, CAR-B7): No state commit holds a path outside `.tempergraph-carry/`, and none of the never-carried paths, `evidence/pull_request.jsonl` among them (fixture with every store file present)
 - CAR-AC3 (CAR-B3): A finished carried thread leaves no ref under `refs/heads/tempergraph/state/` locally or on the remote
 - CAR-AC4 (CAR-B10): Each import check refuses with its message on a fixture
 

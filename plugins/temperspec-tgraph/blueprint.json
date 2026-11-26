@@ -327,8 +327,33 @@
     },
     {
       "name": "code_join",
-      "kind": "script",
-      "summary": "Where both arms meet after the code step"
+      "kind": "route"
+    },
+    {
+      "name": "independent_review",
+      "kind": "step",
+      "summary": "Read the change as an independent reader; write findings",
+      "produces": [
+        "findings"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "back_targets": [
+        "plan",
+        "code"
+      ],
+      "sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It reads a whole change with no account of how it was built and must find what the build's own gates missed; a missed defect ships"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one findings document against the check's finding and lists the blocking findings; the reader's judgement is not redone"
+      }
     }
   ],
   "flow": {
@@ -378,6 +403,12 @@
       "map": {
         "over": "expand.phases"
       }
+    },
+    "code_join": {
+      "route": [
+        "independent_review",
+        "finalizer"
+      ]
     },
     "code_mode": {
       "switch": {

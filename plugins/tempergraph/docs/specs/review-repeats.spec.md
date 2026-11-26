@@ -51,3 +51,7 @@ WHEN the same review category has been kept on the same unit in 3 or more runs o
 - SRV-AC11 (SRV-B28): The findings of the fixtures of SRV-AC10 and SRV-AC17, recorded by one run, by two runs and by three runs, file no issue and no comment
 - SRV-AC17 (SRV-B32, SRV-B27): Fixture review records that keep one category on one unit in one session of each of three runs give one finding in the third run, with the unit, the category and the three run ids and no note text, listed by `improve backlog`, and show the third run's observation `corroborated`, while two runs give no finding and no cluster, under the parameter `review.repeat_runs` (3, provenance `default_no_data`)
 - SRV-AC18 (SRV-B28): A stable-mode fixture at autonomy `propose` whose third run's review records the finding of SRV-B32 is proposed on by the loop child and has no issue and no comment, and the same fixture at autonomy `file` proposes nothing and has its cluster listed by `improve backlog`
+
+## Open questions
+
+- Should a `review_repeat` cluster seen in several runs reach a person in any way but `improve backlog` and the loop summary? Until answered: no, a finding made of review observations files no issue and no comment (SRV-B28). Owner: owner.

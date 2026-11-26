@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 import tempergraph
+from tempergraph import git as gitmod
 from tempergraph import workspace as workspace_mod
 from tempergraph.api import CheckResult, Gate, Judge, Parallel, Routing, Script, Step, Workflow
 from tempergraph.constants import ExitCode
@@ -145,6 +146,23 @@ def test_a_clean_tree_and_a_block_of_read_only_branches_add_no_commit(repo: Path
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert git(repo, "rev-list", "--count", "main..tg/demo/W-3").strip() == "0"  # no commit on the run's branch
     assert (Path(ex.workdirs[("step", "plan")]) / "early.txt").exists()  # the file stays uncommitted
+
+
+@pytest.mark.parametrize("ignored", [True, False])
+def test_the_checkpoint_commits_whether_or_not_git_ignores_the_state_root(tmp_path: Path, ignored: bool) -> None:
+    # WSP-AC13 (WSP-B19): git 2.39 exits 1 on an exclude pathspec that names an ignored path, so the state root is
+    # excluded by the pathspec only where git does not already ignore it
+    git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / ".gitignore").write_text(".tempergraph/\n" if ignored else "build/\n")
+    git(tmp_path, "add", ".gitignore")
+    git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "start")
+    (tmp_path / ".tempergraph").mkdir()
+    (tmp_path / ".tempergraph" / "state.json").write_text("{}\n")
+    (tmp_path / "early.txt").write_text("an earlier unit left this\n")
+    assert gitmod.stage_all_args(tmp_path)[-1] == ("." if ignored else ":(exclude).tempergraph")
+    commit = gitmod.commit_all(tmp_path, "tempergraph: checkpoint before block")
+    assert commit and git(tmp_path, "show", "--name-only", "--format=", commit).split() == ["early.txt"]
+    assert gitmod.commit_all(tmp_path, "tempergraph: checkpoint before block") == ""  # nothing left to commit
 
 
 # -- the writer worktrees (WSP-B11, WTR-B20, WTR-B24) -----------------------------------------------------------

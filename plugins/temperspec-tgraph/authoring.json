@@ -351,12 +351,15 @@
       "id": "d1",
       "phase": 4,
       "subject": "ts-spec-sync",
-      "choice": "Accept ts-spec-sync as judged at the outcome gate with no deterministic check serving it on every step; its trust stays uncalibrated until its judge seeds are graded by a signed-in judge (author verify rung 8).",
+      "choice": "Accept ts-spec-sync as judged at the outcome gate with no deterministic check serving it on every step; its trust stays uncalibrated until its judge seeds are graded by a signed-in judge (author verify rung 8). A failing grade reaches the step that owns the specs the run edited and never the first step of the run: the engine derives that step from the criteria that serve ts-spec-sync, so only ts-dis-links, ts-plan-spec and ts-code-related serve it.",
       "alternatives": [
         "A person signs off spec agreement on every run",
-        "A deterministic check for contradictions between behaviours, which no rule can express"
+        "A deterministic check for contradictions between behaviours, which no rule can express",
+        "For where a failing grade goes: the criteria of the setup step and of the triage step serve it as well, so the engine sends the run to the earliest of them and one sentence of a spec costs the whole run",
+        "For where a failing grade goes: the judge names the place of the defect, which decides nothing at the outcome gate because the engine derives the target from the criteria that serve the final criterion",
+        "For where a failing grade goes: a change of the engine's rule so that a named place decides, which the package cannot make"
       ],
-      "consequence": "Until rung 8 has run and the outcome judge is accepted, a contradiction between specs can pass the outcome gate on the judge's word alone; ts-dis-links (one definition per id) and ts-code-related (judged at the code gate) are the earlier lines of defence.",
+      "consequence": "Until rung 8 has run and the outcome judge is accepted, a contradiction between specs can pass the outcome gate on the judge's word alone; ts-dis-links (one definition per id), ts-plan-spec (judged at the plan gate) and ts-code-related (judged at the code gate) are the earlier lines of defence. A failing grade costs the step that owns the specs and what follows it, not the whole run: a run with no full discovery goes to the plan step, and the quick lane, which plans and edits no spec, goes to the code step.",
       "decided_by": "agent, on the owner's approval of the blueprint and outcome on 2026-11-21; to be confirmed by the owner"
     },
     {
@@ -397,7 +400,7 @@
     }
   ],
   "blueprint_digest": "f3cfde244d99f7aed0e6208d70084b9e6124a4ac60c072c79fc66ff67cb91322",
-  "outcome_revision": 1,
+  "outcome_revision": 24,
   "scaffold": {
     "files": {
       ".claude-plugin/plugin.json": "39a15359d0849808c9b96dbe747fc4a87e59647eb16287e5e76655356aeffef7",
@@ -433,7 +436,7 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-25T12:21:22.008Z",
+    "at": "2026-11-26T17:29:54.483Z",
     "ok": true,
     "rungs": {
       "load": "passed",

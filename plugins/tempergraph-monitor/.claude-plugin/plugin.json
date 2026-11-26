@@ -14,6 +14,6 @@
     "show_tool_inputs": { "type": "boolean", "title": "Show tool inputs", "description": "Off hides every tool input summary in the pane", "default": true },
     "show_log_tails": { "type": "boolean", "title": "Show log tails", "description": "Off hides the Log tab and check output tails", "default": true },
     "model_tool": { "type": "string", "title": "Model tool", "description": "off registers no tool; interactive is not built yet", "options": ["off", "interactive"], "default": "off" },
-    "engine_path": { "type": "string", "title": "Engine path", "description": "Path to the tempergraph shim; empty to find it on PATH", "default": "" }
+    "engine_path": { "type": "string", "title": "Engine path", "description": "Path to the tempergraph shim; empty to look on PATH, then in the engine home ($TEMPERGRAPH_HOME/bin, else ~/.tempergraph/bin)", "default": "" }
   }
 }

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "commands": [
+    "pytest",
+    "python -m pytest",
+    "python3 -m pytest",
+    "ruff check",
+    "ruff format --check",
+    "mypy",
+    "claude plugin test"
+  ]
+}

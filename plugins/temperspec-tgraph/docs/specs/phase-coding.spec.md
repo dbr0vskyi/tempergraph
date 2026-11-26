@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How a plan that took the arm `phases` of the switch `code_mode` ([code mode](code-mode.spec.md)) is built. After the expand step has written its task rows, the phase step runs once for each phase of the plan, one after another, a phase item each. A phase item is a session of its own that builds only that phase's rows, tests first, and is committed and checked on its own. The code step then runs as the join, on the whole change. A large plan so gets a fresh context for each phase, and a phase that fails runs again alone, with the phases already committed left as they are ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)). A phase's gate has no line back to an earlier step ([MAP-B11](../../../tempergraph/docs/specs/map-unit.spec.md)), so every check of the whole change and the lines back to the plan, discovery and triage steps stay with the code step's gate. The arm `single` is unchanged: its one code session builds the whole plan ([CDM-B6](code-mode.spec.md)). The owner who waits for a large plan and the maintainers of the plan, expand and code steps depend on it. Part of the [overview](overview.spec.md); the unit is [phase](phase.spec.md).
+How a plan that took the arm `phases` of the switch `code_mode` ([code mode](code-mode.spec.md)) is built. After the expand step has written its task rows, the phase step runs once for each phase of the plan, one after another, a phase item each. A phase item is a session of its own that builds only that phase's rows, tests first, and is committed and checked on its own. The code step then runs as the join, on the whole change. A large plan so gets a fresh context for each phase, and a phase that fails runs again alone, with the phases already committed left as they are ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)). A phase's gate has no line back to an earlier step ([MAP-B11](../../../tempergraph/docs/specs/map-unit.spec.md)), so every check of the whole change and the lines back to the plan, discovery and triage steps stay with the code step's gate. The arm `single` is unchanged: its one code session builds the whole plan ([CDM-B6](code-mode.spec.md)). A step is entered when its first attempt of a visit begins, and the commit at which it was entered is the one the run's branch holds at that moment. The owner who waits for a large plan and the maintainers of the plan, expand and code steps depend on it. Part of the [overview](overview.spec.md); the unit is [phase](phase.spec.md).
 
 ## Behaviours
 
@@ -27,7 +27,7 @@ WHEN a phase session is briefed THE workflow SHALL tell it to build only the row
 
 - GIVEN the brief of a phase session WHEN it is read THEN it tells the session to build only the rows of its phase whose Completed cell is empty and to leave the mark of every other row as it is ([KMK-B7](kept-marks.spec.md))
 - GIVEN the same brief WHEN it is read THEN it tells the session to write the phase's tests first and see them fail, to run after the phase only the test files its rows name and never the plan's verification commands, and to change no file that no row of the phase names but the plan's marks and status
-- GIVEN the same brief WHEN it is read THEN it tells the session to write `✓` and the day's date as `YYYY-MM-DD` in the Completed cell of each row it built, and to run no `git commit`
+- GIVEN the same brief WHEN it is read THEN it tells the session to write `✓` and the day's date as `YYYY-MM-DD` in the Completed cell of each row it built, in one edit of the plan after the test files of the phase pass ([KMK-B9](kept-marks.spec.md)), and to run no `git commit`
 
 ### PHC-B4 A phase ends with a note
 
@@ -71,10 +71,11 @@ WHEN the session record of a phase attempt shows a source file of the phase chan
 
 ### PHC-B9 Each phase attempt is judged on its own
 
-WHEN a phase attempt passes its check THE workflow SHALL grade it with one judge session of its own, on whether each row's change is in the file the row names and no file outside the phase's rows, other than the plan's marks and status, was changed.
+WHEN a phase attempt passes its check THE workflow SHALL grade it with one judge session of its own, on whether each row's change is in the file the row names and no file outside the rows of the phase and of earlier phases, other than the plan's marks and status, was changed since the phase step was entered.
 
 - GIVEN a plan of three phases that pass WHEN the phase items have run THEN the run holds three judge sessions for them, one for each, besides the judge session of the code step
 - GIVEN a phase attempt whose check fails WHEN the attempt ends THEN no judge session starts for it ([JDG-B1](../../../tempergraph/docs/specs/judge-and-verdict.spec.md))
+- GIVEN a document that only an earlier step wrote and a phase that changed only the files of its rows WHEN the phase attempt is judged THEN the document counts as no file outside the phase's rows
 
 ### PHC-B10 A failed phase runs again alone
 
@@ -122,11 +123,41 @@ WHEN the code gate sends the run back to the plan step and the run reaches the p
 - GIVEN a plan of two phases that passed, a code gate that sends the run back to the plan step, and a plan that keeps every mark WHEN the run reaches the phase items again THEN both phases run again, change no file, make no commit and pass their gates
 - GIVEN the same trip back and a plan that rewrote row 2.2 and emptied its mark WHEN the phase items run THEN phase 1 changes no file and phase 2 builds row 2.2 only
 
+### PHC-B16 The phase check sorts the changed paths for its judge
+
+WHEN a phase attempt passes its check THE phase check SHALL hand its judge the paths the run changed since its base as two lists, each in ascending order of path, a list that holds no path stating so: the paths changed since the commit at which the phase step was entered, and the paths that only earlier steps changed.
+
+- GIVEN a triage note written by the triage step and `src/a.py` written by the first phase WHEN the first phase passes its check THEN the evidence lists `src/a.py` among the paths changed since the phase step was entered and the note among the paths that only earlier steps changed
+- GIVEN `src/a.py` written by the first phase and `src/b.py` written by the second WHEN the second phase passes its check THEN both files are among the paths changed since the phase step was entered
+- GIVEN the plan, written by the plan step and the expand step and marked by the phase WHEN the phase passes its check THEN the plan is among the paths changed since the phase step was entered and not among the paths that only earlier steps changed
+
+### PHC-B17 A path that only earlier steps changed is listed with its step
+
+WHEN the phase check lists a path that only earlier steps changed THE phase check SHALL name beside the path each step whose commit changed it, in the order of the commits.
+
+- GIVEN a triage note written by the triage step WHEN a phase passes its check THEN the note is listed with the step `triage`
+- GIVEN a spec written by the discovery step and edited by the plan step WHEN a phase passes its check THEN the spec is listed with the steps `discovery` and `plan`, in that order
+- GIVEN a path changed by a commit that names no step WHEN a phase passes its check THEN the path is listed with no step name
+
+### PHC-B18 The phase judge takes the check's sorting as given
+
+WHEN the phase judge is briefed THE workflow SHALL tell it that the check has sorted the changed paths into the paths changed since the phase step was entered and the paths that only earlier steps changed, and that it takes that sorting as given.
+
+- GIVEN the brief of the phase judge WHEN it is read THEN it says that the check sorted the changed paths, and that the judge takes that sorting as given and does not look for the step that changed a path
+- GIVEN the same brief WHEN it is read THEN it tells the judge to grade `ts-phs-scope` on the paths changed since the phase step was entered, so that a path that only an earlier step changed lowers no grade and sets no gap
+
+### PHC-B19 The join is handed the changed paths sorted the same way
+
+WHEN the code step ends after the phase items THE code gate SHALL hand its judge the paths the run changed since its base as the two lists of PHC-B16 and PHC-B17, counted from the commit at which the code step was entered.
+
+- GIVEN two phases that changed `src/a.py` and `src/b.py` and a code session that changed only the plan's status WHEN the code gate hands its judge the evidence THEN the plan is among the paths changed since the code step was entered and the two source files are among the paths that only earlier steps changed, each listed with the step `phase`
+- GIVEN a code session that changed no file WHEN the code gate hands its judge the evidence THEN the list of paths changed since the code step was entered states that it holds no path
+
 ## Acceptance criteria
 
 - PHC-AC1 (PHC-B1): In a stand-in run of a plan of three phases that all pass, three phase items run in the order of the plan, each after the gate of the one before it has passed, and they are named `p1`, `p2` and `p3`; in a run of a plan of one phase one item runs
 - PHC-AC2 (PHC-B2): In the same run three sessions start, none resuming another, and the brief of the session of phase 2 carries the heading, the goal and the weight of phase 2 and the path of the plan, and neither the heading of phase 1 nor that of phase 3
-- PHC-AC3 (PHC-B3): The brief of a phase session tells it to build only the rows of its phase whose Completed cell is empty and to leave every other mark as it is, to write the phase's tests first and see them fail, to run after the phase only the test files its rows name and never the plan's verification commands, to change no file that no row of the phase names but the plan's marks and status, to mark each row it built with `✓` and the day's date, and to run no `git commit`
+- PHC-AC3 (PHC-B3): The brief of a phase session tells it to build only the rows of its phase whose Completed cell is empty and to leave every other mark as it is, to write the phase's tests first and see them fail, to run after the phase only the test files its rows name and never the plan's verification commands, to change no file that no row of the phase names but the plan's marks and status, to mark each row it built with `✓` and the day's date in one edit of the plan after the test files of the phase pass, and to run no `git commit`
 - PHC-AC4 (PHC-B4): The brief of a phase session asks for one line of at most 1,500 characters that names the test files run and each deviation from the plan with its reason, or `none`, and a phase session that ends with no note runs again, alone
 - PHC-AC5 (PHC-B5): In a stand-in run of three phases that each write one file, the branch holds after the commit of the expand step one commit for each phase in plan order with that phase's files and the marks of its rows, the session of phase 2 starts with the files of phase 1 committed and no change in the working tree, and a phase attempt that changes no file makes no commit
 - PHC-AC6 (PHC-B6): The phase check fails naming row 2.2 for a phase whose session marked only row 2.1, fails naming a marked row whose file is the same as at the run's base commit, makes no finding about the rows of another phase, and makes no finding about a marked row of an earlier visit whose file differs from the run's base commit
@@ -139,6 +170,11 @@ WHEN the code gate sends the run back to the plan step and the run reaches the p
 - PHC-AC13 (PHC-B13): In a stand-in run of two phases that pass, a verification command of the plan that exits 0 at the run's base commit and fails when the code gate runs it fails the code step and only the code step runs again with no phase session started; the gate makes no finding about the files of rows that the phases changed, fails a plan whose status is not `completed` before any command runs, and records the quick-lane guard not applicable
 - PHC-AC14 (PHC-B14): In stand-in runs of two phases whose code session claims that the plan step, the discovery step or the triage step is at fault, with a gate that accepts the claim, the run goes back to the step named in each run, and the workflow validates with no error and no step to go back to on the gate of the phase step
 - PHC-AC15 (PHC-B15): In a stand-in run of two phases that pass, a code gate that sends the run back to the plan step and a plan that keeps every mark, both phases run again, change no file, make no commit and pass; with row 2.2 rewritten and its mark emptied, phase 1 changes no file and phase 2 builds row 2.2 only
+- PHC-AC16 (PHC-B16): The evidence of a phase that passes its check holds two lists of the paths the run changed since its base, each in ascending order of path and each stating that it holds no path when it holds none: the paths changed since the phase step was entered, which include a path that an earlier step and the phase both changed, and the paths that only earlier steps changed
+- PHC-AC17 (PHC-B17): Each path of the second list is listed with each step whose commit changed it, in the order of the commits, and a path changed by a commit that names no step is listed with no step name
+- PHC-AC18 (PHC-B18): The brief of the phase judge says that the check sorted the changed paths into the two lists and that the judge takes that sorting as given and does not look for the step that changed a path, and tells the judge to grade `ts-phs-scope` on the first list alone, a path of the second list lowering no grade and setting no gap
+- PHC-AC19 (PHC-B19): In a stand-in run of two phases that pass, the evidence of the code gate holds the two lists counted from the commit at which the code step was entered, with the files of the two phases among the paths that only earlier steps changed, each listed with the step `phase`, and states that the first list holds no path when the code session changed no file
+- PHC-AC20 (PHC-B9, PHC-B16, PHC-B17): In a stand-in run of two phases on the arm `phases` in which an earlier step wrote a document and each phase changes only the files of its rows, the evidence of each phase lists the document with its step among the paths that only earlier steps changed, and each phase gate passes with no pause
 
 ## Open questions
 

@@ -88,6 +88,14 @@ WHEN a verdict is derived THE engine SHALL treat MET without evidence as PARTIAL
 - GIVEN a blocker UNMET whose `defect_in` names an allowed back target WHEN the verdict is derived THEN it is BACK to that target
 - GIVEN a judgement discarded by the guard WHEN the verdict is derived THEN it is ESCALATE with confidence 0.0
 
+### JDG-B14 A session ended by the usage limit yields no verdict
+
+WHEN a step session of an attempt, or the judge session grading it or that session's re-ask, ends not ok with `usage_limit` true ([BUD-B17](budgets-and-failures.spec.md)), whatever its `infra_cause`, THE judge node SHALL derive no verdict from it: no judge session or re-ask starts after it, no `judgement` record is written and the gate gets an ESCALATE verdict with confidence 1.0 and source `engine_placeholder`.
+
+- GIVEN a step session that ends not ok with `usage_limit` true WHEN the judge node runs THEN no judge session starts and the gate gets ESCALATE, not RETRY
+- GIVEN a judge session that ends not ok with `usage_limit` true and `infra_cause` `throttled` WHEN the judge node ends THEN it is not rerun with a backoff, no `judge_reask` session starts and no `judgement` record is written
+- GIVEN a judge answer with no parsable block and `usage_limit` false WHEN the judge node continues THEN one re-ask runs as JDG-B2 says
+
 ## Acceptance criteria
 
 - JDG-AC1 (JDG-B8, JDG-B10, JDG-B13): Every derivation rule has a test with a scripted judge answer
@@ -98,3 +106,4 @@ WHEN a verdict is derived THE engine SHALL treat MET without evidence as PARTIAL
 - JDG-AC6 (JDG-B6, JDG-B11, JDG-B12): No shipped judge brief contains a sentence telling the judge to accept a step's claim (scan test)
 - JDG-AC7 (JDG-B7): An audit judge at any rate leaves every verdict, route and counter of a fixture run unchanged
 - JDG-AC8 (JDG-B9): A confirmed upstream claim goes back with no pause, a refuted one retries the step, and an undecided one pauses (three scripted runs)
+- JDG-AC9 (JDG-B14): A fixture whose step session ends not ok with `usage_limit` true starts no judge session, a fixture whose judge session ends not ok with `usage_limit` true starts no `judge_reask` session and writes no `judgement` record, both give the gate an ESCALATE verdict with source `engine_placeholder`, and a fixture whose judge answers with no parsable block and `usage_limit` false gets its one re-ask

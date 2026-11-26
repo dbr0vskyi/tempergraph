@@ -459,8 +459,12 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         degraded = (final.get("run") or {}).get("degraded") or None  # FLX-B9: a fallback was taken
         deg = {"degraded": True, "degraded_unit": degraded.get("unit")} if degraded else {}
         outcome.degraded = bool(degraded)
+        capped: dict[str, Any] = {}
+        if outcome.reason == "attempt_cap":  # CMP-B20: the exit says what repeated
+            capped = ctx.report()
+            outcome.payload = {**(outcome.payload or {}), **capped}
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
-                  cost_so_far=cost_so_far(cost.to_json()), **deg)
+                  cost_so_far=cost_so_far(cost.to_json()), **deg, **capped)
         try:
             write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                               "exit_code": int(outcome.exit_code),
@@ -468,8 +472,16 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         except OSError as exc:  # OBS-B3: logging never changes the exit; one record of the failure is attempted
             log.write("engine_error", scope="exit_file", error=type(exc).__name__)
         ledger = Ledger(path=root / "ledger.jsonl")
+        try:  # FIN-B11: a failure to build the record leaves the field out and never changes the exit
+            from tempergraph.run.finalize import recorded_pull_request
+
+            wpath = (final.get("workspace") or {}).get("path")
+            pr = recorded_pull_request(final.get("finalized"), Path(wpath) if wpath else None)
+        except Exception:  # noqa: BLE001
+            pr = None
         ledger.append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
                        "workflow_version": spec.version, **join_keys(root, settings),
+                       **({"pull_request": pr} if pr else {}),
                        "exit_code": int(outcome.exit_code), "reason": outcome.reason,
                        "cost": cost.to_json(), "origin": settings.origin, "stage": _stage(spec, settings)[0],
                        **({"schedule_id": settings.schedule["schedule_id"]} if settings.schedule else {}),
@@ -502,7 +514,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                              operator_review=settled.run.get("session_review"),
                              run_cost_usd=cost.reported + cost.estimated_only,
                              daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
-                             loop_effort=settled.run.get("loop_effort"))
+                             loop_effort=settled.run.get("loop_effort"), options=settled.options)
         except Exception as exc:  # noqa: BLE001
             log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
@@ -517,13 +529,25 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
 def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
                  settings: RunSettings | None, registry: Registry, judges: Mapping[str, str], *,
                  operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None,
-                 loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None) -> None:
+                 loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None,
+                 options: RunOptions | None = None) -> None:
     """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests.
-    `settings` is None for an exit no run of this process made (SIL-B29): not a trial, `--dry-run` read from the log."""
+    `settings` is None for an exit no run of this process made (SIL-B29): not a trial, `--dry-run` read from the log.
+    `options` is the thread's snapshot: resolved again against the settings files now, it gives the operator's
+    `loop_autonomy` (PRP-B31)."""
     from tempergraph.improve import child
 
     if child.mode() == "off" or spec.builtin:
         return
+    held: str | None = None
+    if options is not None:
+        try:  # as `status` resolves a snapshot (RST-B27): a files error or any failure leaves the setting unread
+            files = rst.load_files(root, (settings.home if settings else None) or home_path())
+            if not files.errors:
+                got = rst.run_values(rst.resolve(spec, options, files)).get("loop_autonomy")
+                held = str(got) if got else None
+        except Exception:  # noqa: BLE001 - the hold is best effort; the loop never stops a run
+            held = None
     names = list(judges.values())
     executor = max(set(names), key=names.count) if names else spec.default_executor
     # `--dry-run` holds for the thread: any segment that started with it
@@ -532,7 +556,7 @@ def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary
     if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor,
                       operator_review=operator_review, run_cost_usd=run_cost_usd,
                       trial=settings is not None and settings.origin == "trial", daily_cap_usd=daily_cap_usd,
-                      loop_model=loop_model, loop_effort=loop_effort, trigger=trigger) is None:
+                      loop_model=loop_model, loop_effort=loop_effort, trigger=trigger, loop_autonomy=held) is None:
         return
     if child.mode() == "inline":
         child.drain(registry=registry)
@@ -576,7 +600,7 @@ def _record_stop(root: Path, spec: WorkflowSpec, task_id: str, log: RunLog, valu
                          operator_review=settled.run.get("session_review"),
                          run_cost_usd=cost.reported + cost.estimated_only,
                          daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
-                         loop_effort=settled.run.get("loop_effort"))
+                         loop_effort=settled.run.get("loop_effort"), options=settled.options)
     except Exception as exc:  # noqa: BLE001
         log.write("engine_error", scope="improve", error=type(exc).__name__)
 
@@ -1084,6 +1108,18 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 except gatemod.DecisionRefused as exc:
                     return _refuse("decision_refused", str(exc), tid=tid)
                 d = Decision(word="proceed")
+            elif (d is None and str(pause.get("reason") or "") == "usage_limit" and kind == "escalation"
+                  and not feedback and not settings.answers and not settings.revoke_rulings):
+                # DUR-B12: a plain resume reruns the session the usage limit ended; no check against the reset instant
+                row_decision = ""
+                d = Decision(word="proceed")  # only for the intervention row's shape; the human node reruns the session
+                limit_in = {"decision": "usage_limit", **human_payload}
+                if len(gates) == 1:
+                    first_input = resume_input(limit_in)
+                else:
+                    def first_input(cw2: Any, payload_in: dict[str, Any] = limit_in, unit: str = unit) -> Any:
+                        ids = snapshot(cw2, tid).interrupt_ids
+                        return resume_input({i: payload_in for i, u in ids.items() if u == unit})
             elif d is None:
                 return _refuse("decision_missing", f"{tid} is paused at {', '.join(gates)}; pass --decision",
                                tid=tid)
@@ -1113,10 +1149,11 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 waiting = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
                 before = _pending_update(spec, waiting, values, human_payload)
         else:  # stopped
+            stop_at = (values.get("run") or {}).get("stopped") or {}
+            unit = str(stop_at.get("unit") or _last_unit(values))
             if d is None or d.word not in ("retry", "back", "rewind"):
-                return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",
-                               tid=tid)
-            unit = str(((values.get("run") or {}).get("stopped") or {}).get("unit") or _last_unit(values))
+                return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>; "
+                               f"it stopped at {unit} ({stop_at.get('reason') or 'stopped'})", tid=tid)
             try:
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:
@@ -1344,7 +1381,7 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
            "touches": [{"class": "engine", "action": "reopen"}] if engine
            else [{"class": "designed", "action": "deadline"}] if decision == "deadline"
            else touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
-           "decision": decision or d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
+           "decision": decision if decision is not None else d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
            "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
            "cause": "auto_reopen" if engine else reason or kind}

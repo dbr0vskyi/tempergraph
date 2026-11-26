@@ -12,20 +12,42 @@ from pathlib import Path
 from typing import Any
 
 
+def _session_start(rows: list[dict[str, Any]]) -> int:
+    """The row where the last session started: the first of the `session_started` rows that end the journal's
+    starts with one `session_id` (CHK-B24).
+
+    A session that ended its turn and is woken reports a start with the id it has, so that row continues the
+    session; a new process after an infra try has a new id. A last start with no id is a start of its own.
+    """
+    starts = [i for i, r in enumerate(rows) if r.get("ev") == "session_started"]
+    if not starts:
+        return 0
+    last = rows[starts[-1]].get("session_id")
+    first = starts[-1]
+    if isinstance(last, str) and last:
+        for i in reversed(starts):
+            if rows[i].get("session_id") != last:
+                break
+            first = i
+    return first
+
+
 def read_session(session_dir: Path) -> list[dict[str, Any]] | None:
     """The calls since the session last started, in call order: `{name, capability, target, ok}` each (CHK-B24).
 
+    A `session_started` row with the session id of the start before it is the same session woken, not a start.
+
     `target` is the journal line's `input_summary` (null with `observe.tool_inputs = off`), `ok` is true only for
     a call that finished with `ok` true. Returns `None` for a missing or unreadable journal, no call, no call
-    with a capability, a `truncated` line that names a dropped tool line, and any line that cannot be read (CHK-B25).
+    with a capability, a `truncated` line since that start that names a dropped tool line, and any line that
+    cannot be read (CHK-B25).
     """
     try:
         text = (session_dir / "activity.jsonl").read_text(encoding="utf-8")
         rows = [json.loads(line) for line in text.splitlines() if line.strip()]
         if not all(isinstance(r, dict) for r in rows):
             return None
-        starts = [i for i, r in enumerate(rows) if r.get("ev") == "session_started"]
-        rows = rows[starts[-1]:] if starts else rows
+        rows = rows[_session_start(rows):]
         calls: list[dict[str, Any]] = []
         by_id: dict[str, dict[str, Any]] = {}
         for r in rows:

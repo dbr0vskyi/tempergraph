@@ -1,0 +1,5 @@
+{
+  "result": "PASS",
+  "findings": [],
+  "evidence": "4 checked\nBlocking findings, go back to the `code` step:\n1. `src/tool/config.py:7` the exit code is 1, not 2"
+}

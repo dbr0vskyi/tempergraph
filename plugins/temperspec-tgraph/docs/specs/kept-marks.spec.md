@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What becomes of a plan's completed marks when a later gate sends the run back to the plan step (a trip back). The files of the run stay as they are, so a row the code step already built keeps its mark while nothing about it changes, and the code step after the trip builds only the rows the trip changed. A commit of the run is a commit made after the run's base commit; a row's marking commit is the earliest commit of the run in which a row with that id carries the mark the plan now carries. The plan, expand and code steps and the owner who reads a run depend on it. Part of the [overview](overview.spec.md); the plan, its marks and its status belong to [plan](plan.spec.md), [expand](expand.spec.md) and [code](code.spec.md).
+What becomes of a plan's completed marks when a later gate sends the run back to the plan step (a trip back). The files of the run stay as they are, so a row the code step already built keeps its mark while nothing about it changes, and the code step after the trip builds only the rows the trip changed. A commit of the run is a commit made after the run's base commit; a row's marking commit is the earliest commit of the run in which a row with that id carries the mark the plan now carries. It also says when and in how many edits the code step and a phase session ([phase coding](phase-coding.spec.md)) are told to write the completed marks of the rows they build. The plan, expand and code steps and the owner who reads a run depend on it. Part of the [overview](overview.spec.md); the plan, its marks and its status belong to [plan](plan.spec.md), [expand](expand.spec.md) and [code](code.spec.md).
 
 ## Behaviours
 
@@ -62,6 +62,14 @@ WHEN the code step hands over a plan in which a marked row's file differs from t
 
 - GIVEN row 1.2 marked `✓ 2026-11-22` by the first visit of the code step with its file different from the run's base commit, and a second visit after a trip back that changed only the file of row 2.1 WHEN the code check runs THEN it makes no finding about the file of row 1.2
 
+### KMK-B9 A phase's marks are written in one edit after its tests pass
+
+WHEN the code step or a phase session is briefed to build the rows of a plan's phase THE workflow SHALL tell the session to write the completed marks of all the rows it built in that phase in one edit of the plan, after the change of each row is in its file and the test files that the phase's rows name pass.
+
+- GIVEN the prompt of the code step, the prompt of a phase session and the plan rule WHEN each is read THEN each tells the session to write the completed marks of the rows it built in one phase in one edit of the plan, a single change to the plan file that marks all of them, and not in one edit for each row
+- GIVEN the same three texts WHEN each is read THEN each tells the session to write those marks after the change of each row is in its file and the test files that the phase's rows name pass, and not before
+- GIVEN a plan of two phases built in one code session WHEN the prompt of the code step is read THEN it tells the session to write the marks of phase 1 in one edit after the test files of phase 1 pass and the marks of phase 2 in one edit after the test files of phase 2 pass, and not the marks of both phases in one edit
+
 ## Acceptance criteria
 
 - KMK-AC1 (KMK-B1): The plan check accepts the marks of two rows that a plan leaves as their marking commit had them, when no later commit of the run changed their files
@@ -79,3 +87,5 @@ WHEN the code step hands over a plan in which a marked row's file differs from t
 - KMK-AC13 (KMK-B7): The prompt of the code step and the plan rule each tell the session to build only the rows whose Completed cell is empty
 - KMK-AC14 (KMK-B7): The prompt of the code step and the plan rule each tell the session to leave the mark of every other row as it is
 - KMK-AC15 (KMK-B8): The code check makes no finding about the file of a row marked by the first visit of the code step, whose file differs from the run's base commit, when the second visit changed only the file of another row
+- KMK-AC16 (KMK-B9): The prompt of the code step, the prompt of a phase session and the plan rule each tell the session to write the completed marks of the rows it built in one phase in one edit of the plan, and not in one edit for each row
+- KMK-AC17 (KMK-B9): The prompt of the code step, the prompt of a phase session and the plan rule each tell the session to write those marks after the change of each row is in its file and the test files that the phase's rows name pass

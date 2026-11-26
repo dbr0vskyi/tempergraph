@@ -80,6 +80,30 @@ UNITS = {"empty-pauses": "draft", "context-heavy-step": "draft", "rendered-near-
          "council-rounds-no-gain": "verdict", "council-conformity": "verdict", "contest-no-gain": "pick"}
 
 
+def test_outcome_escapes_reads_the_reviews_of_the_ledger(tmp_path: Path) -> None:
+    """ARC-AC4 (ARC-B14, OUT-B26): a met run sent back in a pull request review is an escape of the rule, found by the
+    same function as `outcome show`, though no run of the window was rerun."""
+    import json
+
+    from tempergraph.run import outcome_record
+
+    from .test_audit_history import WORKFLOW
+
+    many(tmp_path, 10, extra=[{"kind": "outcome", "verdict": "met"}])
+    tasks = [p.name for p in sorted((tmp_path / "runs" / WORKFLOW).iterdir())]
+    rows: list[dict[str, Any]] = [
+        {"kind": "outcome_later", "workflow": WORKFLOW, "thread_id": f"{WORKFLOW}/{t}",
+         "entry": {"state": "open", "reviews": {"changes_requested": 1}, "comments": 0, "commits": 0, "files": 0}}
+        for t in tasks[:5]]
+    (tmp_path / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    latest = {f"{WORKFLOW}/{t}": {"outcome": {"verdict": "met"}} for t in tasks}
+    want = outcome_record.escape_threads(latest, rows, set())
+    assert want == {f"{WORKFLOW}/{t}" for t in tasks[:5]}
+    rep = audit_history(wf({"draft": clean_step()}), read(tmp_path), tmp_path)
+    (f,) = [f for f in rep.findings if f.rule == "outcome-escapes"]
+    assert f.evidence["escapes"] == len(want) and f.evidence["graded"] == 10
+
+
 def test_every_c5_to_c8_history_rule_has_a_fixture() -> None:
     """AUD-AC1: with the rendered owned rules of the next tests, no history rule of C5 to C8 is left out."""
     owned = {"cost-lens-rules", "engine-fault-open", "prompt-change-moved-gate"}

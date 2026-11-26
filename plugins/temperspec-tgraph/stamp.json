@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+eac9dc740710",
-  "docs_digest": "f4bdd21cec0fa7db7e549bcba7be13cc77314871acbea5784843facfe6a82dd6",
-  "shape_digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038",
+  "workflow_version": "0.1.0+710ed360072f",
+  "docs_digest": "81dfd9a977a381e6dab290753af8eae02ded765407ca463774303be1dfa59f66",
+  "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
   "entries_applied": [
     {
       "id": "E0.2.0-1",
@@ -71,6 +71,7 @@
     "outcome-unverified-blocker|discovery|ts-dis-gaps|outcome.json",
     "outcome-unverified-blocker|discovery|ts-dis-general|outcome.json",
     "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
+    "outcome-unverified-blocker|independent_review|ts-rev-blockers|outcome.json",
     "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
     "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
     "outcome-unverified-blocker|phase|ts-phs-change|outcome.json",
@@ -87,14 +88,12 @@
     "oversized-step|discovery||workflow/temperspec/__init__.py",
     "readiness:needs-work|code||",
     "readiness:needs-work|discovery||",
-    "readiness:needs-work|expand||",
     "readiness:needs-work|outcome||",
     "readiness:needs-work|phase||",
     "readiness:needs-work|setup||",
     "readiness:needs-work|triage||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
-    "validate:criterion-overlap|expand||",
     "validate:criterion-overlap|phase||",
     "validate:criterion-overlap|setup||",
     "validate:criterion-overlap|triage||",
@@ -102,10 +101,10 @@
     "validate:template-key-not-on-every-path|code||",
     "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 21,
+  "outcome_revision": 26,
   "baseline": {
     "error": 0,
-    "warning": 38
+    "warning": 39
   },
-  "stamped_at": "2026-11-25T12:21:22.007Z"
+  "stamped_at": "2026-11-26T17:29:54.482Z"
 }

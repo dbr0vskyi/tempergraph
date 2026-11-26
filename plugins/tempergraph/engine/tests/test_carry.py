@@ -137,7 +137,8 @@ def test_nothing_private_travels(world: World) -> None:
     root = state_root_path(a)
     base = run_dir(root, "demo", "t1")
     private = ["sessions/s1/raw.jsonl", "sessions/s1/stderr.log", "stderr.log", "output/out.txt",
-               "evidence/prompts/p.md", "checks/c.json", "hooks/h.log", "sessions/s1/extra.bin"]
+               "evidence/prompts/p.md", "checks/c.json", "hooks/h.log", "sessions/s1/extra.bin",
+               "evidence/pull_request.jsonl"]
     kept = ["sessions/s1/meta.json", "sessions/s1/activity.jsonl", "sessions/s1/digest.json"]
     for rel in private + kept:
         (base / rel).parent.mkdir(parents=True, exist_ok=True)

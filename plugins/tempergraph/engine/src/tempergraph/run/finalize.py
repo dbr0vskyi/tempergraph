@@ -71,6 +71,24 @@ class FinalizerResult:
     manual_steps: list[str] = field(default_factory=list)
 
 
+def recorded_pull_request(result: Mapping[str, Any] | None, workdir: Path | None) -> dict[str, Any] | None:
+    """FIN-B11: the code host, repository, number and end commit of the pull request the `finalized` result's url
+    names; none for no url or a url that names no pull request. It holds no text."""
+    from tempergraph import git
+    from tempergraph.improve.proposals import pull_ref
+
+    ref = pull_ref((result or {}).get("url"))
+    if ref is None:
+        return None
+    commit = ""
+    if workdir is not None:
+        try:
+            commit = git.head(workdir)
+        except Exception:  # noqa: BLE001 - a workspace that is gone has no end commit to record
+            commit = ""
+    return {"host": ref[0], "repo": ref[1], "number": ref[2], "commit": commit}
+
+
 def run_finalizer(ctx: RunContext, state: Mapping[str, Any]) -> dict[str, Any]:
     spec = ctx.spec
     if spec.finalizer is None:

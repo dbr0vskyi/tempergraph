@@ -8,7 +8,7 @@ One versioned JSON document that describes a single thread in full: the declared
 
 ### RDD-B7 Document blocks
 
-WHEN the detail document (schema version 1) is built THE engine SHALL write `schema_version`, `generated_at`, `run` (every field of the thread's status row plus `segment`, `last_seq`, local `run_dir` and `plan_digest`), `plan`, `units[]`, `pause`, `budgets` (each counter's used and limit, and the run cost cap with what is left of it), `health`, `supervision` (touches in time order with class, action, caller kind, decider, relay and wait seconds, the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness, [SUP](supervision-metrics.spec.md), [SCO](supervision-cost.spec.md)), `loop` (the thread's newest `loop_summary` record, [SIL-B22](self-improvement.spec.md), `null` until a loop child has ended) and `events_tail` (the last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget` and `stop_requested`, one line each).
+WHEN the detail document (schema version 1) is built THE engine SHALL write `schema_version`, `generated_at`, `run` (every field of the thread's status row plus `segment`, `last_seq`, local `run_dir` and `plan_digest`), `plan`, `units[]`, `pause`, `budgets` (each counter's used and limit, and the run cost cap with what is left of it), `health`, `supervision` (touches in time order with class, action, caller kind, decider, relay and wait seconds, the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness, [SUP](supervision-metrics.spec.md), [SCO](supervision-cost.spec.md)), `loop` (the thread's newest `loop_summary` record, [SIL-B22](loop-summary-and-review-retries.spec.md), `null` until a loop child has ended) and `events_tail` (the last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget` and `stop_requested`, one line each).
 
 - GIVEN any thread WHEN its detail is built THEN every block is present, empty where nothing happened
 - GIVEN a thread whose loop child has ended WHEN its detail is built THEN `loop` holds the counts of findings recorded and filed and at most three observations as category, unit and confidence, and no note text
@@ -92,6 +92,14 @@ WHEN the thread is paused THE engine SHALL give `pause` the unit, kind, `questio
 
 - GIVEN a paused thread WHEN the detail is built THEN `pause` holds the exact resume commands
 
+### RDD-B21 Reset instant in the pause block
+
+WHEN the detail is built for a thread paused for a usage limit ([HUM-B14](gate-and-human.spec.md)) THE engine SHALL give the `pause` block `usage_limit_resets_at`, the value of the thread's latest `pause` record ([EVT-B27](run-events.spec.md)), null when none was reported.
+
+- GIVEN a thread paused for a usage limit with a reported reset instant WHEN the detail is built THEN `pause.usage_limit_resets_at` is that instant
+- GIVEN a thread paused for a usage limit whose executor reported no reset instant WHEN the detail is built THEN `pause.usage_limit_resets_at` is null
+- GIVEN a thread paused at an approval WHEN the detail is built THEN `pause` has no `usage_limit_resets_at`
+
 ### RDD-B14 Health
 
 WHEN `health` is built THE engine SHALL set `alive` from the lock probe ([DUR](durability-and-resume.spec.md)), `silent_s` since the segment's newest run-log record or activity line, `suspect_stall` when alive and the open session's `last_event_age_s` is at least 80 % of its idle limit, `orphaned` when not alive with state `running` in the checkpoint's last view and no `run_exit` for the segment, `waiting_for_person_s` since the open `pause` record, `burn_usd_per_h` as the segment's estimated cost over its wall time, and `cap_eta_min` until the run cost cap at that burn (null without a cap).
@@ -132,3 +140,4 @@ WHEN the detail of a live run is built 100 times THE engine SHALL leave the stat
 - RDD-AC6 (RDD-B7): The detail of a fixture thread whose loop child has ended holds `loop` with the counts and at most three observations and no note text, and `loop` is `null` for a thread with no loop child
 - RDD-AC9 (RDD-B19, RDD-B10): The detail of a fixture contest of three slots that ran at once, with their records written interleaved and one slot failing its check, shows one entry per slot named by the slot, each holding its own check result, sessions and cost, the slots that passed their check also a verdict and keys, the failed slot a null verdict and null keys, and in a second fixture a slot the attempt's cost cap kept from starting shown with `skipped` true
 - RDD-AC10 (RDD-B20): In the detail of that fixture `winner` is true on the slot the pick kept and false on the others, `winner` is null on every slot of a contest still running and of one whose every check failed, and each attempt of a contest under `retry_scope: all` carries a winner of its own
+- RDD-AC11 (RDD-B21): The detail of a fixture thread paused for a usage limit holds `usage_limit_resets_at` in its `pause` block equal to the reported reset, null when none was reported, and the `pause` block of a thread paused at an approval holds no such key

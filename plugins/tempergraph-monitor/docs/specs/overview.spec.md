@@ -106,7 +106,7 @@ flowchart LR
 
 | Condition | Result |
 |---|---|
-| Engine not installed (shim exits 127) | Band row "tempergraph not found", pane explains the installer skill; nothing else polled |
+| No place holds the engine (every program exits 127) | Band row "tempergraph not found"; the pane names the places looked at and explains the installer skill ([MDS-B6](data-sources.spec.md), [MDS-B7](data-sources.spec.md)); nothing else polled |
 | Engine documents of a newer major schema | Those rows read "update the monitor"; others draw |
 | Claude Code build without a needed API | The mod's hook fails alone and Claude Code skips it; the rest draws ([research `claude-code-mods`](../research/claude-code-mods.rsrch.md)) |
 

@@ -86,6 +86,7 @@ The component specs, each owning what follows its name:
 - [ask-unit.spec.md](ask-unit.spec.md) ASK: questions, typed answers, the `input` pause.
 - [flow-extensions.spec.md](flow-extensions.spec.md) FLX: selective parallel, mapped sub-workflows, deadlines, fallback, breakpoints.
 - [check-contract-and-command-runs.spec.md](check-contract-and-command-runs.spec.md) CHK: the check contract, findings, facts, command runs, the check preview.
+- [visit-session-record.spec.md](visit-session-record.spec.md) VSR: the calls of every session of a unit's visit, given to a check beside its attempt's own record.
 - [step-values-and-template-keys.spec.md](step-values-and-template-keys.spec.md) VAL: the `value` artifact and the keys a template may name.
 - [map-unit.spec.md](map-unit.spec.md) MAP: map declaration, fan-out, per-item gates and budgets, the join.
 - [finalizer-contract.spec.md](finalizer-contract.spec.md) FIN: finalizer context, outcomes, once-only and exit-code rule.
@@ -113,7 +114,11 @@ The component specs, each owning what follows its name:
 - [loop-issues.spec.md](loop-issues.spec.md) ISS: the labels and body of the loop's issues, and what a closed issue changes.
 - [judge-read-share.spec.md](judge-read-share.spec.md) SRV (split from 44): the finding for a judge that read too small a share of the change.
 - [runs-without-a-final-exit.spec.md](runs-without-a-final-exit.spec.md) SIL (split from 16): a stop at a pause and a lost runner as final exits for the loop, recorded once.
+- [pull-request-read.spec.md](pull-request-read.spec.md) OUT (split from run-outcome): how the loop reads the pull request a run recorded into `later[]` entries: which are read, who counts as a person, the follow-up commits, the files the run wrote, the cost of a read, what a pull request that cannot be read leaves and the finding an escape owes.
 - [review-repeats.spec.md](review-repeats.spec.md) SRV (split from 44): a review category kept in several sessions of a run or in several runs of a workflow, recorded as a finding for the proposer that files no issue alone.
+- [loop-summary-and-review-retries.spec.md](loop-summary-and-review-retries.spec.md) SIL (split from self-improvement): the retry of session reviews that stopped at a usage limit, and the summary the loop child writes when it ends.
+- [friction-causes.spec.md](friction-causes.spec.md) FRC: the friction causes the loop makes from a run's records for a trip back, a stop at the attempt cap, a last stage that delivered nothing, a session the usage limit refused and a pause at an ask unit.
+- [friction-filing-decisions.spec.md](friction-filing-decisions.spec.md) FFD: how the answers recorded for a friction finding's fingerprint attribute it, the one reason a finding that is not filed carries, the numbers and the reason that the loop's records hold, and what the friction judge is told about attribution.
 
 The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/overview.spec.md). Assumptions made while the owner was unavailable are in [ADR `standalone-design-assumptions`](../adr/standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 

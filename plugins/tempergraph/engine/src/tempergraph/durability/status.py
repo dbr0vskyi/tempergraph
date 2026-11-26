@@ -85,6 +85,8 @@ def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:
         unit = node.rsplit(".", 1)[0] if node.endswith(".human") else node
         g = {"unit": unit, "item": p.get("item"), "kind": p.get("kind", "escalation"),
              "resume": p.get("resume") or resume_command(workflow, tid, p.get("decisions"))}
+        if p.get("reason") == "usage_limit":  # DUR-B13: the instant the account's limit lifts, value or None
+            g["usage_limit_resets_at"] = p.get("usage_limit_resets_at")
         if p.get("deadline_at"):  # FLX-B8: overdue until someone applies the deadline
             g["deadline_at"] = p["deadline_at"]
             g["on_deadline"] = p.get("on_deadline")
@@ -165,6 +167,12 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     r: dict[str, Any] = {"thread_id": tid, "workflow": spec.name, "state": str(state), "alive": held,
                          "pending_gates": gates,
                          "log_path": str(run_dir(state_root, spec.name, split_thread(tid)[1]) / "run.jsonl")}
+    if state is ThreadState.UNFINISHED:  # DUR-B15: an unfinished thread continues with the plain command
+        r["resume"] = resume_command(spec.name, tid)
+    limited = [g["usage_limit_resets_at"] for g in gates if "usage_limit_resets_at" in g]
+    if limited:  # DUR-B13: the latest reset of the pending usage-limit pauses
+        known = [x for x in limited if x is not None]
+        r["usage_limit_resets_at"] = max(known) if known else None
     run = snap.values.get("run") or {}
     for key in RUN_FIELDS:
         if key in run:
@@ -175,6 +183,10 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     if run.get("degraded"):  # FLX-AC4: a run that took a fallback is never shown without it
         r["degraded"] = True
         r["degraded_unit"] = (run["degraded"] or {}).get("unit")
+    fin = snap.values.get("finalized") or {}
+    if fin.get("manual_steps") or fin.get("outcome") == "error":  # FIN-B8: the steps a person still has to take
+        r["finalizer"] = {"outcome": fin.get("outcome"), "reason": fin.get("reason") or "",
+                          "manual_steps": list(fin.get("manual_steps") or [])}
     r.update(_settings(state_root, spec, run.get("options")))
     r.update(_lineage(state_root, spec.name, tid, run))
     ws = (snap.values.get("workspace") or {})

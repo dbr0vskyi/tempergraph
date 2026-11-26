@@ -261,6 +261,26 @@ def test_the_code_briefings_build_only_the_rows_without_a_mark() -> None:
         assert REST.lower() in text, parts
 
 
+ONE_EDIT = ("in one phase in one edit of the plan, after the change of each row is in its file and the test files "
+            "that the phase's rows name pass, and not in one edit for each row")
+PROMPT_ONE_EDIT = "write the completed marks of the rows you built " + ONE_EDIT
+RULE_ONE_EDIT = "writes the completed marks of the rows it built " + ONE_EDIT
+
+
+def test_the_code_prompt_the_phase_prompt_and_the_plan_rule_say_a_phases_marks_are_written_in_one_edit() -> None:
+    # AC 1, AC 2, KMK-AC16, KMK-AC17: one shared sentence in the three texts and in this repository's installed copy
+    for parts in (("prompts", "code.md"), ("prompts", "phase.md")):
+        assert PROMPT_ONE_EDIT.lower() in _text(*parts).lower(), parts
+    assert RULE_ONE_EDIT.lower() in _text("rules", "plan.rule.md").lower()
+    # a session that builds several phases writes one edit for each phase, never the marks of two phases in one edit
+    assert "never the marks of two phases in one edit" in _text("prompts", "code.md").lower()
+    installed = [p / ".claude" / "rules" / "temperspec" / "plan.rule.md" for p in ROOT.parents
+                 if (p / ".claude" / "rules" / "temperspec" / "plan.rule.md").is_file()]
+    for copy in installed:
+        said = " ".join(copy.read_text(encoding="utf-8").split()).lower()
+        assert RULE_ONE_EDIT.lower() in said, copy
+
+
 # -- the outcome mirror --------------------------------------------------------------------------------------
 
 

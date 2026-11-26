@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 21,
+  "revision": 26,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -27,7 +27,7 @@
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself. For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and the fix, in one line."
   },
   "final": [
     {
@@ -46,7 +46,7 @@
       "severity": "blocker",
       "verified_by": "check",
       "text": "Every spec the run edited passes the spec rule's structure check",
-      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour",
+      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour; and the spec rule's `Depends on` and `Does not own`: each behaviour or criterion the run added or changed that links another spec, by its path or by an id only that spec defines, has that spec under `## Depends on`; each `Depends on` row names an existing spec or is `Outside:`; each `Does not own` row names an existing spec other than this one; no `Responsibilities`, `Used by` or `Out of scope` section, and the sections in the rule's order",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -287,8 +287,7 @@
             "check": "tgwf_temperspec.checks:setup_check"
           },
           "serves": [
-            "ts-spec-links",
-            "ts-spec-sync"
+            "ts-spec-links"
           ]
         },
         {
@@ -516,8 +515,7 @@
             }
           },
           "serves": [
-            "ts-accepted",
-            "ts-spec-sync"
+            "ts-accepted"
           ]
         },
         {
@@ -926,6 +924,42 @@
           ]
         },
         {
+          "id": "ts-dis-depends",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "A spec that discovery edited and lists under `Depends on` a spec that none of its behaviours or criteria links reaches the judge as a lead",
+          "check_method": "For each edited spec in the current layout, resolve each `Depends on` row's spec path and each spec its behaviours and criteria link, by path or by an id only that spec defines; report each listed spec that nothing links as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-adrform",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every decision record the discovery step created or changed has every section of the decision rule, filled: a `Current state` whose every sentence cites a path, a link or an id, constraints that name their source, at least two options each with how it works, a rationale that answers every force by its id, risks with what limits them and how they are noticed, and assumptions with what they cost if wrong",
+          "check_method": "Read each `.adr.md` the step created or changed (the changed paths and the hand-off's `Changed documents`): the ten sections `Context`, `Current state`, `Forces`, `Options considered`, `Decision`, `Decision rationale`, `Consequences`, `Risks`, `Assumptions`, `Revisit when` present and not empty in any order; each `Current state` sentence holds a code span, a link or an id unless the section is `Nothing exists yet.`; each `C<n>` force has `Source:`; two or more `###` options, each with `How it works:`; each `C<n>` and `F<n>` id appears in `Decision rationale`; each risk bullet has `Limited by:` and `Noticed by:` unless the section is `None known.`; each `A<n>` assumption has `If wrong:` unless the section is `None.`. Records the step did not touch are not read",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-adrlead",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "A decision record the discovery step created or changed that is over about 10 KB, or whose `Revisit when` names nothing observable, reaches the judge as a lead",
+          "check_method": "Read each `.adr.md` the step created or changed: its size over 10,240 bytes, and a `Revisit when` line with `if needs change`, `when requirements change`, `as needed`, `if necessary` or `when appropriate`; report each as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
           "id": "ts-dis-general",
           "severity": "blocker",
           "verified_by": "judge",
@@ -1111,7 +1145,8 @@
             }
           },
           "serves": [
-            "ts-accepted"
+            "ts-accepted",
+            "ts-spec-sync"
           ]
         },
         {
@@ -1212,8 +1247,8 @@
           "id": "ts-exp-opened",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "A task row that names a file that exists in the repository has that file opened by the session with the read tool",
-          "check_method": "Read the session record the engine gives the check: each existing file a task row names has a read call without an error on its path; a file that does not exist is not asked for",
+          "text": "A task row that names a file that exists in the repository, unless its completed mark is kept (KMK-B1), has that file opened with the read tool in a session of the expand step's visit (SRC-B5, SRC-B12)",
+          "check_method": "Read the session record of the whole visit that the engine gives the check: each existing file a task row names has a read call without an error on its path in some session of the visit; a row whose mark is kept is skipped, a file that does not exist is not asked for, and one finding names all rows whose file no session of the visit opened",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:expand_check"
@@ -1363,8 +1398,8 @@
           "id": "ts-phs-scope",
           "severity": "blocker",
           "verified_by": "judge",
-          "text": "No file is changed that no row of the phase names, apart from the plan's marks and status",
-          "check_method": "Read the changed paths the check lists, and match each against the files of the phase's rows",
+          "text": "No file changed since the phase step was entered is a file that no row of the phase or of an earlier phase names, apart from the plan's marks and status (PHC-B9)",
+          "check_method": "Read the list of paths changed since the phase step was entered that the check gives, and match each against the files of the rows of the phase and of earlier phases; a path of the list of earlier steps' paths is not counted",
           "source": "interview",
           "verifier": {
             "references": [
@@ -1372,10 +1407,10 @@
               "triage_note"
             ],
             "scale": {
-              "met": "every changed file of the phase is the file of a row of the phase, or the plan itself",
-              "partial": "a changed file is outside the phase's rows but is a natural by-product of a row",
-              "unmet": "a file that no row of the phase names was changed",
-              "evidence": "per changed file: the row that names it",
+              "met": "every changed file of the first list (changed since the phase step was entered) is the file of a row of the phase or of an earlier phase, or the plan itself",
+              "partial": "a changed file of the first list is outside those rows but is a natural by-product of a row",
+              "unmet": "a file of the first list that no row of the phase or of an earlier phase names was changed",
+              "evidence": "per changed file of the first list: the row that names it",
               "seeds": [
                 "met-ts-phs-scope",
                 "unmet-ts-phs-scope"
@@ -1785,6 +1820,93 @@
           "severity": "warning"
         }
       ]
+    },
+    "independent_review": {
+      "statement": "A reader that sees only the change, the task's criteria and the repository writes numbered findings, each with a file, a line and a mark, and no blocking finding is left",
+      "criteria": [
+        {
+          "id": "ts-rev-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each finding names an existing file, a line inside it and a mark, in numbered order, or the section says None",
+          "check_method": "Parse the Findings section; check each item's file, line and mark against the workspace",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-session",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The reader opened no hand-over document of the run and wrote no file but its draft",
+          "check_method": "Read the session record of the reader; N/A with no record",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the step left is committed, with nothing uncommitted in the workspace",
+          "check_method": "Read the workspace status after the step's commit",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-step",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A blocking finding on a file the change touches sends the run to the code step, any other blocking finding to the plan step",
+          "check_method": "Sort the blocking findings against the paths the change touched and read the run's commit subjects for the first trip",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-blockers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "No finding the reader marked blocking remains",
+          "check_method": "Read the Findings section; list each finding marked blocking by number, file, line and text, and none that is not blocking",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "findings"
+            ],
+            "scale": {
+              "met": "no finding is marked blocking, or the section says None",
+              "partial": "a finding is marked blocking but names no step to go back to",
+              "unmet": "at least one finding is marked blocking",
+              "evidence": "each blocking finding with its number, file, line and text, in the order of the document",
+              "seeds": [
+                "met-ts-rev-blockers",
+                "unmet-ts-rev-blockers"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
     }
   },
   "assumptions": [
@@ -1930,6 +2052,36 @@
       "origin": "authored",
       "at": "2026-11-25T08:00:00.000Z",
       "note": "spec extraction and spec craft: the extraction rule (evidence tested, read or stated; suspected bugs to anomalies; invariants in the one pattern; a sample-and-expand budget) read by setup, discovery and the component reading sessions; the setup note's Evidence and Anomalies, checked (ts-set-evidence); setup runs the general-rules and wording checks on its specs (ts-set-named, ts-set-literal, ts-set-wording); the triage gap kind `existing behaviour`; the capability list written at the start of the run for triage and discovery; a new spec named for its capability (ts-dis-specname); behaviour sentences of at most 500 characters with no vague word or placeholder (ts-dis-wording, leads); ts-dis-general also grades a behaviour that reads two ways; the hand-off lists inferred behaviours with their source"
+    },
+    {
+      "revision": 22,
+      "origin": "authored",
+      "at": "2026-11-25T12:00:00.000Z",
+      "note": "issue 148: the expand check reads the session record of the whole visit, skips a row whose completed mark is kept, and makes one finding for all rows whose file no session of the visit opened (ts-exp-opened); the phase gate grades ts-phs-scope on the paths changed since the phase step was entered, a path that only an earlier step changed lowering no grade"
+    },
+    {
+      "revision": 23,
+      "origin": "authored",
+      "at": "2026-11-26T12:00:00.000Z",
+      "note": "issue 150: a failing ts-spec-sync with no place named goes back to the step that owns the specs (the full discovery, else the plan step, else the code step) because ts-set-links and ts-tri-gaps no longer serve it and ts-plan-spec does; the outcome judge's stance asks for the place and the fix in the evidence of each criterion it grades PARTIAL or UNMET (spec outcome-gate, OGT-B6 to OGT-B12)"
+    },
+    {
+      "revision": 24,
+      "origin": "authored",
+      "at": "2026-11-26T18:00:00.000Z",
+      "note": "issue 173: the unit independent_review after code_join, a read-only reader that sees the change, the task's criteria and the repository, with numbered findings checked model-free and one trip back (ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step, ts-rev-blockers; specs independent-review, review-findings)"
+    },
+    {
+      "revision": 25,
+      "origin": "authored",
+      "at": "2026-11-26T20:00:00.000Z",
+      "note": "decision records gain the sections Current state, Forces (constraints first, each with its source), Decision rationale (answers every force by id), Risks, Assumptions (each with its cost if wrong) and a required Revisit when, options run before the decision and each says how it works; the discovery check reads the form of every decision record a run creates or changes (ts-dis-adrform) and reports an oversized record or a vague Revisit when as a lead (ts-dis-adrlead)"
+    },
+    {
+      "revision": 26,
+      "origin": "authored",
+      "at": "2026-11-26T21:00:00.000Z",
+      "note": "spec format: a spec's `Depends on` (outgoing only, held to the links of the behaviours and criteria a run adds or changes) and `Does not own` (each row names the owning spec) are part of the structure check (ts-spec-form, ts-dis-form, ts-set-form); a listed spec nothing links is a lead (ts-dis-depends); the capability list prints who uses each spec; no Responsibilities, Used by or Out of scope section"
     }
   ]
 }
