@@ -20,6 +20,14 @@ WHEN `resume` names a thread THE engine SHALL read its state first and act by it
 - GIVEN an `unfinished` thread WHEN it is resumed with feedback THEN the pending unit gets the feedback
 - GIVEN a thread whose lock is held WHEN it is classified THEN it reads `running` whatever its checkpoint holds
 
+### DUR-B14 A refused re-open names the stop
+
+WHEN `resume` refuses a thread in state `stopped` because it carries no decision or one other than `retry`, `back` or `rewind` THE engine SHALL name in the refusal the unit the thread stopped at and the reason of its stop, the word its `run_exit` record carries.
+
+- GIVEN a thread a person stopped at unit `a` WHEN `resume` runs with no decision THEN it exits 2 and its message names `a` and the reason `person`
+- GIVEN a thread stopped at unit `a` with its retry budget spent and `on_budget_spent` set to `stop` WHEN `resume --decision proceed` runs THEN it exits 2 and its message names `a` and the reason `budget`
+- GIVEN the same thread WHEN `resume --decision retry` runs THEN it is not refused
+
 ### DUR-B2 Cut-off attempt
 
 WHEN a run resumes after an attempt whose start record no step record closed THE engine SHALL turn the start into an interrupted record with one notice (output and cost not recorded, workspace changes unaccounted for) and run the step again under the same attempt number without charging the budget.
@@ -69,6 +77,13 @@ WHEN `status` prints a thread paused for a usage limit ([HUM-B14](gate-and-human
 - GIVEN a thread paused for a usage limit whose executor reported no reset instant WHEN `status --json` runs THEN its row holds `usage_limit_resets_at` null
 - GIVEN a thread that was paused for a usage limit and is running after a `resume` WHEN `status --json` runs THEN its row holds no `usage_limit_resets_at`
 
+### DUR-B15 An unfinished thread's row says how to continue it
+
+WHEN `status` prints a thread in state `unfinished` THE engine SHALL add to its row `resume`, the exact command that continues the thread with no decision.
+
+- GIVEN a thread stopped by request WHEN `status --json` runs THEN its row shows the state `unfinished`, the exit reason `stopped_by_request` and a `resume` command that names the workflow and the thread and carries no `--decision`
+- GIVEN a thread paused at a gate WHEN `status --json` runs THEN its row holds no `resume`, and each of its `pending_gates` carries its own resume command
+
 ### DUR-B5 Wait
 
 WHEN `wait` names a thread THE engine SHALL exit when the run pauses, completes, fails or records a new gate verdict, or when the timeout passes, with the run's own exit code when it is recorded in the run folder's `exit.json` ([LOS-B7, LOS-B8, LOS-B9](local-observability-store.spec.md)), else 3 paused, 0 finished, 4 stopped or unfinished, 0 with the row for a new verdict on a running thread, and 5 with state `running` at the timeout, rebuilding a row only when a file's size or time moved.
@@ -108,3 +123,5 @@ WHEN a start gives `--alias <name>` THE engine SHALL keep it in `runs/aliases.js
 - DUR-AC9 (DUR-B8): An alias held by a live thread is refused to a second start and freed when the thread finishes
 - DUR-AC10 (DUR-B12): A fixture thread paused by a step session that the usage limit ended and resumed with no decision runs that session under the same attempt number with every counter equal to its value before the session, and a fixture thread paused by a judge session that the usage limit ended and resumed with no decision starts the judge and not the step
 - DUR-AC11 (DUR-B13): The `status` row of a fixture thread paused for a usage limit holds `usage_limit_resets_at` equal to the reset its stand-in executor reported (the latest of them when several gates of a parallel block are paused for it), null when it reported none, and the row of that thread while it runs after a `resume` holds no such key
+- DUR-AC12 (DUR-B14): A fixture thread a person stopped and a fixture thread stopped with its budget spent are each refused on `resume` with exit 2 and a message naming the unit and the reason `person` or `budget`, writing nothing, and a `retry` resume of each is accepted
+- DUR-AC13 (DUR-B15): The `status --json` row of a fixture thread stopped by request holds a `resume` command that a plain `resume` accepts, and the rows of a fixture paused thread and a fixture running thread hold none
