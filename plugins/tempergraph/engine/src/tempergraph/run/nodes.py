@@ -1669,7 +1669,8 @@ class EngineNodes:
 
     def _declared_files(self, unit: str, state: Mapping[str, Any], workdir: Path) -> set[str]:
         """SRV-B41: the workspace-relative paths of the file artifacts the units of the run's path (and `unit`) declare
-        in `produces`; `./x`, `x` and an absolute path inside the workspace name one path."""
+        in `produces`, every item's of a map included; `./x`, `x` and an absolute path inside the workspace name one
+        path."""
         spec = self.ctx.spec
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         out: set[str] = set()
@@ -1679,14 +1680,18 @@ class EngineNodes:
             produces = getattr(u.step, "produces", None) if u is not None and u.step is not None else None
             values = (state.get("artifacts") or {}).get(name) or {}
             for key, kind in (produces or {}).items():
-                if kind != "file" or key not in values:
+                if kind != "file":
                     continue
-                p = os.path.normpath(str(values[key]))
-                if os.path.isabs(p):
-                    if not (p == root or p.startswith(root + os.sep)):
+                # a map keeps each item's value as `<key>[<item id>]`; the plain key is only the item in hand (MAP-B9)
+                for held, value in values.items():
+                    if held != key and not (held.startswith(f"{key}[") and held.endswith("]")):
                         continue
-                    p = os.path.relpath(p, root)
-                out.add(p)
+                    p = os.path.normpath(str(value))
+                    if os.path.isabs(p):
+                        if not (p == root or p.startswith(root + os.sep)):
+                            continue
+                        p = os.path.relpath(p, root)
+                    out.add(p)
         return out
 
     def _judge_count(self, unit: str, state: Mapping[str, Any], workdir: Path, base: str, g: Any) -> dict[str, Any]:

@@ -307,10 +307,25 @@ def test_a_partial_read_is_a_finding_for_the_item_that_gave_a_judgement_only(rep
     assert finding_counts(repo, "SM-3", "judge_partial_read").get("phase") == 1
 
 
+def test_a_map_items_declared_file_is_left_out_for_every_items_judge(repo: Path) -> None:  # SRV-AC38, SRV-B41, AC 1
+    def two_files(req: SessionRequest) -> SessionResult:
+        _, iid, _, _ = req.session_key.split(".")
+        (req.workdir / f"out-{iid}.md").write_text("x\n")
+        (req.workdir / f"extra-{iid}.md").write_text("x\n")
+        return answer(f"Did it.\nARTIFACT note: done\nARTIFACT out: out-{iid}.md", session_id="item")
+
+    steps = [plan_commits(THREE[:2]), two_files, two_files, answer("Joined.", session_id="join")]
+    map_run(repo, steps, [judge(), judge(), judge(), judge()], "SM-4", produces={"out": "file"}, commits=False)
+    # nothing is committed after the plan: p2's judge still holds p1's files, and `out[p1]` is as declared as `out[p2]`
+    assert judge_digest(repo, "SM-4", "phase.p1.1.judge")["changed_total"] == 1
+    assert judge_digest(repo, "SM-4", "phase.p2.1.judge")["changed_total"] == 2
+
+
 def map_run(repo: Path, steps: list[Any], judges: list[Any], task: str, **kw: Any) -> Any:
     spec = mapped(retry_budget=kw.get("retry_budget", 1))
     phase = spec.units["phase"]
-    step = dataclasses.replace(phase.step, after=(Script(call=commit_script),))
+    step = dataclasses.replace(phase.step, after=(Script(call=commit_script),) if kw.get("commits", True) else (),
+                               produces={**phase.step.produces, **kw.get("produces", {})})
     spec = dataclasses.replace(spec, units={**spec.units, "phase": dataclasses.replace(phase, step=step)},
                                session_review="off")
     out, _ = map_go(repo, spec, steps, judges, task=task)
