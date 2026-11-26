@@ -21,11 +21,16 @@ from tempergraph.api import Gate, Judge, Routing, Script, Step, Workflow
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import CheckFinding, SessionRequest, SessionResult, WorkflowSpec
 from tempergraph.executors.standins import answer, standin
+from tempergraph.improve.record import read_findings
 from tempergraph.run.nodes import EngineNodes
+from tempergraph.store.layout import state_root_path
 
 from .fixtures.workflows import crit, named
 from .test_judge_changed_paths import causes_of, commit_script, judge_digest, judge_run
-from .test_run import MET, go, judge, records
+from .test_judge_changed_paths_map import item_writes, plan_commits
+from .test_map import THREE, item_ok, mapped
+from .test_map import run as map_go
+from .test_run import MET, go, judge, records, verdict_block
 
 Reply = Callable[[SessionRequest], SessionResult]
 
@@ -269,5 +274,46 @@ def test_an_untracked_file_held_at_entry_and_a_modified_one_both_count(repo: Pat
     ex = standin("claude", steps=[writer("held.md"), modify], judges=[judge(), judge()])
     assert go(repo, ex, spec, task="S-12").exit_code is ExitCode.FINISHED
     assert judge_digest(repo, "S-12", "build.1.judge")["changed_total"] == 2
+
+
+# -- a map's judgements are read item by item (SRV-B44) --------------------------------------------------------------
+
+
+def finding_counts(repo: Path, task: str, cause: str) -> dict[str, int]:
+    return {str(f["unit"]): int(f["count"]) for f in read_findings(state_root_path(repo), "demo", task)
+            if f["cause"] == cause}
+
+
+def test_only_the_item_whose_judge_passed_unread_is_a_finding(repo: Path) -> None:  # SRV-AC43, SRV-AC42, AC 5
+    steps = [plan_commits(THREE[:2]), item_writes, item_writes, answer("Joined.", session_id="join")]
+    judges = [judge(), judge(), judge(verdict_block("UNMET")), judge()]
+    map_run(repo, steps, judges, "SM-1", retry_budget=0)
+    assert finding_counts(repo, "SM-1", "judge_unread_pass").get("phase") == 1  # p1's, not p2's failed judge
+    steps = [plan_commits(THREE), item_writes, item_writes, item_writes, answer("Joined.", session_id="join")]
+    map_run(repo, steps, [judge(), judge(), judge(verdict_block("UNMET")), judge(), judge()], "SM-2", retry_budget=0)
+    assert finding_counts(repo, "SM-2", "judge_unread_pass").get("phase") == 1  # three items: still p1's only
+
+
+def test_a_partial_read_is_a_finding_for_the_item_that_gave_a_judgement_only(repo: Path) -> None:  # SRV-AC43, AC 5
+    def ten(req: SessionRequest) -> SessionResult:
+        _, iid, _, _ = req.session_key.split(".")
+        for n in range(10):
+            (req.workdir / f"{iid}-f{n}.md").write_text("x\n")
+        return item_ok()
+
+    timed_out = dataclasses.replace(opened("p2-f0.md"), ok=False, timed_out=True)
+    steps = [plan_commits(THREE[:2]), ten, ten, answer("Joined.", session_id="join")]
+    map_run(repo, steps, [judge(), opened("p1-f0.md"), timed_out, judge()], "SM-3", retry_budget=0)
+    assert finding_counts(repo, "SM-3", "judge_partial_read").get("phase") == 1
+
+
+def map_run(repo: Path, steps: list[Any], judges: list[Any], task: str, **kw: Any) -> Any:
+    spec = mapped(retry_budget=kw.get("retry_budget", 1))
+    phase = spec.units["phase"]
+    step = dataclasses.replace(phase.step, after=(Script(call=commit_script),))
+    spec = dataclasses.replace(spec, units={**spec.units, "phase": dataclasses.replace(phase, step=step)},
+                               session_review="off")
+    out, _ = map_go(repo, spec, steps, judges, task=task)
+    return out
 
 
