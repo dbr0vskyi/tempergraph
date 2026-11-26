@@ -1087,6 +1087,18 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 except gatemod.DecisionRefused as exc:
                     return _refuse("decision_refused", str(exc), tid=tid)
                 d = Decision(word="proceed")
+            elif (d is None and str(pause.get("reason") or "") == "usage_limit" and kind == "escalation"
+                  and not feedback and not settings.answers and not settings.revoke_rulings):
+                # DUR-B12: a plain resume reruns the session the usage limit ended; no check against the reset instant
+                row_decision = ""
+                d = Decision(word="proceed")  # only for the intervention row's shape; the human node reruns the session
+                limit_in = {"decision": "usage_limit", **human_payload}
+                if len(gates) == 1:
+                    first_input = resume_input(limit_in)
+                else:
+                    def first_input(cw2: Any, payload_in: dict[str, Any] = limit_in, unit: str = unit) -> Any:
+                        ids = snapshot(cw2, tid).interrupt_ids
+                        return resume_input({i: payload_in for i, u in ids.items() if u == unit})
             elif d is None:
                 return _refuse("decision_missing", f"{tid} is paused at {', '.join(gates)}; pass --decision",
                                tid=tid)
@@ -1347,7 +1359,7 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
            "touches": [{"class": "engine", "action": "reopen"}] if engine
            else [{"class": "designed", "action": "deadline"}] if decision == "deadline"
            else touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
-           "decision": decision or d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
+           "decision": decision if decision is not None else d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
            "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
            "cause": "auto_reopen" if engine else reason or kind}

@@ -239,9 +239,9 @@ def successors(spec: WorkflowSpec, unit: str) -> SuccessorSet:
 
 def human_targets(spec: WorkflowSpec, unit: str) -> list[str]:
     s = successors(spec, unit)
-    extra: list[str] = []
+    extra: list[str] = [node_names(unit)[1]]  # a usage-limit pause reruns the judge session the limit ended (DUR-B12)
     if deadline_of(spec, unit) is not None:  # an applied deadline re-enters the human node, or goes forward
-        extra = [node_names(unit)[3]] + ([n] if (n := deadline_node(spec, unit)) else [])
+        extra += [node_names(unit)[3]] + ([n] if (n := deadline_node(spec, unit)) else [])
     return list(dict.fromkeys(s.proceed + s.retry + s.back + s.rewind + s.stop + extra))
 
 

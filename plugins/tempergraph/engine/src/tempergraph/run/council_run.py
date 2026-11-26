@@ -415,7 +415,7 @@ class CouncilRun:
             "council_stop": None, "dissent_missing": None, "written": None, "infra_cause": None}
         if self.limited is not None:  # BUD-B17: nothing is spent and the attempt keeps no artifacts
             rec.update(ok=False, escalate="usage_limit", usage_limit_resets_at=self.limited[0],
-                       usage_limit_stage="step")
+                       usage_limit_stage="step", reuse={"notes": list(self.notes)})
         elif self.infra_all or self.chair_infra:
             rec.update(ok=False, infra_spent=True, infra_cause="member_infra" if self.infra_all else "chair_infra")
         elif self.written:
@@ -475,8 +475,10 @@ def open_run(engine: Any, unit: str, state: Mapping[str, Any]) -> CouncilRun:
         fp = gitmod.fingerprint(workdir)
         engine.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                              entered_from=_entered_from(state, unit))
-    attempt = int(prev.get("attempt", 0)) + 1
-    engine.ctx.attempts_started += 1
+    again = prev.get("escalate") == "usage_limit" and not entered  # DUR-B12: the refused attempt runs again
+    attempt = int(prev["attempt"]) if again else int(prev.get("attempt", 0)) + 1
+    if not again:
+        engine.ctx.attempts_started += 1
     names = [m.name for m in c.members]
     seed = f"{engine.ctx.thread}/{unit}/{attempt}"
     fields = engine._fields(unit, state, attempt, visit, workdir)
@@ -488,8 +490,10 @@ def open_run(engine: Any, unit: str, state: Mapping[str, Any]) -> CouncilRun:
     chair_only = (scoped and retry and bool(council_answers(state, unit).get("stages")) and bool(held.get("labels"))
                   and c.chair is not None)
     notes: tuple[str, ...] = ()
-    if retry:
-        notes = tuple(str(b.get("problem") or b.get("evidence") or "") for b in judged.get("blockers") or []
+    if again:  # the judgement is the placeholder now: the refused attempt kept what its chair prompt reads
+        notes = tuple(str(n) for n in (prev.get("reuse") or {}).get("notes") or ())
+    elif retry:
+        notes =tuple(str(b.get("problem") or b.get("evidence") or "") for b in judged.get("blockers") or []
                       if b.get("problem") or b.get("evidence"))
     labels = dict(held["labels"]) if chair_only else cn.label_map(names, seed)
     return CouncilRun(engine=engine, unit=unit, council=c, state=state, attempt=attempt, visit=visit, entered=entered,

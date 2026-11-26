@@ -611,6 +611,14 @@ def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payl
                    ) -> dict[str, Any]:
     if payload.get("decision") == "deadline":
         return apply_deadline(spec, unit, state, str((state.get("request") or {}).get("task_id") or ""), payload)
+    if payload.get("decision") == "usage_limit":  # DUR-B12: the session the limit ended runs again, nothing counted
+        held = (state.get("attempts") or {}).get(unit) or {}
+        at_judge = held.get("usage_limit_stage") == "judge"
+        node = flow.node_names(unit)[1 if at_judge else 0]
+        w = {"route": {unit: {"token": "RETRY", "node": node, "by": "person", "scope": None}}, "pause": {unit: None}}
+        if at_judge:  # the rerun judge must not read the cause again
+            w["attempts"] = {unit: {"escalate": None, "usage_limit_resets_at": None, "usage_limit_stage": None}}
+        return w
     w = _apply(spec, unit, state, payload)
     d = Decision.parse(str(payload.get("decision", "")))
     rulings = ruling_writes(state, payload, decision_target(spec, unit, d))

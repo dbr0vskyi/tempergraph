@@ -474,7 +474,13 @@ class EngineNodes:
         iid = item["id"] if item else None
         first = entered or prev.get("item") != iid
         attempt = int(item["attempt"]) if item else int(prev.get("attempt", 0)) + 1
-        self.ctx.attempts_started += 1
+        again = prev.get("reuse") if (item is None and prev.get("escalate") == "usage_limit"
+                                      and prev.get("usage_limit_stage") == "step" and prev.get("visit") == visit
+                                      and isinstance(prev.get("reuse"), Mapping)) else None
+        if again is not None:  # DUR-B12: the session the limit ended runs again, as that attempt and with its inputs
+            attempt, first = int(prev["attempt"]), bool(again["first"])
+        else:
+            self.ctx.attempts_started += 1
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM-B6, RST-B22, RST-B23)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}
@@ -531,18 +537,34 @@ class EngineNodes:
         prev_judged = ((state.get("judgements") or {}).get(prev_unit) or {}) if prev_unit else {}
         notes = tuple(prev_judged.get("notes") or ()) if first else ()
         lessons_text = lessonsmod.block(lessonsmod.load(spec, unit))
+        prior_check = prev.get("check") if retry else None  # BUD-B16: the previous attempt's failing check, same visit and item
+        # what the attempt's prompt is made from; a refused attempt keeps it, because the judge node overwrites the
+        # judgement and the gate clears one-time feedback before the rerun (DUR-B12)
+        inputs: dict[str, Any] = dict(again) if again is not None else {
+            "first": first, "retry": retry,
+            "blockers": [dict(b) for b in (judged.get("blockers") or [])] if retry else [],
+            "check_evidence": str(((prev.get("check") or {}).get("evidence")) or "") if retry else "",
+            "previous_report": str(prev.get("text") or "") if retry else "",
+            "paths_only": retry and bool(prev.get("cut_off")),
+            "notes": [*notes, *([str(fb.get("text"))] if fb.get("as") == "notes" else [])],
+            "visit_reason": str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "") if first else "",
+            "visit_from": str(((state.get("visits") or {}).get(unit) or {}).get("from") or "") if first else "",
+            "feedback": str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
+            "prior_failing": {"findings": [{k: f.get(k) for k in ("criterion", "place", "message")}
+                                           for f in prior_check.get("findings") or [] if f.get("status") == "fail"],
+                              "evidence": str(prior_check.get("evidence") or "")}
+            if isinstance(prior_check, Mapping) and prior_check.get("result") == "FAIL"
+            and not prior_check.get("environmental") else None}
+        retry = bool(inputs["retry"])
         ctx = AttemptContext(
             template=load_text(spec, st.prompt), fields=fields, attempt=attempt, retry=retry, lessons=lessons_text,
             blockers=tuple(Blocker(criterion=str(b.get("criterion", "")), place=str(b.get("place", "")),
                                    problem=str(b.get("problem", "")), fix=str(b.get("fix", "")))
-                           for b in (judged.get("blockers") or [])) if retry else (),
-            check_evidence=str(((prev.get("check") or {}).get("evidence")) or "") if retry else "",
-            previous_report=str(prev.get("text") or "") if retry else "",
-            paths_only=retry and bool(prev.get("cut_off")),
-            notes=notes + ((str(fb.get("text")),) if fb.get("as") == "notes" else ()),
-            visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "") if first else "",
-            visit_from=str(((state.get("visits") or {}).get(unit) or {}).get("from") or "") if first else "",
-            feedback=str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
+                           for b in inputs["blockers"]),
+            check_evidence=str(inputs["check_evidence"]), previous_report=str(inputs["previous_report"]),
+            paths_only=bool(inputs["paths_only"]), notes=tuple(str(n) for n in inputs["notes"]),
+            visit_reason=str(inputs["visit_reason"]), visit_from=str(inputs["visit_from"]),
+            feedback=str(inputs["feedback"]),
             rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             upstream_targets=tuple(u.gate.back_targets))
         commands = expand_commands(st.commands, workdir)  # `@repository`: what the repository declares (CHK-B11)
@@ -617,11 +639,7 @@ class EngineNodes:
             escalate = "blocked"
         elif parsed.upstream:
             escalate = "upstream"
-        prior = prev.get("check") if retry else None  # BUD-B16: the previous attempt's failing check, same visit and item
-        prior_failing = {"findings": [{k: f.get(k) for k in ("criterion", "place", "message")}
-                                      for f in prior.get("findings") or [] if f.get("status") == "fail"],
-                         "evidence": str(prior.get("evidence") or "")} \
-            if isinstance(prior, Mapping) and prior.get("result") == "FAIL" and not prior.get("environmental") else None
+        prior_failing = inputs["prior_failing"]
         record = {
             "item": iid, "prior_failing": prior_failing, "session_key": key,  # the check reads this session's journal (CHK-B24)
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
@@ -635,7 +653,9 @@ class EngineNodes:
             "slow_host": res.timed_out and res.tool_wall_share >= 0.6, "missing_fields": rendered.missing_fields,
         }
         if limited:
-            record.update(usage_limit_resets_at=res.usage_limit_resets_at, usage_limit_stage="step")
+            record.update(usage_limit_resets_at=res.usage_limit_resets_at, usage_limit_stage="step", reuse=inputs)
+        else:  # the merge deletes a key written as None: nothing of an earlier refusal stays
+            record.update(usage_limit_resets_at=None, usage_limit_stage=None, reuse=None)
         esc_spec = laddermod.escalation_of(u, full_ov)
         if up:
             record.update(escalated=True, escalated_to=alias)

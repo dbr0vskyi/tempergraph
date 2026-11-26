@@ -3,6 +3,7 @@ AC 4, AC 7)."""
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 from typing import Any
@@ -12,12 +13,13 @@ import pytest
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import InfraCause, SessionResult, Usage
 from tempergraph.executors.standins import standin
+from tempergraph.run.runner import resume
 from tempergraph.store.layout import state_root_path
 
 from .fixtures.workflows import two_step
 from .test_council_run import UNIT, Crew, council_wf
 from .test_council_run import go as council_go
-from .test_run import DRAFT, REVIEW, go, judge, records
+from .test_run import DRAFT, NO_SLEEP, REVIEW, go, judge, records, registry
 
 
 def refused(resets_at: float | None, **kw: Any) -> SessionResult:
@@ -236,6 +238,143 @@ def test_dur_ac11_the_row_holds_the_latest_reset_of_two_pending_gates(repo: Path
     r = row(state_root_path(repo), spec, "demo/P-1")
     assert sorted(g["unit"] for g in r["pending_gates"]) == ["perf", "security"]
     assert r["usage_limit_resets_at"] == late
+
+
+def _plain(repo: Path, ex: Any, spec: Any = None, task: str = "T-1", **kw: Any) -> Any:
+    """`resume` with no decision."""
+    return resume(spec or two_step(), task, repo, registry(ex), settings=NO_SLEEP, **kw)
+
+
+def _rows(repo: Path) -> list[dict[str, Any]]:
+    path = state_root_path(repo) / "ledger.jsonl"
+    return [r for r in map(json.loads, path.read_text().splitlines()) if r["kind"] == "intervention"]
+
+
+def test_dur_ac10_three_refused_sessions_spend_nothing_and_keep_the_attempt(repo: Path) -> None:
+    # DUR-AC10, BUD-AC15 (task AC 3, AC 5)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[refused(at, error_kind="model")] * 3 + [DRAFT, REVIEW], judges=[judge(), judge()])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    first = _plain(repo, ex)  # before the reset instant: not refused
+    assert first.exit_code is ExitCode.PAUSED, first.message
+    second = _plain(repo, ex)
+    assert second.exit_code is ExitCode.PAUSED and second.reason != "budget", second.message
+    assert [c.kind for c in ex.calls] == ["step"] * 3
+    vals = values(repo, two_step(), "T-1")
+    assert spent(vals) == (0, 0)  # the retry counter is 0 after three refused sessions of a budget of 2
+    assert _pause_payload(repo)["reason"] == "usage_limit"
+    keys = [r["session_key"] for r in records(repo) if r["kind"] == "agent_run"]
+    assert len(keys) == 3 and len(set(keys)) == 1 and keys[0] == "draft.1.step"
+    rows = _rows(repo)
+    assert len(rows) == 2 and all(r["decision"] == "" and r["touches"] == [{"class": "rescue", "action": "decide"}]
+                                  and r["pause_kind"] == "escalation" for r in rows)
+    assert len([r for r in records(repo) if r["kind"] == "unit_entered"]) == 1  # no second entry record
+    ok = _plain(repo, ex)  # the fourth session is ok and goes on to the judge
+    assert ok.exit_code is ExitCode.FINISHED, ok.message
+    assert [c.kind for c in ex.calls] == ["step"] * 4 + ["judge", "step", "judge"]
+    assert len(_rows(repo)) == 3 and spent(values(repo, two_step(), "T-1")) == (0, 0)
+
+
+def test_dur_ac10_a_judge_the_limit_ended_reruns_without_its_step(repo: Path) -> None:  # DUR-AC10, JDG-AC9 (AC 6)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[refused(at), judge(), judge()])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    out = _plain(repo, ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [c.kind for c in ex.calls] == ["step", "judge", "judge", "step", "judge"]  # the step is not run again
+    keys = [r["session_key"] for r in records(repo) if r["kind"] == "agent_run" and r["session_key"].startswith("draft")]
+    assert keys == ["draft.1.step", "draft.1.judge", "draft.1.judge"]
+    assert [r["verdict"] for r in records(repo) if r["kind"] == "gate"][:2] == ["ESCALATE", "PROCEED"]
+    assert spent(values(repo, two_step(), "T-1")) == (0, 0)
+
+
+def test_dur_ac10_a_refused_reask_reruns_the_judge_session(repo: Path) -> None:  # DUR-AC10, JDG-AC9 (AC 6)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge("no block"), refused(at), judge(), judge()])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    out = _plain(repo, ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reask", "judge", "step", "judge"]
+
+
+def test_dur_ac10_a_refused_retry_reruns_with_the_same_blockers(repo: Path) -> None:  # DUR-AC10 (task AC 3)
+    from .test_run import verdict_block
+
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT, refused(at, error_kind="model"), DRAFT, REVIEW],
+                 judges=[judge(verdict_block("UNMET")), judge(), judge()])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    assert spent(values(repo, two_step(), "T-1")) == (1, 0)  # the first attempt's retry, spent before the refusal
+    out = _plain(repo, ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [c.request.kind for c in ex.calls][:4] == ["step", "judge", "retry", "retry"]
+    refused_call, rerun = ex.calls[2].request, ex.calls[3].request
+    assert refused_call.session_key == rerun.session_key == "draft.2.retry"
+    assert "The previous attempt was not accepted" in rerun.prompt and "c-file" in rerun.prompt
+    assert rerun.prompt == refused_call.prompt
+    assert spent(values(repo, two_step(), "T-1")) == (1, 0)  # the refusal and its rerun spent nothing more
+
+
+def test_dur_ac10_a_refused_attempt_keeps_the_feedback_it_was_given(repo: Path) -> None:  # DUR-AC10 (task AC 3)
+    from .test_run import verdict_block
+
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    ex.steps, ex.judges = [refused(at), DRAFT, REVIEW], [judge(), judge()]
+    out = resume(two_step(), "T-1", repo, registry(ex), decision="retry", feedback="use bullets", settings=NO_SLEEP)
+    assert out.exit_code is ExitCode.PAUSED and _pause_payload(repo)["reason"] == "usage_limit", out.message
+    out = _plain(repo, ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [c.request.kind for c in ex.calls][:4] == ["step", "judge", "retry", "retry"]
+    refused_call, rerun = ex.calls[2].request, ex.calls[3].request
+    assert refused_call.session_key == rerun.session_key and "use bullets" in rerun.prompt
+    assert rerun.prompt == refused_call.prompt
+
+
+def test_rrn_b19_a_plain_resume_with_feedback_is_still_refused(repo: Path) -> None:  # DUR-AC10, RRN-B19
+    ex = standin("claude", steps=[refused(time.time() + 3600)])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    out = _plain(repo, ex, feedback="try again")
+    assert out.exit_code is ExitCode.USAGE and len(ex.calls) == 1 and not _rows(repo)
+
+
+def test_dur_ac10_proceed_is_accepted_at_a_usage_limit_pause(repo: Path) -> None:  # DUR-AC10
+    ex = standin("claude", steps=[refused(time.time() + 3600), REVIEW], judges=[judge()])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    out = resume(two_step(), "T-1", repo, registry(ex), decision="proceed", settings=NO_SLEEP)
+    assert out.exit_code is not ExitCode.USAGE, out.message
+    assert _rows(repo)[0]["decision"] == "proceed"
+
+
+def test_dur_ac10_a_plain_resume_at_another_pause_is_still_refused(repo: Path) -> None:  # DUR-AC10
+    from .test_run import verdict_block
+
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    assert go(repo, ex).exit_code is ExitCode.PAUSED
+    out = _plain(repo, ex)
+    assert out.exit_code is ExitCode.USAGE and "--decision" in out.message
+
+
+def test_dur_ac10_a_refused_council_attempt_reruns_under_its_attempt_number(repo: Path) -> None:  # DUR-AC10 (AC 3)
+    at = time.time() + 3600
+    ex = Crew({("b", 0): [refused(at, error_kind="model")]})
+    assert council_go(repo, council_wf(), ex).exit_code is ExitCode.PAUSED
+    out = _plain(repo, ex, council_wf(), "C-1")
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert sorted(ex.sessions) == sorted([f"{UNIT}.1.member.{n}.0" for n in "abc"] + [f"{UNIT}.1.chair", f"{UNIT}.1.judge"])
+    assert spent(values(repo, council_wf(), "C-1"), UNIT) == (0, 0)
+
+
+def test_bud_ac15_a_council_rerun_runs_only_the_refused_session(repo: Path) -> None:  # BUD-AC15 (task AC 3)
+    at = time.time() + 3600
+    ex = Crew({("b", 0): [refused(at, error_kind="model")]})
+    assert council_go(repo, council_wf(), ex).exit_code is ExitCode.PAUSED
+    before = len(ex.requests)
+    assert _plain(repo, ex, council_wf(), "C-1").exit_code is ExitCode.FINISHED
+    rerun = [r.session_key for r in ex.requests[before:] if r.kind in ("member", "member_reask")]
+    assert rerun == [f"{UNIT}.1.member.b.0"]  # a and c ended ok and are taken from their kept results
+    assert ex.sessions[f"{UNIT}.1.member.a.0"] == 1 and ex.sessions[f"{UNIT}.1.member.c.0"] == 1
 
 
 def test_dur_ac11_an_approval_pause_carries_no_instant(repo: Path) -> None:  # EVT-AC10, DUR-AC11, RDD-AC11
