@@ -51,6 +51,7 @@
       "Write"
     ]
   },
+  "revisit": {},
   "audit": [
     "outcome-unverified-blocker|draft|dr-current|outcome.json",
     "outcome-unverified-blocker|outcome|dr-request|outcome.json",
@@ -61,5 +62,5 @@
     "error": 0,
     "warning": 0
   },
-  "stamped_at": "2026-11-26T22:28:32.639Z"
+  "stamped_at": "2026-11-26T23:05:32.437Z"
 }
