@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The part of the [workflow audit](workflow-audit.spec.md) that reads every piece of model-facing text a workflow sends and asks four questions of it: does everything it names exist, is anything it names out of date, does it agree with what the step declares and produces, and does it fit. [research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) found each costing runs: references to a skill, an agent, a prompt file and two tool names that did not exist (F7.2), newer tracker and wiki tool names the judge catalog did not know (F4.6), a step told to change directory before a command the CLI refuses (F4.2), a tracker tool the prompt relied on but the step was not granted (F4.4), and a whole plan written in one response that stalled (F3.3). Prompt lint ([LIF-B12](lifecycle-and-evals.spec.md)) keeps the text-style rules that need only the package; this spec adds names resolved against the executor, the view catalog and the installed plugins on this host, staleness against the last stamp, consistency with the step's declarations, and from history the rendered size and how a prompt change moved its gate ([ADR `audit-joins-existing-checks-and-files-nothing`](../adr/audit-joins-existing-checks-and-files-nothing.adr.md)). Every rule resolves a name or measures a size; none judges whether the text is good, and staleness is only ever measured against a recorded baseline, never guessed from a name's shape. Workflow authors and the audit depend on it.
+The part of the [workflow audit](workflow-audit.spec.md) that reads every piece of model-facing text a workflow sends and asks four questions of it: does everything it names exist, is anything it names out of date, does it agree with what the step declares and produces, and does it fit. [research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) found each costing runs: references to a skill, an agent, a prompt file and two tool names that did not exist (F7.2), newer tracker and wiki tool names the judge catalog did not know (F4.6), a step told to change directory before a command the CLI refuses (F4.2), a tracker tool the prompt relied on but the step was not granted (F4.4), and a whole plan written in one response that stalled (F3.3). Prompt lint ([LIF-B12](lifecycle-and-evals.spec.md)) keeps the text-style rules that need only the package; this spec adds names resolved against the executor, the view catalog and the installed plugins on this host, staleness against the last stamp, consistency with the step's declarations, and from history the rendered size and how a prompt change moved its gate ([ADR `audit-joins-existing-checks-and-files-nothing`](../adr/audit-joins-existing-checks-and-files-nothing.adr.md)). Every rule resolves a name or measures how the text is built (its size, what a session must read with it, prohibitions against reasons, sentences repeated across files), never what the text means; the measures are advisory, and staleness is only ever measured against a recorded baseline, never guessed from a name's shape. Workflow authors and the audit depend on it.
 
 ## Behaviours
 
@@ -70,9 +70,23 @@ WHEN a prompt names an undeclared tool THE audit SHALL report the finding once u
 
 ### PRA-B11 The prompts matrix
 
-WHEN `audit prompts <workflow>` runs THE audit SHALL print JSON rows instead of findings, one per model-facing file, with `file` (package path or `inline:<unit>`), `used_by` (units and roles), `size` (characters and rendered size with the start examples), `names` (found, unresolved, stale), `findings` (count by severity, prompt lint included) and `changed` (the version of the last digest change with the gate's first-pass yield before and after, `not recorded` without history).
+WHEN `audit prompts <workflow>` runs THE audit SHALL print JSON rows instead of findings, one per model-facing file, every file the package declares in `step_files` ([PKG-B13](workflow-package.spec.md)) included, with `file` (package path or `inline:<unit>`), `role`, `used_by` (units and roles), `size` and `structure` (PRA-B12), `names` (found, unresolved, stale), `findings` (count by severity, prompt lint included) and `changed` (the version of the last digest change with the gate's first-pass yield before and after, `not recorded` without history).
 
 - GIVEN a new workflow WHEN `audit prompts` runs THEN `changed` reads `not recorded`
+
+### PRA-B12 How a text is built
+
+WHEN `audit prompts` measures a model-facing file THE audit SHALL report its characters; for a step template, the characters of the prompt the engine renders for a first attempt with the first start example as the request, and the must-read size: that rendered prompt plus every model-facing file of the package the template names; prohibitions and reasons, each counted over a fixed word list, and prohibitions per reason; the share of its text in paragraphs that open with a condition; and the number of its sentences that PRA-B13 finds repeated.
+
+- GIVEN a template that names one of the package's rule files WHEN measured THEN its must-read size is its rendered size plus that file's characters, and the rule file's row is used by that step
+- GIVEN a sentence of 40 characters or more in three files WHEN measured THEN each of the three rows counts one repeated sentence
+
+### PRA-B13 Structure rules
+
+WHEN the definition layer reads the model-facing files THE audit SHALL fire `prompt-constraint-heavy` (warning/medium, `prompt_structure`) on a file whose prohibitions per reason are at or above `prompt_prohibitions_per_reason` (default 20) and `prompt-repeated-text` (warning/medium, `prompt_structure`) on a sentence found in `prompt_repeat_files` (default 3) or more files, both thresholds marked `default_no_data`, and no rule of them refuses a start.
+
+- GIVEN a template with 22 prohibitions and no reason WHEN audited THEN `prompt-constraint-heavy` fires on its step
+- GIVEN a sentence in two files WHEN audited THEN `prompt-repeated-text` does not fire
 
 ## Acceptance criteria
 
@@ -83,6 +97,11 @@ WHEN `audit prompts <workflow>` runs THE audit SHALL print JSON rows instead of 
 - PRA-AC5 (PRA-B1, PRA-B2, PRA-B5, PRA-B11): Fixtures cover a renamed tool, a skill in two plugins, a shared file reported once and the prompts matrix
 - PRA-AC6 (PRA-B7): A fixture package whose `step_files` holds a pattern that matches no file gets one `step-file-missing`, and a prompt that names a missing path under a declared folder gets `lint-ref-missing` while an existing one gets none
 
+- PRA-AC7 (PRA-B11, PRA-B12): `audit prompts` on a fixture package gives a template's rendered size above its characters, a must-read size that adds the rule file it names, the measures of `structure`, and a row for the declared step file used by that step
+- PRA-AC8 (PRA-B13): A fixture template with 22 prohibitions and no reason raises `prompt-constraint-heavy` and the clean fixture raises neither rule; a sentence in three files raises `prompt-repeated-text` and the same sentence in two does not; both thresholds are parameters marked `default_no_data`
+
 ## Open questions
+
+- Not built yet: `step-file-twice`, a step file that the executor attaches by path and that the step's prompt or check also requires. It waits for the record of the context at a session's start, since an attached file is in no record today. Owner: engine owner.
 
 - Should the catalog's rename table be filled from executor release notes by hand, or from a probe that lists tool names per version? Owner: executor implementer.
