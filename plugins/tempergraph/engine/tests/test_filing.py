@@ -194,7 +194,7 @@ def test_a_filed_or_commented_result_names_the_repository_and_number(tmp_path: P
     assert commented["number"] == host.issues[0]["number"] and isinstance(commented["number"], int)
 
 
-def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3
+def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3, SIL-AC10, ISS-AC15
     host = MemoryCodeHost()
     box = Outbox.at(tmp_path)
     d = decide(friction(), [], "team/notes")
