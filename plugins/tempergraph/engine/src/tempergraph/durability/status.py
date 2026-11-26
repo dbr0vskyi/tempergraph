@@ -167,6 +167,8 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     r: dict[str, Any] = {"thread_id": tid, "workflow": spec.name, "state": str(state), "alive": held,
                          "pending_gates": gates,
                          "log_path": str(run_dir(state_root, spec.name, split_thread(tid)[1]) / "run.jsonl")}
+    if state is ThreadState.UNFINISHED:  # DUR-B15: an unfinished thread continues with the plain command
+        r["resume"] = resume_command(spec.name, tid)
     limited = [g["usage_limit_resets_at"] for g in gates if "usage_limit_resets_at" in g]
     if limited:  # DUR-B13: the latest reset of the pending usage-limit pauses
         known = [x for x in limited if x is not None]

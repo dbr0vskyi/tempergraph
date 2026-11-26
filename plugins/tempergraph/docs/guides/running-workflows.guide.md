@@ -96,6 +96,8 @@ tempergraph facts <thread>                     # read-only facts about a run
 tempergraph stop <thread> [--now]              # drain after the current step, or stop now
 ```
 
+A thread stopped by `stop` (drain or `--now`) shows in `tempergraph status` as `unfinished` with its `resume` command, and `tempergraph resume <workflow> <thread>` with no `--decision` continues it from the interrupted or next attempt. A thread stopped by a person's decision or a spent budget is refused that plain resume: the message names the unit and the reason, and it re-opens only with `--decision retry`, `back:<unit>` or `rewind:<unit>`.
+
 With the `tempergraph-monitor` plugin installed, Claude Code also shows running and paused runs, alerts and cost while you work.
 
 ## Rerun from a step

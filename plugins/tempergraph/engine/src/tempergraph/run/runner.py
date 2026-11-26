@@ -1132,10 +1132,11 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 waiting = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
                 before = _pending_update(spec, waiting, values, human_payload)
         else:  # stopped
+            stop_at = (values.get("run") or {}).get("stopped") or {}
+            unit = str(stop_at.get("unit") or _last_unit(values))
             if d is None or d.word not in ("retry", "back", "rewind"):
-                return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",
-                               tid=tid)
-            unit = str(((values.get("run") or {}).get("stopped") or {}).get("unit") or _last_unit(values))
+                return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>; "
+                               f"it stopped at {unit} ({stop_at.get('reason') or 'stopped'})", tid=tid)
             try:
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:
