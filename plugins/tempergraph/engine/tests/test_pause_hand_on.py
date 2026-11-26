@@ -148,7 +148,7 @@ def test_a_waiting_or_claimed_ticket_holds_its_findings_against_a_second_exit(
     assert len(seen) == 1 and fp not in seen[0]  # the judge is asked once, and not about the first ticket's finding
 
 
-def process_ticket(repo: Path, task: str, judge_reply: Any) -> None:
+def process_ticket(repo: Path, task: str, judge_reply: Any) -> tuple[dict[str, Any], MemoryCodeHost]:
     """Hand the loop child the pause finding of `task` through a ticket made by hand."""
     root = state_root_path(repo)
     fp = finding_of(repo, task, "gap_escalation")["fingerprint"]
@@ -156,7 +156,8 @@ def process_ticket(repo: Path, task: str, judge_reply: Any) -> None:
          "task_id": task, "state_root": str(root), "issue_repository": "acme/notes", "mode": "dev",
          "dry_run": False, "executor": "claude", "fingerprints": [], "pause_fingerprints": [fp],
          "lenses": {"friction": True, "outcome": False}, "review": "off", "autonomy": "pr"}
-    child.process(t, registry(standin("claude", judges=[judge_reply])), MemoryCodeHost())
+    host = MemoryCodeHost()
+    return child.process(t, registry(standin("claude", judges=[judge_reply])), host), host
 
 
 @pytest.mark.parametrize("attributed", [True, False])
@@ -176,15 +177,16 @@ def test_a_recorded_answer_is_used_without_a_second_judgement(
                              "parsed": True, "answers": [{"fingerprint": fp, "confidence": 0.9,
                                                           "attributed": attributed}]}) + "\n")
     seen: list[str] = []
-    process_ticket(repo, task, attribute_all(seen))
+    out, host = process_ticket(repo, task, attribute_all(seen))
     assert not any(fp in p for p in seen)  # no row for it in the judge's prompt, and no session when none is left
     assert len(answers_for(repo, task, fp)) == 1
-    results = [r for r in loop_records(repo, task, "loop_result")] + loop_records(repo, task, "issue_filed")
-    if attributed:
-        assert loop_records(repo, task, "issue_filed") or results
+    if attributed:  # decided on the recorded answer: one issue is filed for the finding
+        assert [r["op"] for r in out["results"] if r["fingerprint"] == fp] == ["filed"]
+        assert len(host.issues) == 1 and fp in host.issues[0]["body"]
     else:
-        assert any(r.get("reason") == "not_attributed" for r in results)
-        assert not loop_records(repo, task, "issue_filed")
+        assert [(r["op"], r.get("reason")) for r in out["results"] if r["fingerprint"] == fp] \
+            == [("recorded", "not_attributed")]
+        assert not host.issues
 
 
 def test_a_finding_with_no_recorded_answer_is_put_to_the_judge(
