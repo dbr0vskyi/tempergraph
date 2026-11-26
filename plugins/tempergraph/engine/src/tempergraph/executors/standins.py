@@ -35,11 +35,19 @@ class Call:
     views: ViewSet | None = None
 
 
-def answer(text: str, *, tools: Iterable[str] = (), cost: float | None = 0.01, session_id: str = "",
-           tokens: tuple[int, int] = (100, 50), **fields: object) -> SessionResult:
-    """A successful scripted session with the given final text."""
+@dataclass(frozen=True, kw_only=True)
+class ReadCall(ToolCall):
+    """A scripted call that opens one path, given relative to the workspace."""
+
+    path: str = ""
+
+
+def answer(text: str, *, tools: Iterable[str] = (), reads: Iterable[str] = (), cost: float | None = 0.01,
+           session_id: str = "", tokens: tuple[int, int] = (100, 50), **fields: object) -> SessionResult:
+    """A successful scripted session with the given final text; each path of `reads` is a `read` call."""
     usage = Usage(input_tokens=tokens[0], output_tokens=tokens[1], reported_cost_usd=cost, turns=1)
-    calls = [ToolCall(name=t, ok=True, call_id=f"t{i}") for i, t in enumerate(tools)]
+    calls: list[ToolCall] = [ToolCall(name=t, ok=True, call_id=f"t{i}") for i, t in enumerate(tools)]
+    calls += [ReadCall(name="Read", ok=True, call_id=f"t{len(calls) + i}", path=p) for i, p in enumerate(reads)]
     return SessionResult(ok=True, text=text, session_id=session_id or None, usage=usage, tool_calls=calls,
                          **fields)  # type: ignore[arg-type]
 
@@ -81,7 +89,10 @@ class ScriptedExecutor:
         sink.push(Event(kind="session_started", data={"session_id": res.session_id, "model": res.model,
                                                       "tools": list(res.tools_at_start)}))
         for c in res.tool_calls:
-            sink.push(Event(kind="tool_started", data={"name": c.name, "call_id": c.call_id, "subagent": c.subagent}))
+            started: dict[str, object] = {"name": c.name, "call_id": c.call_id, "subagent": c.subagent}
+            if isinstance(c, ReadCall):
+                started.update(capability="read", input_summary=c.path)
+            sink.push(Event(kind="tool_started", data=started))
             sink.push(Event(kind="tool_finished", data={"call_id": c.call_id, "ok": c.ok}))
         sink.push(Event(kind="result", data={"ok": res.ok, "usage": res.usage}))
         return replace(res, cli_version=res.cli_version or self.probe_report.version)
