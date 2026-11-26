@@ -49,7 +49,7 @@ def test_a_clean_finished_run_is_removed_and_its_branch_stays(repo: Path) -> Non
     wt = finished_run(repo, flags=ON_FINISH)
     assert not wt.exists()
     assert "tg/demo/T-1" in git(repo, "branch", "--list")  # never deletes a branch
-    assert list_worktrees(repo) == [] and "tg-" not in git(repo, "worktree", "list")
+    assert list_worktrees(repo) == [] and str(wt) not in git(repo, "worktree", "list")
     assert workspace_actions(repo) == ["prepared", "released", "removed"]  # released, then removed
 
 
