@@ -16,12 +16,16 @@ from tempergraph.api import Gate, Judge, Routing, Step, Value, Workflow
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import InfraCause, SessionResult, Usage
 from tempergraph.executors.standins import answer, standin
+from tempergraph.improve import child
+from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.improve.record import findings_path, read_findings
+from tempergraph.run.runner import resume
 
 from . import test_ask_wait as ask
-from .fixtures.workflows import crit, draft_check, named
+from .fixtures.workflows import crit, draft_check, named, two_step
 from .test_finalizer_outcomes import CANARY, happy, pushes_nothing, raises, skips, spec_with
-from .test_run import DRAFT, REVIEW, go, judge, records, verdict_block
+from .test_run import DRAFT, NO_SLEEP, REVIEW, go, judge, records, registry, verdict_block
+from .test_stop_at_pause import asks, loop_on
 from .test_usage_limit import refused
 
 SHIP = answer("Shipped", session_id="s-ship")
@@ -228,3 +232,59 @@ def test_frc_ac5_an_answered_ask_does_not_fire_the_friction_lens_in_dev_mode(rep
     assert done.exit_code is ExitCode.FINISHED, done.message
     rec = [r for r in records(repo, "A-1") if r["kind"] == "finding_recorded"][-1]
     assert rec["lenses"]["mode"] == "dev" and rec["lenses"]["friction"] is False
+
+
+# ---- FRC-B6: an agent's decision of the caller that started the run is designed
+
+
+def rescued_by(repo: Path, monkeypatch: pytest.MonkeyPatch, task: str, starter: dict[str, Any],
+               decider: dict[str, Any]) -> list[str]:
+    """A thread started by `starter`, paused on a gap, and answered `proceed` by `decider`; returns the prompts the
+    friction judge was asked at the final exit."""
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+    loop_on(monkeypatch)
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge(verdict_block("UNVERIFIABLE"))])
+    assert go(repo, ex, task=task, caller=starter).exit_code is ExitCode.PAUSED
+    done = resume(two_step(), task, repo, registry(ex), decision="proceed",
+                  settings=dataclasses.replace(NO_SLEEP, caller=decider))
+    assert done.exit_code is ExitCode.FINISHED, done.message
+    seen, reply = asks()
+    child.drain(registry=registry(standin("claude", judges=[reply])), host=lambda: MemoryCodeHost())
+    return seen
+
+
+def decided_finding(repo: Path, task: str) -> dict[str, Any]:
+    (f,) = [x for x in found(repo, task) if x["cause"].startswith("agent_decided:")]
+    return f
+
+
+AGENT = {"kind": "agent", "host": "claude-code", "host_session": "sess-1"}
+
+
+def test_frc_ac6_a_decision_by_the_starting_caller_is_designed_and_never_judged(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # FRC-AC6, AC 8
+    seen = rescued_by(repo, monkeypatch, "D-1", AGENT, dict(AGENT))
+    f = decided_finding(repo, "D-1")
+    assert f["class"] == "designed"
+    (prompt,) = seen
+    assert f["fingerprint"] not in prompt and "agent_decided" not in prompt
+    assert "cause `gap_escalation`" in prompt  # the pause's own fault is still judged
+
+
+def test_frc_ac6_a_decision_by_another_agent_is_a_fault(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # FRC-AC6, AC 8
+    seen = rescued_by(repo, monkeypatch, "D-2", AGENT, {**AGENT, "host_session": "sess-2"})
+    f = decided_finding(repo, "D-2")
+    assert f["class"] == "fault"
+    (prompt,) = seen
+    assert f["fingerprint"] in prompt
+
+
+def test_frc_ac6_a_decision_by_a_caller_with_no_host_session_is_a_fault(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # FRC-AC6, AC 8
+    bare = {"kind": "agent", "host": "claude-code"}
+    seen = rescued_by(repo, monkeypatch, "D-3", bare, dict(bare))
+    f = decided_finding(repo, "D-3")
+    assert f["class"] == "fault"
+    (prompt,) = seen
+    assert f["fingerprint"] in prompt

@@ -241,7 +241,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     since = exits[-2] if len(exits) >= 2 else ""  # interventions after the previous segment ended
     ivs = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == thread
            and str(r.get("ts") or "") >= since and (not seg_start or str(r.get("ts") or "") <= seg_start)]
-    found = causemod.derive(seg, ivs, row.get("grants") or ())
+    starter = next((r.get("caller") or {} for r in records if r.get("kind") == "run_started"), {})
+    found = causemod.derive(seg, ivs, row.get("grants") or (), starter=starter)
     decls = unit_decls(spec)
     try:  # SRV-B11, SRV-B12: digests first, their causes join the findings; never changes the exit (OVR-B4)
         digests = digestmod.write_segment(root, spec.name, task_id, seg, decls)
@@ -268,7 +269,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
         owner = _child_owner(spec, f.get("child"), kids)  # SWF-B9: a child's unit is the child workflow's
         lines.append({"kind": "finding", "thread": thread, **keys, **owner, "segment_exit": row.get("exit_code"),
                       "segment_started": seg_start,
-                      "unit": f["unit"], "cause": f["cause"], "class": c.klass, "side": side, "count": f["count"],
+                      "unit": f["unit"], "cause": f["cause"], "class": f.get("class") or c.klass, "side": side, "count": f["count"],
                       "remedy": c.remedy,
                       "fingerprint": fingerprint(side, str(owner.get("workflow") or spec.name), f["cause"], f["unit"]),
                       "at": at, "request_digest": digest,
