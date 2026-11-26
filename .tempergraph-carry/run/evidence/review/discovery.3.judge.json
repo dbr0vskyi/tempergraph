@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.3.judge",
+  "view_chars": 8667,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        6,
+        7,
+        11,
+        15
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only 6 of 11 changed documents, relied on search-printed lines for some behaviours and still wrote that it read the new and changed documents, so the brief should require opening every changed file before a criterion is graded MET."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.3.retry",
+  "view_chars": 34811,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        3,
+        143
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The retry spent about 247k tokens reading before its first edit and stayed over 200k context for 182 turns, re-deriving what the earlier attempt already knew."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        105,
+        106,
+        107,
+        108,
+        109,
+        110
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The same long-line grep was run on one file with six different length thresholds; one query would have been enough."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        143,
+        167,
+        173,
+        175,
+        178,
+        190,
+        212,
+        233
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Many single-sentence edits were made to the same files in long runs instead of batching or rewriting the block."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        236,
+        240,
+        256,
+        257,
+        266,
+        267,
+        277,
+        278,
+        279
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "After the blockers were fixed the session kept polishing wording, re-reading the hand-off and sweeping for flagged phrases that gate would catch anyway."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        2,
+        281
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The retry context names only ts-dis-general, yet the session worked on two flagged checks, and the intent has an unfilled conversation placeholder."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}
