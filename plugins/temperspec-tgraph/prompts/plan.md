@@ -23,7 +23,7 @@ The task:
 5. Split the work into phases, each with one goal, and give each phase its weight.
 6. Measure the complexity against the limits in the plan rule and state it in the front matter.
 7. If the plan is `simple`, write the task rows of every phase, test rows first, each naming the requirements it serves, the verification commands, and the proof table: one row for each acceptance criterion of the task, with the test file that will prove it and the command that runs that test. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. If it is `complex`, write phases, goals and weights only, plus the verification commands; the expand step writes the rows. On a trip back, a `complex` plan that already has its rows keeps them and their marks: edit it in place.
-8. List every document the change will make false under Docs to update. In a `simple` plan each of them gets a `docs` row.
+8. List every document the change will make false under Docs to update. In a `simple` plan each of them gets a `docs` row. A file the repository lists as an output in `tempergraph.regenerations.json` gets no task row and no `docs` row, and a document made false only by such a file is not listed under Docs to update (the regeneration writes it after the code step).
 9. Write the plan to `docs/plans/{task_id}.plan.md` (when the `plans/` folder beside the repository's specs, as the project note names it, differs from `docs/plans/`, write it there instead) with `status: planned`. The rows of a new plan start with their Completed cells empty. When the run has come back to this step and a plan already exists, edit that plan in place instead of rewriting it: keep the Completed mark of each row you leave exactly as it was, and empty the Completed cell of each row you change or add (a row whose kind, requirement, file, proof or change you edit, and every new row). Write it in parts: first all sections with the phases and no rows, then one edit per phase that adds its table, each write under about 12 KB.
 
 ## Limits
@@ -31,6 +31,7 @@ The task:
 - This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write the plan and no other file. Do not edit a spec, a decision record or code.
 - A plan adds no behaviour that no spec states.
+- The outcome revision, the digests of a stamp and a diagram are written by the regeneration and never edited by hand: no row edits them.
 - Do not run git. The engine commits your file when you finish.
 - Read inside this working directory only.
 - Report what you did. Do not say the plan is correct: the gate decides.
