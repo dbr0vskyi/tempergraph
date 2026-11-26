@@ -376,6 +376,7 @@ class EngineNodes:
                                                          if not ex.capabilities().knows_tool(c.name)}),
                                    infra_cause=str(res.infra_cause) if res.infra_cause else None,
                                    error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
+                                   usage_limit=res.usage_limit, usage_limit_resets_at=res.usage_limit_resets_at,
                                    duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
                                    slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
                                    **({"lessons_digest": lessons_digest} if lessons_digest else {}),
@@ -387,8 +388,8 @@ class EngineNodes:
             finally:
                 if hold is not None:
                     self.ledger.release(key, snapshot=hold["snapshot"], real_usd=0.0)  # a no-op once released
-            if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
-                break
+            if res.infra_cause is None or n + 1 >= self.ctx.infra_tries or (res.usage_limit and not res.ok):
+                break  # a usage-limit refusal is never rerun after a backoff (BUD-B17)
             self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
         return results[-1], results
 
@@ -605,7 +606,10 @@ class EngineNodes:
             hybrid.update(after_arts)
         escalate: str | None = None
         reach = tool_access.refused(unit, st, caps, res.denied, res.tools_at_start)
-        if res.error_kind in ("auth", "refused"):
+        limited = bool(res.usage_limit and not res.ok)
+        if limited:
+            escalate = "usage_limit"  # BUD-B17: spends no retry and no infra try, whatever else the result says
+        elif res.error_kind in ("auth", "refused"):
             escalate = res.error_kind
         elif reach and (not res.ok or parsed.blocked):
             escalate = "tool_access"  # no retry spent; the pause offers the grants (BUD-B1, BUD-B11, RST-B28, RST-B29, RST-B30)
@@ -622,7 +626,7 @@ class EngineNodes:
             "item": iid, "prior_failing": prior_failing, "session_key": key,  # the check reads this session's journal (CHK-B24)
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
-            "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
+            "infra_spent": res.infra_cause is not None and not limited, "timed_out": res.timed_out, "stalled": res.stalled,
             "error_kind": res.error_kind, "denied": list(res.denied), "tools": [c.name for c in res.tool_calls],
             "tool_access": reach,
             "session_id": res.session_id, "executor": ex.name, "alias": alias, "model": res.model,
@@ -630,6 +634,8 @@ class EngineNodes:
             "duration_s": res.duration_s, "tool_wall_share": res.tool_wall_share,
             "slow_host": res.timed_out and res.tool_wall_share >= 0.6, "missing_fields": rendered.missing_fields,
         }
+        if limited:
+            record.update(usage_limit_resets_at=res.usage_limit_resets_at, usage_limit_stage="step")
         esc_spec = laddermod.escalation_of(u, full_ov)
         if up:
             record.update(escalated=True, escalated_to=alias)
