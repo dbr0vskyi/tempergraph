@@ -17,6 +17,7 @@ from tempergraph.run.runner import resume
 from tempergraph.store.layout import home_path, state_root_path
 
 from .fixtures.workflows import two_step
+from .test_loop_child import earlier_judged, friction_ticket, judge_says, loop_rows
 from .test_pause_findings_at_final_exit import UNVERIFIABLE, finding_of, finish, held, paused_on_gap
 from .test_run import DRAFT, NO_SLEEP, REVIEW, judge, registry
 from .test_stop_at_pause import asks, loop_on, paused_on_retries, stop, tickets
@@ -187,6 +188,34 @@ def test_a_recorded_answer_is_used_without_a_second_judgement(
         assert [(r["op"], r.get("reason")) for r in out["results"] if r["fingerprint"] == fp] \
             == [("recorded", "not_attributed")]
         assert not host.issues
+
+
+def test_a_recorded_answer_counts_once_towards_the_majority(tmp_path: Path) -> None:  # SIL-AC59, AC 3
+    """The thread's one recorded answer (attributed, 0.5, made now, inside the window) is the answer `decide` counts:
+    the count is met by two other runs, the confidence is below the floor, one answer is not a majority."""
+    root = tmp_path / ".tempergraph"
+    host = MemoryCodeHost()
+    for n in (1, 2):
+        friction_ticket(root, n)
+    t = friction_ticket(root, 3)
+    earlier_judged(root, 3, True)
+    out = child.process(t, registry(standin("claude", judges=[judge_says(0.9)])), host)
+    assert [(r["op"], r["reason"]) for r in out["results"]] == [("recorded", "few_answers")]
+    assert not host.issues
+    assert len([r for r in loop_rows(root, "F-3") if r["kind"] == "loop_judged"]) == 1  # the judge was not asked
+
+
+def test_a_recorded_answer_of_another_run_still_counts(tmp_path: Path) -> None:  # SIL-AC59, AC 3
+    from tempergraph.improve import filing
+
+    root = tmp_path / ".tempergraph"
+    for n in (1, 2):
+        friction_ticket(root, n)
+    earlier_judged(root, 1, True)
+    earlier_judged(root, 3, True)
+    own = child.loop_log(root, "demo", "F-3")
+    assert sum(map(len, filing.recorded_answers(root, "demo").values())) == 2
+    assert sum(map(len, filing.recorded_answers(root, "demo", exclude=own).values())) == 1
 
 
 def test_a_finding_with_no_recorded_answer_is_put_to_the_judge(

@@ -99,6 +99,33 @@ def test_a_queued_create_is_sent_when_the_mute_is_old_or_unread(tmp_path: Path) 
     assert [r["op"] for r in filing.file([], unread, box, now=NOW)] == ["redelivered"] and len(unread.issues) == 2
 
 
+def other_finding(**kw: Any) -> filing.Decision:
+    """A second finding of the same cause (same workflow and cause code) with a fingerprint of its own."""
+    return decide(friction(fingerprint="ff00ff00ff00ff00", unit="verify", **kw), [], REPO)
+
+
+def test_an_issue_a_redelivery_opens_is_found_by_the_findings_of_its_cause(tmp_path: Path) -> None:  # ISS-AC15, AC 1
+    d, later = decision(), other_finding()
+    assert filing.cause_key(d.candidate.finding) == filing.cause_key(later.candidate.finding)
+    host = MemoryCodeHost()
+    box = Outbox.at(tmp_path)
+    box.add(create_entry(d))
+    res = filing.file([later], host, box, now=NOW)
+    assert [r["op"] for r in res] == ["redelivered", "commented"]  # one issue, then a comment on it
+    assert len(host.issues) == 1 and len(host.comments) == 1 and res[1]["number"] == host.issues[0]["number"]
+
+
+def test_a_second_waiting_create_of_a_cause_comments_on_the_issue_the_first_opened(tmp_path: Path) -> None:  # ISS-AC15, AC 1
+    d, second = decision(), other_finding()
+    host = MemoryCodeHost()
+    box = Outbox.at(tmp_path)
+    box.add(create_entry(d))
+    box.add(create_entry(second))
+    res = filing.file([], host, box, now=NOW)
+    assert [r["op"] for r in res] == ["redelivered", "commented"]
+    assert len(host.issues) == 1 and len(host.comments) == 1
+
+
 def test_an_entry_past_the_age_bound_is_dropped_of_any_kind(tmp_path: Path) -> None:  # ISS-AC17, AC 1
     d = decision()
     fp = str(d.candidate.finding["fingerprint"])

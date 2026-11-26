@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -105,13 +106,18 @@ def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime |
     return counts, met
 
 
-def recorded_answers(root: Path, workflow: str, now: datetime | None = None) -> dict[str, list[bool]]:
+def recorded_answers(root: Path, workflow: str, now: datetime | None = None,
+                     exclude: Path | None = None) -> dict[str, list[bool]]:
     """SIL-B18, SIL-B36: the `attributed` flags of the `loop_judged` answers of the workflow's runs in the state
-    root, per fingerprint, inside `pattern_rule.window_days` by the record's time, oldest first."""
+    root, per fingerprint, inside `pattern_rule.window_days` by the record's time, oldest first. `exclude` is a loop
+    log left out: the loop child leaves out its own thread's, whose one answer for a fingerprint `decide` adds itself
+    (SIL-B49, FFD-B1)."""
     now = now or datetime.now(UTC)
     since = now - timedelta(days=int(params.value("pattern_rule.window_days")))
     rows: list[tuple[datetime, str, bool]] = []
     for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+        if exclude is not None and path == exclude:
+            continue
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
@@ -533,9 +539,32 @@ def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[
                 results.append({"op": "outbox_dropped", "reason": "muted", "fingerprint": p.get("fingerprint")})
                 return
     try:
-        results.append({"op": "redelivered", "url": _deliver(host, p), "fingerprint": p.get("fingerprint")})
+        url = _deliver(host, p)
     except CodeHostError:
         outbox.add(p)
+        return
+    _refresh(listed, repo, p, url)
+    results.append({"op": "redelivered", "url": url, "fingerprint": p.get("fingerprint")})
+
+
+def _refresh(listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]], repo: str, p: Mapping[str, Any],
+             url: str) -> None:
+    """ISS-B9, SIL-B2, ISS-B7: the lists read before a redelivery must hold what it changed, so a finding or a second
+    waiting create of the same cause in the same call finds the issue it opened. A new issue joins the cached open
+    list with its body; a reopen drops both lists, to be read again when needed."""
+    if p.get("op") == "reopen":
+        listed.pop((repo, "open"), None)
+        listed.pop((repo, "closed"), None)
+        return
+    if p.get("op") != "create" or (repo, "open") not in listed:
+        return
+    opened, failed = listed[(repo, "open")]
+    m = re.search(r"/issues/(\d+)/?$", str(url))
+    if failed or opened is None or m is None:
+        listed.pop((repo, "open"), None)  # read again by the grouping
+        return
+    listed[(repo, "open")] = ([*opened, {"number": int(m.group(1)), "url": url, "body": str(p.get("body") or ""),
+                                         "state_reason": ""}], False)
 
 
 def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False,

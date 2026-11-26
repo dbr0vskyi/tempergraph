@@ -441,7 +441,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     if capped:
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "judges", "reason": "daily_cap"})
     try:  # FFD-B1: the answers recorded before this exit's own; a failed read gives none
-        earlier = filing.recorded_answers(root, wf)
+        earlier = filing.recorded_answers(root, wf, exclude=log)  # this thread's one answer is counted once, by decide
     except Exception:  # noqa: BLE001 - best effort (SIL-B1)
         earlier = {}
     try:  # SIL-B37: what answered each pause; the loop is best effort (SIL-B1), so a failed read leaves it out
