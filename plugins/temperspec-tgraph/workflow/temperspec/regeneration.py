@@ -190,9 +190,47 @@ def _finding(row: dict[str, Any]) -> CheckFinding:
                         message=f"exit code {row.get('exit_code')}\n{tail}".rstrip())
 
 
+def _report_of(text: str) -> dict[str, Any] | None:
+    """The JSON object a command's output ends in, or None."""
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("{"):
+            try:
+                doc = json.loads("\n".join(lines[i:]))
+            except ValueError:
+                continue
+            return doc if isinstance(doc, dict) else None
+    return None
+
+
+def _reported(doc: dict[str, Any]) -> list[CheckFinding]:
+    """RGF-B3: one finding for each finding of a failed rung of `author verify`, one for each failed check of
+    `upgrade-check` and one for each of its error findings."""
+    out: list[CheckFinding] = []
+    for rung in doc.get("rungs") or []:
+        if not isinstance(rung, dict) or rung.get("state") not in ("failed", "refused"):
+            continue
+        for f in rung.get("findings") or []:
+            if isinstance(f, dict):
+                out.append(CheckFinding(status="fail", criterion=str(rung.get("name") or rung.get("rung")),
+                                        place=str(f.get("unit") or ""), fix=str(f.get("remedy") or ""),
+                                        message=f"{f.get('code')}: {f.get('message')}"))
+    for check in doc.get("verification") or []:
+        if isinstance(check, dict) and check.get("state") == "failed":
+            out.append(CheckFinding(status="fail", criterion=str(check.get("check")),
+                                    message=str(check.get("evidence") or "")))
+    for f in doc.get("findings") or []:
+        if "rungs" not in doc and isinstance(f, dict) and f.get("severity") == "error":
+            out.append(CheckFinding(status="fail", criterion=str(f.get("code")), place=str(f.get("unit") or ""),
+                                    message=str(f.get("message") or "")))
+    return out
+
+
 def findings_of(row: dict[str, Any]) -> list[CheckFinding]:
-    """The findings of one failed command, in the order it reported them."""
-    return [_finding(row)]
+    """The findings of one failed command, in the order it reported them (RGF-B3); one for the command when its
+    output holds no report of the engine's two commands or the report lists no failure (RGF-B4)."""
+    doc = _report_of(str(row.get("tail") or ""))
+    return (_reported(doc) if doc else []) or [_finding(row)]
 
 
 def regeneration_check(ctx: Any) -> CheckResult:

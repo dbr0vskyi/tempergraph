@@ -281,10 +281,13 @@ def workflow() -> Any:
             # RGN-B1 to RGN-B12: after the code step on both arms, before the join, a script unit with no session runs the
             # regenerations the repository declares in `tempergraph.regenerations.json` for the files whose inputs the run
             # changed, and commits what they wrote; its gate's check turns what the call recorded into a verdict.
+            # RGF-B1 to RGF-B8: a failure goes back to the code step alone, on both arms, once; a second failure
+            # pauses, and a failure of the environment pauses at once.
             "regeneration": Script(
                 call=regenerate, name="regeneration", side_effects="workspace",
                 summary="Regenerate declared files that changed", produces={"regeneration_report": "file"},
-                gate=Gate(check=regeneration_check)),
+                gate=Gate(check=regeneration_check, on_fail="back", back_targets=["code"], loop_budget=1,
+                          on_budget_spent="ask")),
             # IRV-B1, IRV-B2: both arms meet here; a run in the quick lane goes on to the outcome gate, every other run
             # to the review.
             "code_join": Route(select=route_code_join, targets=["independent_review", "finalizer"]),

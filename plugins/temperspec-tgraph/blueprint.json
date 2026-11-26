@@ -335,7 +335,11 @@
       "gate": {
         "check": true,
         "judge": false
-      }
+      },
+      "on_fail": "back",
+      "back_targets": [
+        "code"
+      ]
     },
     {
       "name": "code_join",
