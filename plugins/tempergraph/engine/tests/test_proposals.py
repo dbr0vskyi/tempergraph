@@ -190,7 +190,8 @@ def proposer_ex(edit: dict[str, str], *, verdict: str = "MET", outside: bool = F
         return answer(f"Changed the template.\nRULE: {RULE}")
 
     block = {"criteria": [{"n": 1, "status": verdict, "evidence": "diff:1"}, {"n": 2, "status": verdict,
-                                                                              "evidence": "rule"}],
+                                                                              "evidence": "rule"},
+                          {"n": 3, "status": verdict, "evidence": "diff:1"}],  # PTG-B1: replaces before adding
              "gap": False, "confidence": 0.75}
     return standin("claude", steps=[step], judges=[answer("```json\n" + json.dumps(block) + "\n```", tools=("Read",))])
 
@@ -239,7 +240,8 @@ def spying_ex(seen: list[str]) -> Any:
         return answer(f"Changed the template.\nRULE: {RULE}")
 
     return standin("claude", steps=[step], judges=[answer("```json\n" + json.dumps(
-        {"criteria": [{"n": 1, "status": "MET", "evidence": "diff:1"}, {"n": 2, "status": "MET", "evidence": "rule"}],
+        {"criteria": [{"n": 1, "status": "MET", "evidence": "diff:1"}, {"n": 2, "status": "MET", "evidence": "rule"},
+                      {"n": 3, "status": "MET", "evidence": "diff:1"}],
          "gap": False, "confidence": 0.75}) + "\n```", tools=("Read",))])
 
 

@@ -62,6 +62,7 @@ The component specs, each owning what follows its name:
 - [central-run-stats.spec.md](central-run-stats.spec.md) CST: machine index, sinks, cross-machine stats.
 - [telemetry-export.spec.md](telemetry-export.spec.md) TEL: OTLP export with the GenAI conventions, deferred ([ADR `own-observability-first-export-deferred`](../adr/own-observability-first-export-deferred.adr.md)).
 - [improvement-proposals.spec.md](improvement-proposals.spec.md) PRP: clusters, proposals, change classes, case sets, trials.
+- [proposal-text-growth.spec.md](proposal-text-growth.spec.md) PTG: the proposer may replace text, its judge weighs growth, measures per changed file, character budgets.
 - [feedback-and-judge-reliability.spec.md](feedback-and-judge-reliability.spec.md) FBK: labels, reliability grades, labelling queue, binding-shift watch.
 - [workflow-lessons.spec.md](workflow-lessons.spec.md) LSN: per-step lessons files and how they render and change.
 - [improvement-data.spec.md](improvement-data.spec.md) IMD: the loop's requirements on the shared run store.

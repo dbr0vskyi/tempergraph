@@ -975,6 +975,7 @@ class PackageManifest:
     surfaces: Mapping[str, Any] = field(default_factory=dict)
     audit: Mapping[str, Any] = field(default_factory=dict)  # `{ignore: [...]}`, AUD-B14
     step_files: tuple[str, ...] = ()  # package-relative globs of the files steps read at run time, PKG-B13
+    text_budgets: Mapping[str, int] = field(default_factory=dict)  # glob -> most characters, PKG-B26
 
 
 @dataclass(frozen=True, kw_only=True)
