@@ -94,6 +94,19 @@ def test_a_stop_at_a_gate_after_retries_spent_tickets_the_friction_lens(
     assert "cause `retries_spent`" in prompt and "unit `draft`" in prompt
 
 
+def test_a_stop_keeps_the_earlier_pause_findings_in_the_tickets_fingerprints(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC19, SIL-AC20, AC 7
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, "P-4")
+    assert stop(repo, "P-4", ex).exit_code is ExitCode.STOPPED
+    (t,) = tickets()
+    doc = json.loads(t.read_text())
+    paused = {f["fingerprint"] for f in read_findings(state_root_path(repo), "demo", "P-4")
+              if f["cause"] == "retries_spent" and f.get("segment_exit") == 3}
+    assert paused and paused <= set(doc["fingerprints"])  # the review plan reads its signals from here
+    assert not doc.get("pause_fingerprints")
+
+
 def test_stable_mode_stop_plans_a_partial_review_of_the_paused_unit(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC20, AC 2
     loop_on(monkeypatch)

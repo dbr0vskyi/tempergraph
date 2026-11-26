@@ -30,7 +30,7 @@ from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet, Workf
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.durability import lock as durability_lock
 from tempergraph.executors.registry import Registry, default_registry
-from tempergraph.improve import autonomy, escape, filing, params, pr_later
+from tempergraph.improve import autonomy, escape, filing, params, pause_facts, pr_later
 from tempergraph.improve.codehost import CodeHost, GhCodeHost
 from tempergraph.improve.record import read_findings
 from tempergraph.run.log import Ledger, LiveSink, estimate
@@ -133,6 +133,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "workflow_version": spec.version, "task_id": task_id, "state_root": str(root),
               "issue_repository": spec.issue_repository, "mode": spec.improvement_mode, "dry_run": dry_run,
               "executor": judge_executor, "fingerprints": list(summary.get("fingerprints") or []),
+              "pause_fingerprints": list(summary.get("pause_fingerprints") or []),  # SIL-B28: judged, never reviewed
               "lenses": {"friction": friction, "outcome": outcome},
               "outcome_calibrated": outcome and has_score(spec, "outcome", root), "at": now_iso(),
               "review": depth, "review_reason": reason, "run_cost_usd": round(float(run_cost_usd or 0.0), 6),
@@ -219,8 +220,24 @@ def _records(root: Path, workflow: str, task_id: str) -> list[dict[str, Any]]:
     return out
 
 
-def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]]) -> str:
-    """Metadata only: findings, and the last segment's record kinds per unit with criterion ids."""
+def _answered(findings: Sequence[Mapping[str, Any]], answers: Mapping[str, Mapping[str, str]]) -> str:
+    """SIL-B37: one line for each finding of a paused segment: what answered the pause, in the words of `pause_facts`."""
+    rows = []
+    for f in findings:
+        a = answers.get(str(f.get("fingerprint")))
+        if a:
+            w = a["workspace"]
+            rows.append(f"- `{f.get('fingerprint')}`: reason `{a['reason']}`; decision `{a['decision']}`; "
+                        f"caller `{a['caller']}`; feedback {a['feedback']}; "
+                        f"workspace {w if w in ('changed', 'unchanged') else 'not recorded'}; "
+                        f"next gate verdict `{a['next_gate']}`")
+    return "\n## What answered each pause\n" + "\n".join(rows) + "\n" if rows else ""
+
+
+def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str, Any]],
+           answers: Mapping[str, Mapping[str, str]] | None = None) -> str:
+    """Metadata only: findings, what answered each paused segment's pause, and the last segment's record kinds per
+    unit with criterion ids."""
     start = max((i for i, r in enumerate(records) if r.get("kind") == "run_started"), default=0)
     counts: dict[str, dict[str, int]] = {}
     blockers: dict[str, set[str]] = {}
@@ -236,7 +253,8 @@ def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str,
             for f in findings]
     seg = [f"- `{u}`: " + ", ".join(f"{k} {n}" for k, n in sorted(c.items()))
            + (f"; blocked on {', '.join(sorted(blockers[u]))}" if u in blockers else "") for u, c in counts.items()]
-    return BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n\n## The segment's records\n" + "\n".join(seg) + "\n"
+    return (BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {})
+            + "\n## The segment's records\n" + "\n".join(seg) + "\n")
 
 
 def parse(text: str) -> dict[str, dict[str, Any]]:
@@ -296,11 +314,12 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     root = Path(str(t["state_root"]))
     wf, task, thread = str(t["workflow"]), str(t["task_id"]), str(t["thread"])
     log = loop_log(root, wf, task)
-    mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))
+    judged_fps = {*(t.get("fingerprints") or ()), *(t.get("pause_fingerprints") or ())}  # SIL-B28
+    mine = _latest(read_findings(root, wf, task), judged_fps)
     faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
-                       "fingerprints": sorted(t.get("fingerprints") or ())})
+                       "fingerprints": sorted(judged_fps)})
     escaped: list[tuple[dict[str, Any], str]] = []  # the escape findings this read recorded, with their run's task
     if t.get("autonomy") != "record" and not t.get("dry_run"):  # PRP-B26, PRP-B27, PRP-B28: best effort (SIL-B1)
         try:
@@ -353,7 +372,11 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     if (t.get("lenses") or {}).get("friction") and faults and not capped:
         ex = registry.get(str(t.get("executor") or "claude"))
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
-        req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task)), workdir=root,
+        try:  # SIL-B37: what answered each pause; the loop is best effort (SIL-B1), so a failed read leaves it out
+            answered = pause_facts.of(root, wf, task, faults)
+        except Exception:  # noqa: BLE001
+            answered = {}
+        req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task), answered), workdir=root,
                              alias=alias_of(t), session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
                              session_dir=sdir, options=options_of(t))
         res = ex.run_judge(req, ViewSet(), LiveSink(sdir))
@@ -385,7 +408,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
             append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error_class": "error",
                                "error": type(exc).__name__})  # SRV-B29: names no session, counts as one review
-        mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))  # SRV-B7: now corroborated
+        mine = _latest(read_findings(root, wf, task), judged_fps)  # SRV-B7: now corroborated
     cands: list[filing.Candidate] = []
     context: dict[str, Any] = {"records": _records(root, wf, task), "mode": t.get("mode"),  # ISS-B8 to ISS-B10
                                "judge_executor": t.get("executor")}
