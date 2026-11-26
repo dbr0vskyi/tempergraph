@@ -1,0 +1,443 @@
+{"t": 4.924, "n": 1, "ev": "session_started", "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 6.434, "n": 2, "ev": "text", "last_line": "I'll start with the plan and the two rule files."}
+{"t": 6.883, "n": 3, "ev": "tool_started", "name": "Read", "call_id": "toolu_01UUuRnJf8xX9U7Bqmk3GA3N", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i21b.plan.md"}
+{"t": 7.13, "n": 4, "ev": "tool_finished", "call_id": "toolu_01UUuRnJf8xX9U7Bqmk3GA3N", "ok": true, "duration_s": 0.246}
+{"t": 7.266, "n": 5, "ev": "tool_started", "name": "Read", "call_id": "toolu_015TgBceyeNGx2G9oU7uAuJY", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/task-notes.rule.md"}
+{"t": 7.366, "n": 6, "ev": "tool_finished", "call_id": "toolu_015TgBceyeNGx2G9oU7uAuJY", "ok": true, "duration_s": 0.1}
+{"t": 7.701, "n": 7, "ev": "tool_started", "name": "Read", "call_id": "toolu_01WfnKJFSedkqRit3cgVntPk", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/plan.rule.md"}
+{"t": 7.788, "n": 8, "ev": "tool_finished", "call_id": "toolu_01WfnKJFSedkqRit3cgVntPk", "ok": true, "duration_s": 0.088}
+{"t": 8.064, "n": 9, "ev": "tool_started", "name": "Read", "call_id": "toolu_01VVPiEgQdwXQGZCvCVPPrGi", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/tasks/i21b.triage.md"}
+{"t": 8.181, "n": 10, "ev": "tool_finished", "call_id": "toolu_01VVPiEgQdwXQGZCvCVPPrGi", "ok": true, "duration_s": 0.117}
+{"n": 12, "ev": "resources", "t": 8530.966, "cpu_s": 2.0, "processes": 1, "rss_peak_kb": 214128}
+{"t": 13.114, "n": 12, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01MKzh1iKCmnmuHVPgPyDLKz", "capability": "search", "subagent": false, "input_summary": "ECC-B(19|23|21|22|24)\\b"}
+{"t": 13.246, "n": 13, "ev": "tool_finished", "call_id": "toolu_01MKzh1iKCmnmuHVPgPyDLKz", "ok": true, "duration_s": 0.132}
+{"t": 13.266, "n": 14, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01GnzevMXpBDPSFi61trLepR", "capability": "shell", "subagent": false, "input_summary": "git status"}
+{"t": 14.387, "n": 15, "ev": "tool_finished", "call_id": "toolu_01GnzevMXpBDPSFi61trLepR", "ok": true, "duration_s": 1.121}
+{"t": 16.154, "n": 16, "ev": "tool_started", "name": "Read", "call_id": "toolu_01HwfiMNcd3FH9XmbuqXok6D", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/executor-claude-code.spec.md"}
+{"t": 16.251, "n": 17, "ev": "tool_finished", "call_id": "toolu_01HwfiMNcd3FH9XmbuqXok6D", "ok": true, "duration_s": 0.097}
+{"t": 19.2, "n": 18, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01GbtjEt9jtdJfYbyXiUfNxV", "capability": "list", "subagent": false, "input_summary": "plugins/tempergraph/docs/tasks/i21b*"}
+{"t": 19.343, "n": 19, "ev": "tool_finished", "call_id": "toolu_01GbtjEt9jtdJfYbyXiUfNxV", "ok": true, "duration_s": 0.143}
+{"n": 21, "ev": "resources", "t": 8540.986, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 232112}
+{"t": 20.918, "n": 21, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01WHkK7to5UZrmyt2mapbWev", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i21b.plan.md"}
+{"t": 21.035, "n": 22, "ev": "tool_finished", "call_id": "toolu_01WHkK7to5UZrmyt2mapbWev", "ok": true, "duration_s": 0.117}
+{"t": 27.989, "n": 23, "ev": "tool_started", "name": "Write", "call_id": "toolu_01J49AF7HkVFurfH5ncfYm5j", "capability": "write", "subagent": false, "input_summary": "plugins/tempergraph/docs/tasks/i21b.report.md"}
+{"t": 28.08, "n": 24, "ev": "tool_finished", "call_id": "toolu_01J49AF7HkVFurfH5ncfYm5j", "ok": true, "duration_s": 0.091}
+{"t": 29.278, "n": 25, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01GP59bGtyUhsghsEboY4jC5", "capability": "shell", "subagent": false, "input_summary": "tempergraph self-check f240e1b05b5c5e8ab67f2d4cad8287c3"}
+{"n": 27, "ev": "resources", "t": 8551.013, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 234448}
+{"n": 28, "ev": "resources", "t": 8561.042, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 234448}
+{"n": 29, "ev": "resources", "t": 8571.077, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 234448}
+{"n": 30, "ev": "resources", "t": 8581.091, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 234448}
+{"n": 31, "ev": "resources", "t": 8591.124, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 234736}
+{"n": 32, "ev": "resources", "t": 8601.145, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 234928}
+{"n": 33, "ev": "resources", "t": 8611.173, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 234928}
+{"n": 34, "ev": "resources", "t": 8621.2, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 234928}
+{"n": 35, "ev": "resources", "t": 8631.221, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 234944}
+{"n": 36, "ev": "resources", "t": 8641.244, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 234944}
+{"n": 37, "ev": "resources", "t": 8651.274, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 38, "ev": "resources", "t": 8661.303, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 39, "ev": "resources", "t": 8671.325, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 40, "ev": "resources", "t": 8681.348, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 41, "ev": "resources", "t": 8691.436, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 42, "ev": "resources", "t": 8701.459, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 43, "ev": "resources", "t": 8711.498, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 44, "ev": "resources", "t": 8721.534, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 45, "ev": "resources", "t": 8731.589, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 46, "ev": "resources", "t": 8741.612, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 47, "ev": "resources", "t": 8751.645, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 237552}
+{"n": 48, "ev": "resources", "t": 8761.693, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 264080}
+{"n": 49, "ev": "resources", "t": 8771.729, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 264512}
+{"n": 50, "ev": "resources", "t": 8781.757, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 51, "ev": "resources", "t": 8791.79, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 52, "ev": "resources", "t": 8801.813, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 53, "ev": "resources", "t": 8811.84, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 54, "ev": "resources", "t": 8821.87, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 55, "ev": "resources", "t": 8831.904, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 56, "ev": "resources", "t": 8841.929, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 57, "ev": "resources", "t": 8851.95, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 58, "ev": "resources", "t": 8861.972, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 59, "ev": "resources", "t": 8871.986, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 60, "ev": "resources", "t": 8882.017, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 61, "ev": "resources", "t": 8892.048, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 62, "ev": "resources", "t": 8902.07, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 63, "ev": "resources", "t": 8912.093, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 64, "ev": "resources", "t": 8922.113, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 65, "ev": "resources", "t": 8932.134, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 66, "ev": "resources", "t": 8942.154, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 67, "ev": "resources", "t": 8952.173, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 68, "ev": "resources", "t": 8962.196, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 69, "ev": "resources", "t": 8972.215, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 70, "ev": "resources", "t": 8982.238, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 71, "ev": "resources", "t": 8992.26, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 72, "ev": "resources", "t": 9002.27, "cpu_s": 9.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 73, "ev": "resources", "t": 9012.292, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 74, "ev": "resources", "t": 9022.313, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 75, "ev": "resources", "t": 9032.34, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 76, "ev": "resources", "t": 9042.372, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 77, "ev": "resources", "t": 9052.393, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 78, "ev": "resources", "t": 9062.418, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 79, "ev": "resources", "t": 9072.44, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 80, "ev": "resources", "t": 9082.465, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 81, "ev": "resources", "t": 9092.48, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 82, "ev": "resources", "t": 9102.501, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 83, "ev": "resources", "t": 9112.525, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 84, "ev": "resources", "t": 9122.549, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 85, "ev": "resources", "t": 9132.568, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"n": 86, "ev": "resources", "t": 9142.6, "cpu_s": 10.0, "processes": 1, "rss_peak_kb": 265136}
+{"t": 631.244, "n": 86, "ev": "tool_finished", "call_id": "toolu_01GP59bGtyUhsghsEboY4jC5", "ok": true, "duration_s": 601.966}
+{"n": 88, "ev": "resources", "t": 9152.624, "cpu_s": 11.0, "processes": 1, "rss_peak_kb": 265136}
+{"t": 633.248, "n": 88, "ev": "text", "last_line": "The preview is still running in the background. I'll wait for it to finish rather than start a second copy."}
+{"t": 633.502, "n": 89, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01M4aTouLqe5g8QaZUvaB7yK", "capability": "shell", "subagent": false, "input_summary": "git status --short"}
+{"t": 634.776, "n": 90, "ev": "tool_finished", "call_id": "toolu_01M4aTouLqe5g8QaZUvaB7yK", "ok": true, "duration_s": 1.274}
+{"t": 638.578, "n": 91, "ev": "tool_started", "name": "Read", "call_id": "toolu_014FsV1rc8sc9AxcULnZHEPQ", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 638.73, "n": 92, "ev": "tool_finished", "call_id": "toolu_014FsV1rc8sc9AxcULnZHEPQ", "ok": true, "duration_s": 0.152}
+{"t": 640.641, "n": 93, "ev": "text", "last_line": "The preview hasn't printed anything yet. I'll check again."}
+{"t": 640.841, "n": 94, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01E6C24xAgn8aY3nVGNByvtN", "capability": "shell", "subagent": false, "input_summary": "git status --short"}
+{"t": 641.469, "n": 95, "ev": "tool_started", "name": "Read", "call_id": "toolu_016eR6e9Ygx6xyZXRX7iRbQ3", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 641.603, "n": 96, "ev": "tool_finished", "call_id": "toolu_016eR6e9Ygx6xyZXRX7iRbQ3", "ok": true, "duration_s": 0.135}
+{"n": 98, "ev": "resources", "t": 9162.65, "cpu_s": 11.0, "processes": 1, "rss_peak_kb": 265136}
+{"t": 641.955, "n": 98, "ev": "tool_finished", "call_id": "toolu_01E6C24xAgn8aY3nVGNByvtN", "ok": true, "duration_s": 1.113}
+{"t": 644.583, "n": 99, "ev": "tool_started", "name": "Read", "call_id": "toolu_01PcVemZgbs9uBzqGnKYZrs5", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 644.652, "n": 100, "ev": "tool_finished", "call_id": "toolu_01PcVemZgbs9uBzqGnKYZrs5", "ok": true, "duration_s": 0.069}
+{"t": 646.053, "n": 101, "ev": "text", "last_line": "The preview is still running and has printed nothing. I changed no files after starting it, and I'm waiting for it to finish before I report a result."}
+{"t": 647.11, "n": 102, "ev": "result", "ok": true, "text": "The preview is still running and has printed nothing. I changed no files after starting it, and I'm waiting for it to finish before I report a result.", "subtype": "success", "is_error": false, "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6"}
+{"n": 104, "ev": "resources", "t": 9172.672, "cpu_s": 12.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 105, "ev": "resources", "t": 9182.714, "cpu_s": 12.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 106, "ev": "resources", "t": 9192.74, "cpu_s": 12.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 107, "ev": "resources", "t": 9202.766, "cpu_s": 12.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 108, "ev": "resources", "t": 9212.788, "cpu_s": 12.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 109, "ev": "resources", "t": 9222.811, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 110, "ev": "resources", "t": 9232.835, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 111, "ev": "resources", "t": 9242.866, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 112, "ev": "resources", "t": 9252.887, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 113, "ev": "resources", "t": 9262.912, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 114, "ev": "resources", "t": 9272.937, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 115, "ev": "resources", "t": 9282.976, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 116, "ev": "resources", "t": 9293.009, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 117, "ev": "resources", "t": 9303.029, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 118, "ev": "resources", "t": 9313.051, "cpu_s": 13.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 119, "ev": "resources", "t": 9323.072, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 120, "ev": "resources", "t": 9333.094, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 121, "ev": "resources", "t": 9343.126, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 122, "ev": "resources", "t": 9353.152, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 123, "ev": "resources", "t": 9363.175, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 124, "ev": "resources", "t": 9373.188, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 125, "ev": "resources", "t": 9383.214, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 126, "ev": "resources", "t": 9393.247, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 127, "ev": "resources", "t": 9403.267, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 128, "ev": "resources", "t": 9413.29, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 129, "ev": "resources", "t": 9423.313, "cpu_s": 14.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 130, "ev": "resources", "t": 9433.338, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 131, "ev": "resources", "t": 9443.35, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 132, "ev": "resources", "t": 9453.364, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 133, "ev": "resources", "t": 9463.376, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 134, "ev": "resources", "t": 9473.386, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 135, "ev": "resources", "t": 9483.404, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 136, "ev": "resources", "t": 9493.426, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 137, "ev": "resources", "t": 9503.438, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 138, "ev": "resources", "t": 9513.448, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 139, "ev": "resources", "t": 9523.458, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 140, "ev": "resources", "t": 9533.481, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 141, "ev": "resources", "t": 9543.49, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 142, "ev": "resources", "t": 9553.512, "cpu_s": 15.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 143, "ev": "resources", "t": 9563.529, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 144, "ev": "resources", "t": 9573.541, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 145, "ev": "resources", "t": 9583.574, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 146, "ev": "resources", "t": 9593.585, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 147, "ev": "resources", "t": 9603.6, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 148, "ev": "resources", "t": 9613.613, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 149, "ev": "resources", "t": 9623.624, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 150, "ev": "resources", "t": 9633.636, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 151, "ev": "resources", "t": 9643.648, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 152, "ev": "resources", "t": 9653.659, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 153, "ev": "resources", "t": 9663.675, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 154, "ev": "resources", "t": 9673.686, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 155, "ev": "resources", "t": 9683.709, "cpu_s": 16.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 156, "ev": "resources", "t": 9693.723, "cpu_s": 17.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 157, "ev": "resources", "t": 9703.735, "cpu_s": 17.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 158, "ev": "resources", "t": 9713.745, "cpu_s": 17.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 159, "ev": "resources", "t": 9723.759, "cpu_s": 17.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 160, "ev": "resources", "t": 9733.769, "cpu_s": 17.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 161, "ev": "resources", "t": 9743.781, "cpu_s": 17.0, "processes": 1, "rss_peak_kb": 269184}
+{"t": 1229.886, "n": 161, "ev": "session_started", "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 1232.104, "n": 162, "ev": "text", "last_line": "The preview was killed at the background time limit, which was the 10-minute default and not the maximum. I'll restart it once with the longest timeout, since the full suite probably needs more time."}
+{"n": 164, "ev": "resources", "t": 9753.798, "cpu_s": 18.0, "processes": 1, "rss_peak_kb": 269184}
+{"t": 1233.117, "n": 164, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01E2tykkakQtLk9tGasfPe4h", "capability": "shell", "subagent": false, "input_summary": "tempergraph self-check f240e1b05b5c5e8ab67f2d4cad8287c3"}
+{"t": 1233.805, "n": 165, "ev": "tool_finished", "call_id": "toolu_01E2tykkakQtLk9tGasfPe4h", "ok": true, "duration_s": 0.688}
+{"t": 1234.737, "n": 166, "ev": "text", "last_line": "The preview is running again with the 2-hour limit. I changed no files after starting it, and I'll report its result when it finishes."}
+{"t": 1235.239, "n": 167, "ev": "result", "ok": true, "text": "The preview is running again with the 2-hour limit. I changed no files after starting it, and I'll report its result when it finishes.", "subtype": "success", "is_error": false, "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6"}
+{"n": 169, "ev": "resources", "t": 9763.832, "cpu_s": 18.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 170, "ev": "resources", "t": 9773.86, "cpu_s": 18.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 171, "ev": "resources", "t": 9783.875, "cpu_s": 18.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 172, "ev": "resources", "t": 9793.899, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 173, "ev": "resources", "t": 9803.933, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 174, "ev": "resources", "t": 9813.963, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 175, "ev": "resources", "t": 9823.984, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 176, "ev": "resources", "t": 9834.013, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 177, "ev": "resources", "t": 9844.092, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 178, "ev": "resources", "t": 9854.113, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 179, "ev": "resources", "t": 9864.14, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 180, "ev": "resources", "t": 9874.169, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 181, "ev": "resources", "t": 9884.189, "cpu_s": 19.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 182, "ev": "resources", "t": 9894.212, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 183, "ev": "resources", "t": 9904.228, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 184, "ev": "resources", "t": 9914.251, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 185, "ev": "resources", "t": 9924.277, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 186, "ev": "resources", "t": 9934.303, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 187, "ev": "resources", "t": 9944.335, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 188, "ev": "resources", "t": 9954.362, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 189, "ev": "resources", "t": 9964.383, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 190, "ev": "resources", "t": 9974.404, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 191, "ev": "resources", "t": 9984.428, "cpu_s": 20.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 192, "ev": "resources", "t": 9994.449, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 193, "ev": "resources", "t": 10004.47, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 194, "ev": "resources", "t": 10014.501, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 195, "ev": "resources", "t": 10024.519, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 196, "ev": "resources", "t": 10034.543, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 197, "ev": "resources", "t": 10044.562, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 198, "ev": "resources", "t": 10054.59, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 199, "ev": "resources", "t": 10064.622, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 200, "ev": "resources", "t": 10074.644, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 201, "ev": "resources", "t": 10084.663, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 202, "ev": "resources", "t": 10094.689, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 203, "ev": "resources", "t": 10104.711, "cpu_s": 21.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 204, "ev": "resources", "t": 10114.741, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 205, "ev": "resources", "t": 10124.769, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 206, "ev": "resources", "t": 10134.785, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 207, "ev": "resources", "t": 10144.803, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 208, "ev": "resources", "t": 10154.825, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 209, "ev": "resources", "t": 10164.846, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 210, "ev": "resources", "t": 10174.863, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 211, "ev": "resources", "t": 10184.885, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 212, "ev": "resources", "t": 10194.909, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 213, "ev": "resources", "t": 10204.934, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 214, "ev": "resources", "t": 10214.954, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 215, "ev": "resources", "t": 10224.986, "cpu_s": 22.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 216, "ev": "resources", "t": 10235.008, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 217, "ev": "resources", "t": 10245.034, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 218, "ev": "resources", "t": 10255.06, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 219, "ev": "resources", "t": 10265.081, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 220, "ev": "resources", "t": 10275.108, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 221, "ev": "resources", "t": 10285.125, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 222, "ev": "resources", "t": 10295.149, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 223, "ev": "resources", "t": 10305.174, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 224, "ev": "resources", "t": 10315.208, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 225, "ev": "resources", "t": 10325.233, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 226, "ev": "resources", "t": 10335.268, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 227, "ev": "resources", "t": 10345.306, "cpu_s": 23.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 228, "ev": "resources", "t": 10355.326, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 229, "ev": "resources", "t": 10365.343, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 230, "ev": "resources", "t": 10375.369, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 231, "ev": "resources", "t": 10385.384, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 232, "ev": "resources", "t": 10395.4, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 233, "ev": "resources", "t": 10405.425, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 234, "ev": "resources", "t": 10415.448, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 235, "ev": "resources", "t": 10425.466, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 236, "ev": "resources", "t": 10435.483, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 237, "ev": "resources", "t": 10445.493, "cpu_s": 24.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 238, "ev": "resources", "t": 10455.503, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 239, "ev": "resources", "t": 10465.513, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 240, "ev": "resources", "t": 10475.523, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 241, "ev": "resources", "t": 10485.532, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 242, "ev": "resources", "t": 10495.541, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 243, "ev": "resources", "t": 10505.555, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 244, "ev": "resources", "t": 10515.564, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 245, "ev": "resources", "t": 10525.572, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 246, "ev": "resources", "t": 10535.58, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 247, "ev": "resources", "t": 10545.592, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 248, "ev": "resources", "t": 10555.612, "cpu_s": 25.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 249, "ev": "resources", "t": 10565.634, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 250, "ev": "resources", "t": 10575.655, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 251, "ev": "resources", "t": 10585.679, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 252, "ev": "resources", "t": 10595.704, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 253, "ev": "resources", "t": 10605.73, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 254, "ev": "resources", "t": 10615.751, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 255, "ev": "resources", "t": 10625.782, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 256, "ev": "resources", "t": 10635.807, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 257, "ev": "resources", "t": 10645.829, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 258, "ev": "resources", "t": 10655.851, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 259, "ev": "resources", "t": 10665.873, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 260, "ev": "resources", "t": 10675.893, "cpu_s": 26.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 261, "ev": "resources", "t": 10685.904, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 262, "ev": "resources", "t": 10695.917, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 263, "ev": "resources", "t": 10705.936, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 264, "ev": "resources", "t": 10715.948, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 265, "ev": "resources", "t": 10725.957, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 266, "ev": "resources", "t": 10735.971, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 267, "ev": "resources", "t": 10745.982, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 268, "ev": "resources", "t": 10755.997, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 269, "ev": "resources", "t": 10766.006, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 270, "ev": "resources", "t": 10776.016, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 271, "ev": "resources", "t": 10786.025, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 272, "ev": "resources", "t": 10796.033, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 273, "ev": "resources", "t": 10806.042, "cpu_s": 27.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 274, "ev": "resources", "t": 10816.051, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 275, "ev": "resources", "t": 10826.074, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 276, "ev": "resources", "t": 10836.083, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 277, "ev": "resources", "t": 10846.102, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 278, "ev": "resources", "t": 10856.118, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 279, "ev": "resources", "t": 10866.138, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"n": 280, "ev": "resources", "t": 10876.157, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"t": 2364.022, "n": 280, "ev": "session_started", "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"n": 282, "ev": "resources", "t": 10886.176, "cpu_s": 28.0, "processes": 1, "rss_peak_kb": 269184}
+{"t": 2365.622, "n": 282, "ev": "tool_started", "name": "Read", "call_id": "toolu_01S5HE8ANRBKvzKhKER2QgTL", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 2365.792, "n": 283, "ev": "tool_finished", "call_id": "toolu_01S5HE8ANRBKvzKhKER2QgTL", "ok": true, "duration_s": 0.17}
+{"t": 2367.441, "n": 284, "ev": "text", "last_line": "The full suite failed: 3 tests, one of them named `...reads_the_ticks_own_environment_for_the_executors_recorded_at_add...`. I'll find them."}
+{"t": 2368.12, "n": 285, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01S1LQRhLuPczNuXKNC2THZM", "capability": "search", "subagent": false, "input_summary": "reads_the_ticks_own_environment_for_the_executors_recorded_at_add"}
+{"t": 2368.233, "n": 286, "ev": "tool_finished", "call_id": "toolu_01S1LQRhLuPczNuXKNC2THZM", "ok": true, "duration_s": 0.113}
+{"t": 2369.627, "n": 287, "ev": "tool_started", "name": "Read", "call_id": "toolu_01G353QzWnqNSywkeUTbRhgm", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_schedule_tick.py"}
+{"t": 2369.709, "n": 288, "ev": "tool_finished", "call_id": "toolu_01G353QzWnqNSywkeUTbRhgm", "ok": true, "duration_s": 0.082}
+{"t": 2370.083, "n": 289, "ev": "tool_started", "name": "Bash", "call_id": "toolu_011EVLMes3PTopDmZZGWbiDZ", "capability": "shell", "subagent": false, "input_summary": "cd plugins/tempergraph/engine && python -m pytest tests/test_schedule_tick.py -n 0 -q -x"}
+{"t": 2373.071, "n": 290, "ev": "tool_finished", "call_id": "toolu_011EVLMes3PTopDmZZGWbiDZ", "ok": false, "duration_s": 2.988}
+{"n": 292, "ev": "resources", "t": 10896.19, "cpu_s": 29.0, "processes": 1, "rss_peak_kb": 269184}
+{"t": 2377.486, "n": 292, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01QNzzpr8QjCjCTzUQS6XCes", "capability": "shell", "subagent": false, "input_summary": "cd plugins/tempergraph/engine && python -m pytest -q"}
+{"t": 2378.262, "n": 293, "ev": "tool_finished", "call_id": "toolu_01QNzzpr8QjCjCTzUQS6XCes", "ok": true, "duration_s": 0.776}
+{"t": 2379.357, "n": 294, "ev": "text", "last_line": "While that runs, I'll check how credentials resolve, to see whether my change could have affected it."}
+{"t": 2380.047, "n": 295, "ev": "tool_started", "name": "Grep", "call_id": "toolu_018uaw74jHpNpvKyJkUSKu6g", "capability": "search", "subagent": false, "input_summary": "interactive_login"}
+{"t": 2380.2, "n": 296, "ev": "tool_finished", "call_id": "toolu_018uaw74jHpNpvKyJkUSKu6g", "ok": true, "duration_s": 0.153}
+{"t": 2381.557, "n": 297, "ev": "tool_started", "name": "Read", "call_id": "toolu_01TJbdmEdWSKQiQgczQeMVMy", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/schedule/credentials.py"}
+{"t": 2381.682, "n": 298, "ev": "tool_finished", "call_id": "toolu_01TJbdmEdWSKQiQgczQeMVMy", "ok": true, "duration_s": 0.125}
+{"n": 300, "ev": "resources", "t": 10906.216, "cpu_s": 30.0, "processes": 1, "rss_peak_kb": 269184}
+{"t": 2386.048, "n": 300, "ev": "tool_started", "name": "Read", "call_id": "toolu_01F8tsgAVy5ZVuCVNP2Wh9tF", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 2386.182, "n": 301, "ev": "tool_finished", "call_id": "toolu_01F8tsgAVy5ZVuCVNP2Wh9tF", "ok": true, "duration_s": 0.135}
+{"t": 2388.664, "n": 302, "ev": "text", "last_line": "The full run is still going, and it takes about 18 minutes. I'll report once I have the names of all three failures."}
+{"t": 2389.993, "n": 303, "ev": "result", "ok": true, "text": "The full run is still going, and it takes about 18 minutes. I'll report once I have the names of all three failures.", "subtype": "success", "is_error": false, "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6"}
+{"n": 305, "ev": "resources", "t": 10916.244, "cpu_s": 30.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 306, "ev": "resources", "t": 10926.269, "cpu_s": 30.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 307, "ev": "resources", "t": 10936.299, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 308, "ev": "resources", "t": 10946.324, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 309, "ev": "resources", "t": 10956.353, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 310, "ev": "resources", "t": 10966.381, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 311, "ev": "resources", "t": 10976.398, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 312, "ev": "resources", "t": 10986.423, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 313, "ev": "resources", "t": 10996.493, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 314, "ev": "resources", "t": 11006.517, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 315, "ev": "resources", "t": 11016.545, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 316, "ev": "resources", "t": 11026.564, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 317, "ev": "resources", "t": 11036.579, "cpu_s": 31.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 318, "ev": "resources", "t": 11046.616, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 319, "ev": "resources", "t": 11056.64, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 320, "ev": "resources", "t": 11066.664, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 321, "ev": "resources", "t": 11076.693, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 322, "ev": "resources", "t": 11086.718, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 323, "ev": "resources", "t": 11096.741, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 324, "ev": "resources", "t": 11106.761, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 325, "ev": "resources", "t": 11116.79, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 326, "ev": "resources", "t": 11126.816, "cpu_s": 32.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 327, "ev": "resources", "t": 11136.838, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 328, "ev": "resources", "t": 11146.868, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 329, "ev": "resources", "t": 11156.892, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 330, "ev": "resources", "t": 11166.914, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 331, "ev": "resources", "t": 11176.941, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 332, "ev": "resources", "t": 11186.962, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 333, "ev": "resources", "t": 11196.981, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 334, "ev": "resources", "t": 11207.001, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 335, "ev": "resources", "t": 11217.018, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 336, "ev": "resources", "t": 11227.035, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 337, "ev": "resources", "t": 11237.056, "cpu_s": 33.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 338, "ev": "resources", "t": 11247.068, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 339, "ev": "resources", "t": 11257.093, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 340, "ev": "resources", "t": 11267.116, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 341, "ev": "resources", "t": 11277.15, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 342, "ev": "resources", "t": 11287.183, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 343, "ev": "resources", "t": 11297.216, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 344, "ev": "resources", "t": 11307.236, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 345, "ev": "resources", "t": 11317.265, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 346, "ev": "resources", "t": 11327.295, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 347, "ev": "resources", "t": 11337.328, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 348, "ev": "resources", "t": 11347.355, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 349, "ev": "resources", "t": 11357.377, "cpu_s": 34.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 350, "ev": "resources", "t": 11367.473, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 351, "ev": "resources", "t": 11377.501, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 352, "ev": "resources", "t": 11387.535, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 353, "ev": "resources", "t": 11397.553, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 354, "ev": "resources", "t": 11407.575, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 355, "ev": "resources", "t": 11417.611, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 356, "ev": "resources", "t": 11427.638, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 357, "ev": "resources", "t": 11437.667, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 358, "ev": "resources", "t": 11447.699, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 359, "ev": "resources", "t": 11457.733, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 360, "ev": "resources", "t": 11467.772, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 361, "ev": "resources", "t": 11477.81, "cpu_s": 35.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 362, "ev": "resources", "t": 11487.845, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 363, "ev": "resources", "t": 11497.876, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 364, "ev": "resources", "t": 11507.916, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 365, "ev": "resources", "t": 11517.956, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 366, "ev": "resources", "t": 11527.988, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 367, "ev": "resources", "t": 11538.016, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 368, "ev": "resources", "t": 11548.042, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 369, "ev": "resources", "t": 11558.066, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 370, "ev": "resources", "t": 11568.096, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 371, "ev": "resources", "t": 11578.116, "cpu_s": 36.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 372, "ev": "resources", "t": 11588.162, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 373, "ev": "resources", "t": 11598.186, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 374, "ev": "resources", "t": 11608.21, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 375, "ev": "resources", "t": 11618.234, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 376, "ev": "resources", "t": 11628.257, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 377, "ev": "resources", "t": 11638.283, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 378, "ev": "resources", "t": 11648.316, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 379, "ev": "resources", "t": 11658.338, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 380, "ev": "resources", "t": 11668.359, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 381, "ev": "resources", "t": 11678.395, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 382, "ev": "resources", "t": 11688.418, "cpu_s": 37.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 383, "ev": "resources", "t": 11698.441, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 384, "ev": "resources", "t": 11708.467, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 385, "ev": "resources", "t": 11718.488, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 386, "ev": "resources", "t": 11728.508, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 387, "ev": "resources", "t": 11738.537, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 388, "ev": "resources", "t": 11748.562, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 389, "ev": "resources", "t": 11758.58, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 390, "ev": "resources", "t": 11768.605, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 391, "ev": "resources", "t": 11778.624, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 392, "ev": "resources", "t": 11788.65, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 393, "ev": "resources", "t": 11798.673, "cpu_s": 38.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 394, "ev": "resources", "t": 11808.694, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 395, "ev": "resources", "t": 11818.718, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 396, "ev": "resources", "t": 11828.734, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 397, "ev": "resources", "t": 11838.758, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 398, "ev": "resources", "t": 11848.779, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 399, "ev": "resources", "t": 11858.796, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 400, "ev": "resources", "t": 11868.816, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 401, "ev": "resources", "t": 11878.839, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 402, "ev": "resources", "t": 11888.863, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 403, "ev": "resources", "t": 11898.895, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 404, "ev": "resources", "t": 11908.917, "cpu_s": 39.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 405, "ev": "resources", "t": 11918.948, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 406, "ev": "resources", "t": 11928.977, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 407, "ev": "resources", "t": 11939.001, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 408, "ev": "resources", "t": 11949.026, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 409, "ev": "resources", "t": 11959.054, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 410, "ev": "resources", "t": 11969.078, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 411, "ev": "resources", "t": 11979.103, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 412, "ev": "resources", "t": 11989.117, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 413, "ev": "resources", "t": 11999.142, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 414, "ev": "resources", "t": 12009.156, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 415, "ev": "resources", "t": 12019.168, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 416, "ev": "resources", "t": 12029.197, "cpu_s": 40.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 417, "ev": "resources", "t": 12039.222, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 418, "ev": "resources", "t": 12049.233, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 419, "ev": "resources", "t": 12059.243, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 420, "ev": "resources", "t": 12069.253, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 421, "ev": "resources", "t": 12079.264, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 422, "ev": "resources", "t": 12089.276, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 423, "ev": "resources", "t": 12099.285, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 424, "ev": "resources", "t": 12109.294, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 425, "ev": "resources", "t": 12119.303, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 426, "ev": "resources", "t": 12129.314, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 427, "ev": "resources", "t": 12139.323, "cpu_s": 41.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 428, "ev": "resources", "t": 12149.335, "cpu_s": 42.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 429, "ev": "resources", "t": 12159.345, "cpu_s": 42.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 430, "ev": "resources", "t": 12169.356, "cpu_s": 42.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 431, "ev": "resources", "t": 12179.365, "cpu_s": 42.0, "processes": 1, "rss_peak_kb": 271152}
+{"n": 432, "ev": "resources", "t": 12189.375, "cpu_s": 42.0, "processes": 1, "rss_peak_kb": 271152}
+{"t": 3671.738, "n": 432, "ev": "session_started", "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 3673.643, "n": 433, "ev": "tool_started", "name": "Grep", "call_id": "toolu_017Ld2P7xL6XPCXJvxRaZ6C6", "capability": "search", "subagent": false, "input_summary": "^(FAILED|ERROR)|passed|failed"}
+{"t": 3673.698, "n": 434, "ev": "tool_finished", "call_id": "toolu_017Ld2P7xL6XPCXJvxRaZ6C6", "ok": true, "duration_s": 0.056}
+{"t": 3675.089, "n": 435, "ev": "text", "last_line": "The three failures are `test_schedule_tick`, `test_schedule_export` and `test_schedule_fire`. All three look credential-related. I'll read the other two errors to confirm that."}
+{"t": 3676.051, "n": 436, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Wy9hstEYvN5kagbQDXgyGs", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 3676.086, "n": 437, "ev": "tool_finished", "call_id": "toolu_01Wy9hstEYvN5kagbQDXgyGs", "ok": true, "duration_s": 0.035}
+{"n": 439, "ev": "resources", "t": 12199.384, "cpu_s": 43.0, "processes": 1, "rss_peak_kb": 271152}
+{"t": 3683.984, "n": 439, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01U9ux9yEHd1ECnhN6tsNkYf", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/tasks/i21b.report.md"}
+{"t": 3684.025, "n": 440, "ev": "tool_finished", "call_id": "toolu_01U9ux9yEHd1ECnhN6tsNkYf", "ok": true, "duration_s": 0.041}
+{"n": 442, "ev": "resources", "t": 12209.392, "cpu_s": 43.0, "processes": 1, "rss_peak_kb": 271152}
+{"t": 3689.244, "n": 442, "ev": "text", "last_line": "ARTIFACT tests_passed: no"}
+{"t": 3689.611, "n": 443, "ev": "result", "ok": true, "text": "All plan rows are built and marked, but `tests_passed` is `no`. The full `python -m pytest` still fails 3 tests.\n\nThe preview's other commands passed. They were the five narrower pytest files, `ruff check src tests` and `mypy`.\n\nThe three failures are credential tests that read this host's real `~/.claude` sign-in, so they see an `interactive_login` where they expect none:\n- `tests/test_schedule_tick.py::test_tck_ac6_the_resolver_reads_the_ticks_own_environment_for_the_executors_recorded_at_add`\n- `tests/test_schedule_export.py::test_tck_ac6_a_secret_of_another_kind_is_never_named`\n- `tests/test_schedule_fire.py::test_sch_ac5_the_credential_check_applies_to_a_manual_fire`\n\nNo file of this change touches the schedule code. I did not run them at the base commit, and the preview could not either (\"the command could not start at the base commit\"). I did not repair them and I did not call the preview a second time.\n\nI appended the failures and that reasoning to the report's Deviations section after the preview ran. That changes the tree, so the gate will rerun every command, not reuse the preview's result.\n\nThis visit set the plan's status to `completed` and wrote the report. It also corrected the phase 3 note: ECC-B19 now says the private config lists every declared server, so it is not false and I edited no spec. The rewritten live test for P-CC-13 has not run, because it needs `TEMPERGRAPH_LIVE=1`.\n\nARTIFACT code_report: plugins/tempergraph/docs/tasks/i21b.report.md\nARTIFACT tests_passed: no", "subtype": "success", "is_error": false, "session_id": "bb1c9111-9241-4bb6-bd2b-d1b425210ec6"}

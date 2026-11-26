@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Rows 2.1-2.4 name the four test and source files. The plan, specs, handoff and triage note are plan or earlier-stage files. tests/fixtures/standin_cli.py is named by no phase 2 row; it appears once in the plan, in a row I did not read, and I could not confirm it is a phase 1 row.",
+      "fix": "Confirm that standin_cli.py belongs to an earlier phase's row; if it does not, name it in a row."
+    }
+  ]
+}

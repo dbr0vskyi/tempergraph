@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Changed files named by rows: test_claude_executor.py (3.1-3.4) and claude.py (3.5). preflight.py is named by row 2.4, and test_preflight.py and standin_cli.py by earlier-phase rows (phase 1 and 2 rows, per the notes). The specs (executor-claude-code, lifecycle-and-evals), i21b.handoff.md and i21b.triage.md are named by no row; the phase notes attribute them to earlier planning stages.",
+      "fix": "Confirm the spec, handoff and triage edits came from planning stages; if so, no action. Separately, add a plan row to reconcile ECC-B19 in executor-claude-code.spec.md."
+    }
+  ]
+}
