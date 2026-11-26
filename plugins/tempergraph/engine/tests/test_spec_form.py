@@ -1,7 +1,7 @@
 """The engine's specs follow the spec rule of the docs README, and no old section reference is left (OVR-AC2, OVR-AC3).
 
-The form checked here is the one the docs README states: a title, Purpose, Behaviours, Acceptance criteria and,
-while a question is open, Open questions; each behaviour a `WHEN … THE … SHALL …` line and at least one
+The form checked here is the one the docs README states: a title, Purpose, optionally Depends on and Does not own
+(the spec rule), Behaviours, Acceptance criteria and, while a question is open, Open questions; each behaviour a `WHEN … THE … SHALL …` line and at least one
 `GIVEN … WHEN … THEN …` scenario; each criterion naming the behaviours it proves, every behaviour named by one.
 """
 
@@ -14,6 +14,7 @@ from .conftest import DOCS, REPO_ROOT
 
 SPECS = sorted((DOCS / "specs").glob("*.spec.md"))
 SECTIONS = ("Purpose", "Behaviours", "Acceptance criteria", "Open questions")
+OPTIONAL = ("Depends on", "Does not own")  # between Purpose and Behaviours, in this order, each only with a row
 BEHAVIOUR = re.compile(r"^### ([A-Z]{3})-B(\d+) \S")
 STATEMENT = re.compile(r"^WHEN .+? THE .+? SHALL [a-z]")
 SCENARIO = re.compile(r"^- GIVEN .+ WHEN .+ THEN .+")
@@ -35,6 +36,10 @@ def _problems(text: str) -> list[str]:
     if not lines or not lines[0].startswith("# "):
         found.append("first line is not the `# ` title")
     heads = [ln[3:].strip() for ln in lines if ln.startswith("## ")]
+    lists = [h for h in heads if h in OPTIONAL]
+    if lists != [h for h in OPTIONAL if h in lists] or heads[1:1 + len(lists)] != lists:
+        found.append(f"`Depends on` and `Does not own` follow Purpose in that order: {heads}")
+    heads = [h for h in heads if h not in OPTIONAL]
     if heads[:3] != list(SECTIONS[:3]) or heads[3:] not in ([], [SECTIONS[3]]):
         found.append(f"sections are {heads}")
     if "```" in text:

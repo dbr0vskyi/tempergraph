@@ -4,6 +4,16 @@
 
 Tool access is the cause family most visible before a run ([research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) C4): most refused calls need no new permission, undeclared-tool calls are common, and one tool a user-level plugin puts into a judge session can void a complete verdict and pause a run. This spec defines how the [workflow audit](workflow-audit.spec.md) compares, for every step session and every judge session, three views of its tools ([ADR `tool-audit-compares-grant-need-and-use`](../adr/tool-audit-compares-grant-need-and-use.adr.md)): the grant (what the session can call), the need (what the work asks for) and the use (what sessions called and what was refused). A finding is a mismatch between two views; the rules join the catalog of [ARC](audit-rule-catalog.spec.md) under family C4. Judges matter most: a step's undeclared call costs a turn, a judge's voids a verdict, so judge rules use the session's own start tool list and fire before the first harmful call. Need is read by prompt lint's reader, so the audit and prompt lint never disagree on what a prompt asks for. The audit reads names only, sends nothing anywhere and writes nothing ([research `prior-art-for-workflow-audits`](../research/prior-art-for-workflow-audits.rsrch.md) P6). Workflow authors and the audit depend on it.
 
+## Depends on
+
+- `independence-guard.spec.md`: independence guard and judge views
+- `lifecycle-and-evals.spec.md`: prompt lint (LIF-B12)
+- `prompt-audit.spec.md`: prompt audit
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `self-improvement.spec.md`: executor drift is visible (SIL-B4)
+- `session-contract.spec.md`: session contract
+- `workflow-model.spec.md`: workflow model and validation
+
 ## Behaviours
 
 ### TSA-B6 Session surface
@@ -87,6 +97,13 @@ WHEN a remedy would add a grant (a new command or tool) THE audit SHALL mark it 
 
 - GIVEN `artifact-needs-write` WHEN reported THEN its remedy is marked widening
 
+### TSA-B14 An undeclared skill call is friction
+
+WHEN a step session calls a skill that its step does not declare, whether the session ran it or the CLI refused it THE session digest SHALL list the skill under `skills_undeclared`, and the session review SHALL report the cause `skill_undeclared:<skill>` as a fault of the workflow, of the same class as a refused permission.
+
+- GIVEN a step declaring `skill:notes:alpha` whose session calls `notes:alpha` and a skill bundled with the CLI WHEN the digest is built THEN `skills_undeclared` lists only the bundled skill and the review reports its cause
+- GIVEN a judge session WHEN its digest is built THEN `skills_undeclared` is empty
+
 ## Acceptance criteria
 
 - TSA-AC1 (TSA-B9, TSA-B10, TSA-B11, TSA-B12): Every C4 rule has a fixture that raises it and a clean fixture that does not
@@ -95,6 +112,8 @@ WHEN a remedy would add a grant (a new command or tool) THE audit SHALL mark it 
 - TSA-AC4 (TSA-B3, TSA-B8): The matrix of TSA-B3 is produced for all four executors from their tool map alone
 - TSA-AC5 (TSA-B13): Each widening remedy is marked as widening in the report
 - TSA-AC6 (TSA-B4, TSA-B5): A step producing a tracker issue with no write tool is found, and a workflow with no history shows `—` and skipped history rules
+
+- TSA-AC7 (TSA-B14): A fixture step session that calls one declared and one undeclared skill gives a digest whose `skills_undeclared` holds only the undeclared one and a `skill_undeclared:<skill>` cause
 
 ## Open questions
 

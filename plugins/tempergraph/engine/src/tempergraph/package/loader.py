@@ -222,6 +222,10 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     if isinstance(py, Pyproject):
         out += rules.layout(root, got, py, inventory)
     out += rules.text_refs(spec, root)
+    from tempergraph.package.manifest import over_budget
+
+    out += [Finding("text-over-budget", None, f"{f} holds {n} characters, over its budget of {most} in "  # PKG-B26
+                    "tempergraph.json `text_budgets`") for f, n, most in over_budget(root, got.engine.text_budgets)]
     out += rules.check_cases(spec, root)
     out += docs_check.docs_check(spec, root, mode)
     from tempergraph.package.readiness import stable_findings

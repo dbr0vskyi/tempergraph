@@ -4,6 +4,17 @@
 
 A council puts one question to several model sessions, its members, and combines what they say into one artifact: a synthesis written by a chair, a decision tallied by the engine from votes, or a ranking aggregated from peer ranks. It suits questions with no single checkable answer where several perspectives help: a design choice, a risk call, a go or no-go, a review through several lenses. Members answer blind first; deliberation rounds are opt-in and anonymized; every outcome is derived by rule; and the council's output goes to the gate's one independent judge like any step's ([ADR `council-is-a-gated-step-with-engine-tallied-outcomes`](../adr/council-is-a-gated-step-with-engine-tallied-outcomes.adr.md), [ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md), [research `councils-debate-and-voting`](../research/councils-debate-and-voting.rsrch.md)). A council is a step, never a judge, and any executor can host its members, chair and judge. Workflow authors and the compiler depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: ask unit
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `compiler-and-flow.spec.md`: what each node does (CMP-B9); order and routes (CMP-B10)
+- `contracts.spec.md`: shared contracts
+- `independence-guard.spec.md`: independence guard and judge views
+- `overview.spec.md`: a step never grades itself (OVR-B6)
+- `run-detail-document.spec.md`: run detail document
+- `workspace-and-concurrency.spec.md`: shapes of parallel work (WSP-B11)
+
 ## Behaviours
 
 ### CNL-B9 Declaration

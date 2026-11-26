@@ -4,6 +4,10 @@
 
 What prepare, the step with no session that starts every run, puts into a repository before any other step reads it: the rule files that say how each document is written, and the temperspec block of the project-context file (`CLAUDE.md`, or `AGENTS.md` when that is the file the repository has). Every later session reads the block to learn where documents are written and where the rules are, so a block that names a folder the repository does not have sends a step's first write to the wrong place, rule files copied into a repository that already has them leave a change for its pull request to carry, and rule files only the machine holds never reach a step session, which loads the repository's own settings and none of the machine's ([ECC-B16](../../../tempergraph/docs/specs/executor-claude-code.spec.md)). The sessions of a run and the people who review its pull request depend on it. A file inside a folder of copies or fixtures (version control, dependencies, tool state, evaluation cases, test fixtures) is not counted as the repository's own. Part of the [overview](overview.spec.md); the unit is [prepare](prepare.spec.md).
 
+## Depends on
+
+- `overview.spec.md`: temperspec
+
 ## Behaviours
 
 ### PNR-B1 The block names the specs folders

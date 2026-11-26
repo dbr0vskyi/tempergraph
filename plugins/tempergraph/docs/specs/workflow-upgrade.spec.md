@@ -4,6 +4,23 @@
 
 `tempergraph upgrade <workflow>` brings a workflow's source up to the running engine. It reads the workflow's version metadata and the engine's compatibility changelog ([VER](version-metadata.spec.md)), works out what each entry since the workflow's stamp touches, changes it, verifies the result against what the workflow was before, and stamps it. It works on a branch of the workflow's source; a person reviews and merges, and an installed copy is never changed. The work is split by what can decide it ([ADR `upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest`](../adr/upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md)): detect rules find what an entry touches and engine-shipped transforms make the changes a rule can express, spending nothing; the built-in upgrade workflow ([UWF](upgrade-workflow.spec.md)), a gated tempergraph run, makes the changes that need reading and judgement; the owner answers what only the owner knows, at a pause, from a drafted proposal; and model-free checks against the pre-upgrade baseline decide whether it is done ([ADR `an-upgrade-is-done-when-model-free-checks-pass`](../adr/an-upgrade-is-done-when-model-free-checks-pass.adr.md)). Workflow owners, the upgrade skill ([LSK](lifecycle-skills.spec.md)) and `author verify` depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `engine-update.spec.md`: what moves, and who moves it (UPD-B10)
+- `eval-suites.spec.md`: stamp needs green model-free regression suites (EVS-B7)
+- `gate-and-human.spec.md`: gate and human nodes
+- `improvement-proposals.spec.md`: change classes (PRP-B14)
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `lifecycle-and-evals.spec.md`: rubric score goes stale (LIF-B5); stable mode needs ready gates (LIF-B6); diagram model (LIF-B11)
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+- `prompt-audit.spec.md`: prompt audit
+- `tool-surface-audit.spec.md`: tool surface audit
+- `upgrade-workflow.spec.md`: built-in upgrade workflow
+- `version-metadata.spec.md`: range selection and compatibility states (VER-B2); compatibility changelog entries (VER-B9); engine-shipped transforms (VER-B13); workflow version fields (VER-B14); stamp record (VER-B16); workflow change notes (VER-B17)
+- `workflow-audit.spec.md`: workflow audit
+- `workspace-and-concurrency.spec.md`: workspace and concurrency
+
 ## Behaviours
 
 ### WUP-B10 The verb and its phases

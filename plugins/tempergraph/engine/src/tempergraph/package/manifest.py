@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 import tomllib
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -129,6 +129,30 @@ def declared_step_files(package_path: Path | None) -> tuple[str, ...]:
     return () if isinstance(got, list) else tuple(got.step_files)
 
 
+def over_budget(package_path: Path | None, budgets: Mapping[str, int] | None = None) -> list[tuple[str, int, int]]:
+    """PKG-B26: (file, characters, budget) for each package file above the smallest budget whose glob matches it."""
+    if package_path is None:
+        return []
+    if budgets is None:
+        got = read_manifest(Path(package_path))
+        budgets = {} if isinstance(got, list) else got.text_budgets
+    limits: dict[str, int] = {}
+    for pattern, most in budgets.items():
+        for p in Path(package_path).glob(pattern):
+            if p.is_file():
+                rel = p.relative_to(package_path).as_posix()
+                limits[rel] = min(most, limits.get(rel, most))
+    out = []
+    for rel, most in sorted(limits.items()):
+        try:
+            n = len((Path(package_path) / rel).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            continue
+        if n > most:
+            out.append((rel, n, most))
+    return out
+
+
 def read_manifests(package_path: Path) -> Manifests | list[Finding]:
     """Step 1 of PKG-B15, PKG-B16, PKG-B17: both manifests, the plugin name is the workflow name plus `-tgraph`,
     `schema_version` known; no import, no model."""
@@ -168,8 +192,14 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
     if not isinstance(step_files, list) or not all(_step_pattern(p) for p in step_files):
         out.append(_err("manifest", "step_files must be a list of package-relative glob patterns, such as "
                         "[\"rules/*.rule.md\"], with no absolute path and no `..`"))
+    budgets = engine.get("text_budgets", {})
+    if not isinstance(budgets, dict) or not all(
+            isinstance(k, str) and _step_pattern(k) and isinstance(v, int) and not isinstance(v, bool) and v > 0
+            for k, v in budgets.items()):
+        out.append(_err("manifest", "text_budgets must map a package-relative glob to a positive number of "
+                        "characters, such as {\"prompts/*.md\": 12000}"))
     unknown = set(engine) - {"schema_version", "name", "entry", "workflow_api", "docs", "surfaces", "audit",
-                             "step_files"}
+                             "step_files", "text_budgets"}
     if unknown:
         out.append(_err("manifest-field-unknown", f"tempergraph.json fields {sorted(unknown)} are unknown "
                         "(the version comes from plugin.json)", "warning"))
@@ -177,7 +207,7 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
         return out
     return Manifests(plugin=plugin, engine=PackageManifest(
         schema_version=1, name=str(name), entry=str(entry), workflow_api=int(api or 0), docs=str(docs),
-        surfaces=dict(surfaces), audit=dict(audit), step_files=tuple(step_files)))
+        surfaces=dict(surfaces), audit=dict(audit), step_files=tuple(step_files), text_budgets=dict(budgets)))
 
 
 def read_manifest(package_path: Path) -> PackageManifest | list[Finding]:

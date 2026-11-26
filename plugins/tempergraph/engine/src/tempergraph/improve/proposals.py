@@ -498,10 +498,14 @@ def record(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], patch: str, *,
             load(pkg)  # the engine's import map points at the live package again
         from tempergraph.executors.capabilities import DECLARED
 
+        grown = budget_breaches(pkg, dest)
+        if grown:  # PTG-B3: before validation, which fails the same file as `text-over-budget` (PKG-B26)
+            return refuse("growth", over_budget=grown, measures=text_measures(spec, after))
         errors = [f"{f.code}: {f.message}" for f in validate(after, DECLARED) if f.severity == "error"]
         if errors:
             return refuse("invalid", validation=errors[:20])
         c = classify(spec, after)
+        rec["measures"] = text_measures(spec, after)  # PTG-B2
     rec.update(classes=c.classes, details=c.details,
                side=c.sides[0] if len(c.sides) == 1 else ("mixed" if c.sides else None))
     if not c.classes:
@@ -523,6 +527,30 @@ def record(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], patch: str, *,
     return rec
 
 
+def text_measures(before: WorkflowSpec, after: WorkflowSpec) -> dict[str, dict[str, Any]]:
+    """PTG-B2: for each model-facing file whose text a change alters, its characters, prohibitions and reasons
+    before and after; a file one side lacks reads as `None` there."""
+    from tempergraph.audit.text_health import measure, model_facing
+
+    old, new = model_facing(before), model_facing(after)
+    out: dict[str, dict[str, Any]] = {}
+    for f in sorted(set(old) | set(new)):
+        a, b = old.get(f), new.get(f)
+        if a is not None and b is not None and a.text == b.text:
+            continue
+        out[f] = {"before": measure(a.text).as_json() if a is not None else None,
+                  "after": measure(b.text).as_json() if b is not None else None}
+    return out
+
+
+def budget_breaches(package: Path, changed: Path) -> list[dict[str, Any]]:
+    """PTG-B3: each file the change takes above its declared character budget that was not above it before."""
+    from tempergraph.package.manifest import over_budget
+
+    was = {f for f, _, _ in over_budget(package)}
+    return [{"file": f, "chars": n, "budget": most} for f, n, most in over_budget(changed) if f not in was]
+
+
 # -- the proposer (PRP-B4) -----------------------------------------------------------------------------------
 
 PROPOSER_BRIEF = """You improve one workflow package of a self-improvement loop by one small change.
@@ -532,7 +560,12 @@ often, and the engine's drafted remedy. Edit files of the workflow package in th
 template, its lessons file (`lessons/<unit>.json`), its limits, model or tools, or a file the package
 declares its steps read (`step_files` in `tempergraph.json`), when the cause lies in a standard the step
 follows and not in its template; or, for a grading problem, the judge brief, a criterion or a check. Never change a step together with the gate that grades it. Never
-remove a criterion, lower a severity or widen what a judge may read. State the general rule your change
+remove a criterion, lower a severity or widen what a judge may read.
+
+Your change may replace, merge or delete sentences as well as add them. Prefer replacing the sentence the
+cause points at over adding a rule beside it, and never repeat a sentence another file of the package
+already holds: a longer text is read less closely. Give a rule that is not mechanical its reason in half a
+line, so the session can follow it where its words do not reach. State the general rule your change
 encodes in one sentence, with no ticket id, URL, number or quotation from a run.
 
 End with one line: RULE: <the sentence>."""
@@ -542,6 +575,11 @@ JUDGE_CRITERIA = (
               check_method="Compare the diff with the cause code and the drafted remedy"),
     Criterion(id="general-rule", text="The change states one general rule, not one run's specifics",
               check_method="Read the rule sentence and every added line"),
+    Criterion(id="replaces-before-adding",
+              text="The change adds no text where replacing or deleting text would address the cause, and repeats "
+                   "no sentence already in another file of the package",
+              check_method="Compare the added lines with the removed ones and with the package's other files; "
+                           "the record's measures give each changed file's size before and after"),
 )
 
 
@@ -740,6 +778,10 @@ def report_body(rec: Mapping[str, Any], trial: Mapping[str, Any] | None, *, repo
         if repo and ref and ref[0] == repo and ref[1] not in closes:
             closes.append(ref[1])
     rows += [f"Closes #{n}" for n in closes]
+    for f, m in (rec.get("measures") or {}).items():  # PTG-B2
+        b, a = m.get("before") or {}, m.get("after") or {}
+        rows.append(f"**Text** `{f}`: {b.get('chars', 0)} to {a.get('chars', 0)} characters, prohibitions per "
+                    f"reason {b.get('prohibitions_per_reason', 0)} to {a.get('prohibitions_per_reason', 0)}.")
     if "weakening" in (rec.get("classes") or []):
         rows.append("**Weakens a gate**: " + "; ".join(d["what"] for d in rec.get("details") or []
                                                        if d.get("class") == "weakening"))

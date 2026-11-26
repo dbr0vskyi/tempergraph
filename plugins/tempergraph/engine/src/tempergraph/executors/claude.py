@@ -33,7 +33,14 @@ from tempergraph.contracts import (
 from tempergraph.executors import binding as binding_mod
 from tempergraph.executors import mcpconfig
 from tempergraph.executors.capabilities import CLAUDE, tool_names
-from tempergraph.executors.launcher import LaunchSpec, RawOutcome, StopRequest, launch, run_probe
+from tempergraph.executors.launcher import (
+    LaunchSpec,
+    RawOutcome,
+    StopRequest,
+    first_message,
+    launch,
+    run_probe,
+)
 from tempergraph.executors.session import Summary, build_result, killed_by_os, process_cause, summarize
 from tempergraph.executors.summary import capability_of, input_summary
 from tempergraph.security.scrub import clip, scrub
@@ -57,7 +64,9 @@ HOST_KEEP = ("CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "CLAUDE_CODE_USE_BEDROC
              # the operator's own sign-in and config folder: a pipeline signs `claude` in with these
              "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
-                "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
+                "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config", "--disable-slash-commands")
+NO_SKILLS_FLAG = "--disable-slash-commands"  # ECC-B25: a step that declares no skill can call none
+SKILL_LIST_PROMPT = b"Reply with OK.\n"  # ECC-B25: the listing launch is stopped at `system/init`, before any reply
 MCP_CONNECTORS_VAR = "ENABLE_CLAUDEAI_MCP_SERVERS"  # ECC-B20: set to `false` on every step, retry and judge launch
 MCP_CONNECTORS_OFF = "false"
 _VERSION_RE =re.compile(r"(\d+\.\d+\.\d+)")
@@ -86,11 +95,29 @@ def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_wor
             rules.append("Read(./**)")  # ECC-B7: a bare `Read` rule would admit any path on the machine (P-CC-10)
         elif cap in ("search", "list"):
             continue  # ECC-B7: no rule; the CLI admits them inside the workspace and refuses them outside
+        elif cap.startswith("skill:"):
+            rules.append(f"Skill({skill_name(cap)})")  # ECC-B7: one rule per declared skill (P-CC-8)
         else:
             rules.extend(tool_names(CLAUDE, cap))
     # the check preview is granted as one exact command even when the step declares no shell (CHK-B17)
     rules.extend(f"Bash({c})" for c in commands if c.startswith(SELF_CHECK))
     return list(dict.fromkeys(rules))
+
+
+def skill_name(capability: str) -> str:
+    """`skill:<plugin>:<name>` as the session lists it: `<plugin>:<name>` (ECC-B25)."""
+    return capability.split(":", 1)[1]
+
+
+def declared_skills(tools: Sequence[str]) -> list[str]:
+    return list(dict.fromkeys(skill_name(t) for t in tools if t.startswith("skill:")))
+
+
+def skill_deny_rules(tools: Sequence[str], listed: Sequence[str]) -> list[str]:
+    """ECC-B25: an allow rule does not limit which skills run, a deny rule does; so every skill the session would list
+    and the step does not declare is denied by name."""
+    keep = set(declared_skills(tools))
+    return [f"Skill({s})" for s in dict.fromkeys(listed) if s not in keep]
 
 
 def builtin_tools(tools: tuple[str, ...]) -> list[str]:
@@ -108,7 +135,7 @@ def _with_preview(names: list[str], commands: tuple[str, ...]) -> list[str]:
 
 
 def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flags: frozenset[str],
-              mcp_config: Path | None = None) -> tuple[list[str], tuple[str, ...]]:
+              mcp_config: Path | None = None, listed_skills: Sequence[str] = ()) -> tuple[list[str], tuple[str, ...]]:
     argv = [BINARY, *BASE_ARGV, "--permission-mode", "acceptEdits" if req.in_engine_worktree else "default"]
     if "--permission-prompts" in flags:
         argv += ["--permission-prompts", "none"]
@@ -123,7 +150,10 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
         argv += ["--allowedTools", ",".join(rules)]
     # ECC-B8, ECC-B14: every step launch names its built-in tools, so a host's tools are never offered
     argv += ["--tools", ",".join(_with_preview(builtin_tools(req.tools), req.commands))]
-    argv += ["--disallowedTools", ALWAYS_DISALLOWED]
+    # ECC-B25: a declared skill is scoped by denying every other listed skill; with none declared, none can run
+    argv += ["--disallowedTools", ",".join([ALWAYS_DISALLOWED, *skill_deny_rules(req.tools, listed_skills)])]
+    if not declared_skills(req.tools) and NO_SKILLS_FLAG in flags:
+        argv += [NO_SKILLS_FLAG]
     # ECC-B18: every step launch is strict, so no MCP server of the account, the user or the repository is offered;
     # ECC-B8: a config is named only when the step declares an MCP tool
     argv += ["--strict-mcp-config"]
@@ -376,6 +406,7 @@ class ClaudeExecutor:
         self._bindings = bindings
         self._home = home
         self._probe: ProbeReport | None = None
+        self._skill_lists: dict[tuple[object, ...], list[str] | None] = {}
         self.mcp_config = mcp_config
         self.stop = stop
         self.grace_s = grace_s
@@ -437,9 +468,18 @@ class ClaudeExecutor:
             fallback = self.binding.model(fb) if fb else None
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
+        listed: list[str] = []
+        if declared_skills(req.tools):
+            probe_argv, _ = step_argv(req, model, fallback, self._flags())
+            found = self._listed_skills(req, probe_argv, step_env(model))
+            if found is None:  # ECC-B25: a declared skill never runs unscoped
+                return SessionResult(ok=False, error_kind="refused",
+                                     text="the skills the step session would list could not be read, so the "
+                                          "undeclared ones cannot be denied")
+            listed = found
         declared = mcpconfig.declared_servers(req.tools)
         if not declared or self.mcp_config is not None:
-            argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
+            argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config, listed)
             return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
         servers = mcpconfig.operator_servers(req.workdir)
         undefined = [s for s in declared if s not in servers]
@@ -450,9 +490,19 @@ class ClaudeExecutor:
                    + ", ".join(declared))
             return SessionResult(ok=False, error_kind="refused", text=why)
         with mcpconfig.private_config(declared, servers, base, direct=True) as cfg:  # removed on every exit path
-            argv, applied = step_argv(req, model, fallback, self._flags(), cfg)
+            argv, applied = step_argv(req, model, fallback, self._flags(), cfg, listed)
             res = self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
         return _mask_private(res)
+
+    def _listed_skills(self, req: SessionRequest, argv: list[str], env: dict[str, str]) -> list[str] | None:
+        """ECC-B25: the skills a step session with these settings would list, read once per CLI version, folder and
+        plugin set from a launch stopped at `system/init`."""
+        path = self._probe.path if self._probe and self._probe.path else shutil.which(BINARY)
+        key = (self._probe.version if self._probe else "", str(req.workdir),
+               tuple(a for i, a in enumerate(argv) if i and argv[i - 1] == "--plugin-dir"))
+        if key not in self._skill_lists:
+            self._skill_lists[key] = list_skills([path or BINARY, *argv[1:]], req.workdir, env)
+        return self._skill_lists[key]
 
     def run_judge(self, req: SessionRequest, views: ViewSet, sink: EventSink) -> SessionResult:
         try:
@@ -519,6 +569,19 @@ class ClaudeExecutor:
         return build_result(raw, s, cli_version=version, argv=argv, applied=applied, infra=infra,
                             error_kind=kind, ok=s.result is not None and bool(s.result.get("ok")),
                             usage_limit=spent, usage_limit_resets_at=resets_at)
+
+
+def list_skills(argv: list[str], workdir: Path, env: Mapping[str, str], *, timeout_s: float = 60.0) -> list[str] | None:
+    """ECC-B25: launch the step's own argv, stop the session at `system/init` and return the skills it lists; None
+    when no init arrives in time or it lists no `skills` field."""
+    init = first_message(argv, SKILL_LIST_PROMPT, workdir, dict(env), _is_init, drop=HOST_DROP_PREFIXES,
+                         keep=HOST_KEEP, timeout_s=timeout_s)
+    skills = init.get("skills") if init is not None else None
+    return [str(s) for s in skills] if isinstance(skills, list) else None
+
+
+def _is_init(msg: Mapping[str, Any]) -> bool:
+    return msg.get("type") == "system" and msg.get("subtype") == "init"
 
 
 def _spent_allowance(info: Mapping[str, Any]) -> tuple[bool, float | None]:

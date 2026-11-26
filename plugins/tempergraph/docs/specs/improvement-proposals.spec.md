@@ -4,6 +4,20 @@
 
 The second half of the self-improvement loop. [SIL](self-improvement.spec.md) turns runs into findings and issues; this spec turns a cluster of findings into a proposal (a typed, small change to one workflow package), measures it in a trial (the current and the proposed version on the same fixed cases), and hands the result to a person as a draft pull request. The loop never merges, never changes engine code and never changes a step together with the gate that grades it ([ADR `improvement-closes-through-measured-proposals`](../adr/improvement-closes-through-measured-proposals.adr.md), [ADR `steps-and-their-graders-change-apart`](../adr/steps-and-their-graders-change-apart.adr.md)); trials and the post-release comparison write no code, and only the proposer writes, workflow data on its own branch (OVR-B16). The path is: findings, ranked clusters, a proposer patch on a branch, the class check, a paired trial decided by rule ([ADR `paired-trial-on-a-fixed-case-set`](../adr/paired-trial-on-a-fixed-case-set.adr.md)), a draft pull request, a person's merge, and a post-release watch. The background is [research `self-improving-agent-systems`](../research/self-improving-agent-systems.rsrch.md) and [research `self-improvement-gap-analysis`](../research/self-improvement-gap-analysis.rsrch.md); defaults without data behind them are recorded as parameters with that provenance ([IMD](improvement-data.spec.md)). Workflow owners and the people who review the loop's pull requests depend on it.
 
+## Depends on
+
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `improvement-data.spec.md`: improvement data requirements
+- `lifecycle-and-evals.spec.md`: live judge scoring (LIF-B15)
+- `promotion-check.spec.md`: window (PRO-B8)
+- `run-outcome.spec.md`: run-level good outcome
+- `run-settings-and-overrides.spec.md`: run keys (RST-B20)
+- `self-improvement.spec.md`: measurement writes nothing (SIL-B5); final exits (SIL-B9); code host unreachable (SIL-B19)
+- `session-review.spec.md`: session digest and session review
+- `workflow-lessons.spec.md`: workflow lessons
+- `workflow-package.spec.md`: engine manifest (PKG-B13)
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### PRP-B11 Autonomy level

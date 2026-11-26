@@ -282,6 +282,25 @@ class Definition:
                                      session="judge", item=f"{self.cid(c)}:{tok}")
         self._frontmatter(root)
         self._step_files(root)
+        self._structure()
+
+    def _structure(self) -> None:
+        """PRA-B13: how each model-facing file is built, against the audit's parameters; advisory only."""
+        from tempergraph.audit.text_health import measure, model_facing, repeated
+
+        files = model_facing(self.spec)
+        limit = P["prompt_prohibitions_per_reason"]
+        for file, tf in files.items():
+            m = measure(tf.text)
+            if m.prohibitions and m.prohibitions_per_reason >= limit:
+                unit = next((u.split(":")[0] for u in tf.used_by), None)
+                self.add("prompt-constraint-heavy", unit, f"{file} holds {m.prohibitions} prohibitions and "
+                         f"{m.reasons} reasons ({m.prohibitions_per_reason} per reason, at or above {limit:g})",
+                         file=None if file.startswith("inline:") else file, evidence=m.as_json())
+        for sentence, where in repeated(files, int(P["prompt_repeat_files"])):
+            self.add("prompt-repeated-text", None, f"a sentence is repeated in {len(where)} files: "
+                     f"{sentence[:80]!r}", item=sentence[:80], file=where[0],
+                     evidence={"files": where, "chars": len(sentence)})
 
     def _step_files(self, root: Path | None) -> None:
         """PRA-B7: every `step_files` pattern of the package's manifest matches a file of the package."""

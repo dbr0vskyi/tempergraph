@@ -4,6 +4,11 @@
 
 A small, itemised place in a workflow package for what runs have taught one step: general rules such as "read the test command from the plan, not from the repository's README". Lessons are rendered into that step's prompt as their own block. They are workflow content, versioned and reviewed: they change only through a proposal of class `lessons` ([PRP](improvement-proposals.spec.md)) and are never rewritten by a run ([ADR `lessons-are-versioned-workflow-content`](../adr/lessons-are-versioned-workflow-content.adr.md)). The shape follows the itemised, delta-updated playbook of [research `self-improving-agent-systems`](../research/self-improving-agent-systems.rsrch.md) F4, which avoids the collapse that wholesale rewriting causes. A lesson is the cheapest producer-side change: one sentence, easy to review and to revert; a lesson that grows into a procedure should become a template change or a split step. Retiring needs only "no loss shown" while adding needs "better shown", so the budget trends toward entries that earn their place. Workflow authors, the proposer and the reports depend on it.
 
+## Depends on
+
+- `observability-and-cost.spec.md`: observability and cost
+- `prompt-rendering.spec.md`: prompt rendering and output contract
+
 ## Behaviours
 
 ### LSN-B6 Lessons file

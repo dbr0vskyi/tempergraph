@@ -4,6 +4,52 @@
 
 The `tempergraph` command line is the engine's public interface for people, skills and CI. Its verbs are plain words, and its exit codes are the caller contract ([CON-B12, CON-B13](contracts.spec.md), [ADR `exit-codes-as-caller-contract`](../adr/exit-codes-as-caller-contract.adr.md)), so a skill or a CI job can tell waiting from stopped from budget spent. This spec owns the verb words, what each verb writes and whether it spends, and the verbs no other spec owns; a verb owned by another spec is named here with its synopsis and that spec's link. The options a run takes are [23 Run options](run-options.spec.md); lifecycle hooks are [24 Lifecycle hooks](lifecycle-hooks.spec.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: ask unit
+- `blueprint-and-scaffold.spec.md`: verbs (SCF-B23)
+- `caller-provenance.spec.md`: caller provenance
+- `central-run-stats.spec.md`: machine index (CST-B8); sinks configured (CST-B10); delivery through the outbox (CST-B12); sync to the home folder (CST-B13); aggregate reader (CST-B14); projection (CST-B15); live view (CST-B16)
+- `check-contract-and-command-runs.spec.md`: the check preview (CHK-B17)
+- `complexity-routing.spec.md`: records and report (CXR-B13)
+- `contracts.spec.md`: thread states and decisions (CON-B12); exit codes (CON-B13)
+- `durability-and-resume.spec.md`: durability and resume
+- `effort-ladder-and-model-escalation.spec.md`: escalation conditions (LAD-B12)
+- `engine-update.spec.md`: engine install and update
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `flow-extensions.spec.md`: deadlines (FLX-B8)
+- `gate-and-human.spec.md`: several pending gates (HUM-B3)
+- `improvement-data.spec.md`: loop metrics (IMD-B22)
+- `improvement-proposals.spec.md`: proposer is gated like any workflow (PRP-B4); draft pull request, never a merge (PRP-B8); clusters and the ranked backlog (PRP-B12); trial record and arms (PRP-B18); a/A runs (PRP-B21); show a record (PRP-B22)
+- `judge-calibration.spec.md`: score (JCL-B14); bar and label verbs (JCL-B18)
+- `judge-model-by-risk.spec.md`: risk records and report (JRK-B10)
+- `lifecycle-and-evals.spec.md`: install (LIF-B7); replay (LIF-B16)
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `local-observability-store.spec.md`: the logs verb (LOS-B14); the store verbs (LOS-B15)
+- `loop-summary-and-review-retries.spec.md`: the loop's summary (SIL-B22); the summary counts the reviews that failed (SIL-B24)
+- `observability-and-cost.spec.md`: model-free reports (OBS-B15)
+- `orchestration.spec.md`: plan before approval (ORC-B2); answering a node (ORC-B6); stop (ORC-B10); edits while running (ORC-B14); status, wait and other verbs (ORC-B24)
+- `plugin-shell.spec.md`: host hooks write the supervision journal (SHL-B14); hooks stay out of the engine's own sessions (SHL-B15)
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `reruns-and-feedback.spec.md`: rerun (RRN-B17); rerun workspace (RRN-B18)
+- `run-control.spec.md`: run control
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: the events verb (EVT-B22); in-process observers (EVT-B23); lifecycle hook events (EVT-B24)
+- `run-outcome.spec.md`: the outcome record (OUT-B18); outcome measures (OUT-B19); revisions (OUT-B20); revision candidates (OUT-B21)
+- `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); the config verb (RST-B31)
+- `run-state-on-a-branch.spec.md`: run state carried on a branch
+- `runs-without-a-final-exit.spec.md`: a lost runner is a final exit (SIL-B29)
+- `schedule-ticks-and-unattended-fires.spec.md`: scheduled-run ledger (TCK-B23); what a scheduled run adds elsewhere (TCK-B24)
+- `schedules.spec.md`: verbs (SCH-B27)
+- `session-review.spec.md`: review verbs (SRV-B23)
+- `supervision-cost.spec.md`: supervision verbs (SCO-B16)
+- `supervision-metrics.spec.md`: workflow aggregates (SUP-B12)
+- `workflow-audit.spec.md`: workflow audit
+- `workflow-authoring.spec.md`: authoring verbs (AUT-B11); skill modes and sessions (AUT-B12); intake limits (AUT-B15); criteria lint (AUT-B19); approvals (AUT-B24); revise mode (AUT-B25)
+- `workflow-upgrade.spec.md`: workflow upgrade
+- `worktree-mode.spec.md`: the worktree verb (WTR-B27)
+
 ## Behaviours
 
 ### CLI-B1 Check before spend

@@ -4,6 +4,16 @@
 
 Judges are graded by [JCL](judge-calibration.spec.md). This spec covers everything else a workflow is evaluated on: its deterministic checks (do they fail what they should, and only that), its steps (does a step's prompt produce work that passes its gate, and how consistently), and the whole workflow (does a fixed set of real cases keep ending well). It fixes the order in which graders are trusted (code first, then an accepted judge, then a person, [ADR `eval-graders-in-a-fixed-order-of-trust`](../adr/eval-graders-in-a-fixed-order-of-trust.adr.md)), how live suites are run and capped, the split between regression and capability suites, and the rule that a rate graded by a judge is shown with that judge's measured error ([ADR `judge-graded-rates-carry-the-judges-error`](../adr/judge-graded-rates-carry-the-judges-error.adr.md)). It extends the eval tooling of [LIF](lifecycle-and-evals.spec.md) and reuses the case-set format of [PRP](improvement-proposals.spec.md) for workflow cases, so one reviewed case serves both a release check and a paired trial. The gaps it closes are E10, E12 to E14 and E17 of [research `eval-and-judge-gap-analysis`](../research/eval-and-judge-gap-analysis.rsrch.md); notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md). Workflow authors, the eval skill and `upgrade-check --stamp` depend on it.
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `executor-interface.spec.md`: executor interface
+- `judge-calibration.spec.md`: acceptance state (JCL-B17)
+- `lifecycle-and-evals.spec.md`: stamp only when clean (LIF-B2); executor conformance in the eval set (LIF-B4)
+- `observability-and-cost.spec.md`: observability and cost
+- `supervision-metrics.spec.md`: supervision metrics
+- `workspace-and-concurrency.spec.md`: workspace and concurrency
+
 ## Behaviours
 
 ### EVS-B8 Suites and roles

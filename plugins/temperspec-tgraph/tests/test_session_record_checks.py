@@ -53,6 +53,17 @@ def reads(*names: str) -> list[dict[str, Any]]:
     return [call("read", f"{RULES}/{n}") for n in names]
 
 
+def _rule_text(name: str) -> str:
+    """The rule's own text, so its `paths` front matter is the one the CLI reads (SRC-B13)."""
+    src = ROOT / "rules" / name
+    return src.read_text(encoding="utf-8") if src.is_file() else "# rule\n"
+
+
+def scoped(unit: str) -> list[str]:
+    """The rule files the unit's prompt names that carry `paths`: a rule without one is attached to every session."""
+    return [n for n in checks._rule_names(unit) if checks.rule_paths(_rule_text(n)) is not None]
+
+
 def ctx_for(unit: str, work: Path, session: list[dict[str, Any]] | None, *, rules: bool | list[str] = True,
             preview: bool = False, fixture: Path | None = None,
             visit_session: Any = "same") -> CheckContext:
@@ -68,7 +79,7 @@ def ctx_for(unit: str, work: Path, session: list[dict[str, Any]] | None, *, rule
     held = checks._rule_names(unit) if rules is True else (rules or [])
     for name in held:
         (work / RULES).mkdir(parents=True, exist_ok=True)
-        (work / RULES / name).write_text("# rule\n")
+        (work / RULES / name).write_text(_rule_text(name))
     ctx = CheckContext(unit=unit, workdir=work, request={}, artifacts=artifacts,
                        values={"triage": {"route": "plan"}} if unit == "code" else {}, git=GitFacts(),
                        allow=SPEC.allow_commands, out_dir=work.parent / f"{work.name}.out",
@@ -103,16 +114,16 @@ def test_a_record_that_opens_every_held_rule_file_gives_no_failure(unit: str, tm
 def test_a_rule_file_the_record_never_opens_fails_the_check_naming_it(unit: str, tmp_path: Path) -> None:
     # AC 1, SRC-AC1 (SRC-B1)
     names = checks._rule_names(unit)
-    for i, missing in enumerate(names):
+    for i, missing in enumerate(scoped(unit)):
         res, found = run(unit, ctx_for(unit, tmp_path / str(i), reads(*[n for n in names if n != missing])))
         assert fails(found) == [missing] and res.result == "FAIL"
         assert missing in found[0].message and found[0].fix
 
 
 def test_the_triage_case_a_searched_rule_file_is_not_opened(tmp_path: Path) -> None:  # AC 1, SRC-AC1 (SRC-B1)
-    session = [*reads("task-notes.rule.md"), call("search", f"{RULES}/documents.rule.md")]
+    session = [*reads("documents.rule.md"), call("search", f"{RULES}/task-notes.rule.md")]
     _, found = run("triage", ctx_for("triage", tmp_path, session))
-    assert fails(found) == ["documents.rule.md"]
+    assert fails(found) == ["task-notes.rule.md"]
 
 
 def test_a_search_a_failed_read_a_path_form_and_a_missing_rule_file(tmp_path: Path) -> None:
@@ -127,8 +138,8 @@ def test_a_search_a_failed_read_a_path_form_and_a_missing_rule_file(tmp_path: Pa
     assert [f.status for f in found] == ["pass"]  # the last segment of the target is the file's name
     # the prompt names two files and the repository holds one: only the held one is asked for
     _, found = run("triage", ctx_for("triage", tmp_path / "c", [call("read", "src/x.py")],
-                                     rules=["documents.rule.md"]))
-    assert fails(found) == ["documents.rule.md"]
+                                     rules=["task-notes.rule.md"]))
+    assert fails(found) == ["task-notes.rule.md"]
 
 
 def test_the_check_reads_only_the_session_it_is_given(tmp_path: Path) -> None:  # AC 1, SRC-AC3 (SRC-B1)
@@ -136,7 +147,7 @@ def test_the_check_reads_only_the_session_it_is_given(tmp_path: Path) -> None:  
     retry = [call("read", "src/x.py"), call("edit", "plan.md")]
     assert first_attempt
     _, found = run("plan", ctx_for("plan", tmp_path, retry))
-    assert fails(found) == checks._rule_names("plan")
+    assert fails(found) == scoped("plan")
 
 
 @pytest.mark.parametrize("unit", UNITS)
@@ -173,6 +184,35 @@ def test_with_no_session_record_the_rule_file_criterion_is_not_applicable(unit: 
         assert [f.status for f in found] == ["n_a"] and "no session record to read" in found[0].message
 
 
+# -- a rule the CLI attaches by its `paths` counts as opened (SRC-B13, SRC-AC17) --------------------------------------
+
+
+def test_src_ac17_a_rule_attached_by_path_before_the_write_passes(tmp_path: Path) -> None:  # SRC-AC17 (SRC-B13)
+    # documents.rule.md has no `paths` and is attached from the start; plan.rule.md arrives with the read of a plan
+    session = [call("read", "docs/plans/old.plan.md"), call("write", "docs/plans/new.plan.md")]
+    res, found = run("plan", ctx_for("plan", tmp_path / "a", session, rules=["documents.rule.md", "plan.rule.md"]))
+    assert [f.status for f in found] == ["pass"]
+    assert found[0].place.endswith("attached by path: plan.rule.md, documents.rule.md")
+
+
+def test_src_ac17_a_write_before_the_rule_arrived_fails(tmp_path: Path) -> None:  # SRC-AC17 (SRC-B13)
+    # the first write of a new plan is the call that attaches the rule: the file was written without it
+    session = [call("write", "docs/plans/new.plan.md"), call("read", "docs/plans/new.plan.md")]
+    _, found = run("plan", ctx_for("plan", tmp_path, session, rules=["documents.rule.md", "plan.rule.md"]))
+    assert fails(found) == ["plan.rule.md"] and "before `plan.rule.md` had arrived" in found[0].message
+    # a failed read of a governed file attaches nothing
+    session = [call("read", "docs/plans/gone.plan.md", ok=False), call("write", "docs/plans/new.plan.md")]
+    _, found = run("plan", ctx_for("plan", tmp_path / "b", session, rules=["plan.rule.md"]))
+    assert fails(found) == ["plan.rule.md"]
+
+
+def test_src_ac17_rule_paths_reads_the_front_matter() -> None:  # SRC-AC17 (SRC-B13)
+    assert checks.rule_paths(_rule_text("task-notes.rule.md")) == ["**/*.triage.md", "**/*.handoff.md",
+                                                                    "**/*.report.md", "**/*.setup.md"]
+    assert checks.rule_paths(_rule_text("documents.rule.md")) is None
+    assert checks.rule_paths("---\nname: x\n---\nbody\n") is None
+
+
 # -- a finding quotes no call of the session (SRC-B9, SRC-AC12) -----------------------------------------------------
 
 
@@ -181,7 +221,7 @@ def test_a_finding_and_the_evidence_quote_no_call_of_the_session(unit: str, tmp_
     # AC 1, SRC-AC12 (SRC-B9)
     session = [call("shell", "echo zanzibar"), call("read", "zanzibar/notes.md"), call("search", "zanzibar")]
     res, found = run(unit, ctx_for(unit, tmp_path, session))
-    assert fails(found) == checks._rule_names(unit)
+    assert fails(found) == scoped(unit)
     blob = json.dumps([[f.criterion, f.place, f.message, f.fix] for f in res.findings]) + res.evidence
     assert "zanzibar" not in blob
 

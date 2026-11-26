@@ -4,6 +4,20 @@
 
 Steps hand work on as files ([PRM-B14](prompt-rendering.spec.md)), but a workflow also needs short values: a route, a gap list, a release-track mark, a story line, a tests-passed claim, handed on from a first step and routed on. This spec adds the `value` artifact kind and lists the template keys a prompt may name: the engine keys, the declared inputs, and the pointers of earlier artifacts. A template never receives an earlier artifact's content; it receives where it is or, for a value, the value itself, and the step reads what the pointer names with its own tools. A value is a claim like any other step output: the engine only parses and bounds it, and a check ties it to the evidence. Workflow authors, the prompt renderer and the prompt audit ([PRA](prompt-audit.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: trip back clears (BUD-B4)
+- `check-contract-and-command-runs.spec.md`: check contract and command runs
+- `compiler-and-flow.spec.md`: order and routes (CMP-B10)
+- `contracts.spec.md`: template grammar (CON-B8)
+- `finalizer-contract.spec.md`: finalizer contract
+- `map-unit.spec.md`: map unit
+- `overview.spec.md`: state merged under a stable thread (OVR-B9)
+- `prompt-rendering.spec.md`: output contract (PRM-B11)
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `subworkflow-unit.spec.md`: a child's key in a template (SWF-B12)
+
 ## Behaviours
 
 ### VAL-B5 The value artifact kind

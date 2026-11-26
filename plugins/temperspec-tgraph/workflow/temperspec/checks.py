@@ -5,6 +5,7 @@ A check reads the workspace and the engine's git facts; it writes nothing and tr
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
@@ -157,18 +158,73 @@ def _opened(calls: list[dict[str, Any]], name: str) -> bool:
     return any(c.get("capability") == "read" and c.get("ok") is True and _target_is(c, name) for c in calls)
 
 
+def rule_paths(text: str) -> list[str] | None:
+    """The `paths` globs of a rule file's front matter; None for a rule with no `paths`, which the CLI attaches to
+    every session (SRC-B13)."""
+    if not text.startswith("---") or (end := text.find("\n---", 3)) < 0:
+        return None
+    head = text[3:end]
+    if not re.search(r"^paths\s*:", head, re.M):
+        return None
+    return [ln.strip()[2:].strip().strip("\"'") for ln in head.splitlines() if ln.strip().startswith("- ")]
+
+
+def _matches(target: str, globs: list[str]) -> bool:
+    path = _norm(target)
+    return any(fnmatch.fnmatch(path, g) or fnmatch.fnmatch(path.rsplit("/", 1)[-1], g.rsplit("/", 1)[-1])
+               for g in globs)
+
+
+def _arrived(calls: list[dict[str, Any]], globs: list[str] | None) -> tuple[bool, str | None]:
+    """SRC-B13: (the CLI attached the rule before the session wrote a file it governs, the first such file written
+    before the rule arrived). A rule with no `paths` is attached from the start; a path-scoped one arrives with the
+    first read of an existing file it governs, and only after the first write of a new one."""
+    if globs is None:
+        return True, None
+    for c in calls:
+        if not _matches(str(c.get("target") or ""), globs) or c.get("ok") is not True:
+            continue
+        if c.get("capability") == "read":
+            return True, None
+        if c.get("capability") in WRITES:
+            return False, _norm(str(c.get("target") or ""))
+    return False, None
+
+
 def _ruleread(ctx: Any, unit: str, criterion: str) -> list[CheckFinding]:
-    """The rule files the unit's prompt names and the repository holds are each opened with the read tool (SRC-B1)."""
+    """The rule files the unit's prompt names and the repository holds are each opened with the read tool, or
+    attached by the CLI through their `paths` before the session writes a file they govern (SRC-B1, SRC-B13)."""
     held = [n for n in _rule_names(unit) if (Path(ctx.workdir) / RULE_FOLDER / n).is_file()]
     if not held:
         return [_find("n_a", criterion, message=f"the rule files are not in the repository (`{RULE_FOLDER}/`)")]
     calls = _record(ctx)
     if calls is None:
         return [_find("n_a", criterion, message=NO_RECORD)]
-    found = [_find("fail", criterion, f"{RULE_FOLDER}/{n}", f"the session never opened `{n}` with the read tool",
-                   f"open `{RULE_FOLDER}/{n}` with the read tool, then follow it") for n in held
-             if not _opened(calls, n)]
-    return found or [_ok(criterion, ", ".join(held))]
+    found: list[CheckFinding] = []
+    attached: list[str] = []
+    for n in held:
+        if _opened(calls, n):
+            continue
+        try:
+            globs = rule_paths((Path(ctx.workdir) / RULE_FOLDER / n).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            globs = []
+        came, early = _arrived(calls, globs)
+        if came:
+            attached.append(n)
+            continue
+        if early:
+            found.append(_find("fail", criterion, f"{RULE_FOLDER}/{n}",
+                               f"the session wrote `{early}` before `{n}` had arrived, and never opened the rule",
+                               f"open `{RULE_FOLDER}/{n}` with the read tool before writing a new document it "
+                               "governs, so the file is written once"))
+            continue
+        found.append(_find("fail", criterion, f"{RULE_FOLDER}/{n}", f"the session never opened `{n}` with the read tool",
+                           f"open `{RULE_FOLDER}/{n}` with the read tool, then follow it"))
+    if found:
+        return found
+    note = f"; attached by path: {', '.join(attached)}" if attached else ""
+    return [_ok(criterion, ", ".join(held) + note)]
 
 
 def _norm(path: str) -> str:

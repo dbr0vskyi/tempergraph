@@ -49,6 +49,9 @@ CAUSES: dict[str, Cause] = {
                        remedy="The judge found no change since the last attempt: the step cannot fix this alone"),
     "escalation": Cause(klass="fault", side="workflow", remedy="An escalation with an unlisted reason"),
     "refused": Cause(klass="fault", side="workflow", remedy="A permission was refused: declare it or narrow the step"),
+    "skill_undeclared": Cause(klass="fault", side="workflow",
+                              remedy="The step called a skill it does not declare: declare it as `skill:` or take "
+                                     "its name out of the prompt"),
     "step_timeout": Cause(klass="fault", side="workflow",
                           remedy="The step ran out of time: split it or raise its timeout"),
     "agent_decided": Cause(klass="fault", side="workflow",

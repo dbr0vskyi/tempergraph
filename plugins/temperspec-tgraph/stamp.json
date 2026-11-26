@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+457878f53ae5",
-  "docs_digest": "406b800bc54b87941219d05f72f15afedd36d40d78252faf77ffe8eb8dad15df",
-  "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+  "workflow_version": "0.1.0+9eb9e4ad4abf",
+  "docs_digest": "4de5d82ce9a80cacd9fda00a3707518a1152e21206c6d287de39a77af8c69ea6",
+  "shape_digest": "8e1c8b6ebcc28166eeb1fbb22a45f48920523ad73575f2f7577784189f415216",
   "entries_applied": [
     {
       "id": "E0.2.0-1",
@@ -55,6 +55,7 @@
       "Write"
     ]
   },
+  "revisit": {},
   "audit": [
     "hold-time-exposure|code||workflow/temperspec/__init__.py",
     "hold-time-exposure|discovery||workflow/temperspec/__init__.py",
@@ -99,10 +100,10 @@
     "validate:template-key-not-on-every-path|code||",
     "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 28,
+  "outcome_revision": 27,
   "baseline": {
     "error": 0,
     "warning": 38
   },
-  "stamped_at": "2026-11-26T22:28:49.880Z"
+  "stamped_at": "2026-11-26T21:55:15.259Z"
 }

@@ -4,6 +4,19 @@
 
 The executor layer is the only part of the engine that knows how a model session is started. The engine hands an executor a session request as data ([SSN](session-contract.spec.md)); the executor starts one headless session (a CLI, or a library inside an engine worker process, [ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md)), translates its stream into normalized events and returns a result with typed usage. Executors declare what they can enforce, and preflight refuses before any spend what a workflow needs and its executor cannot do. Four executors are designed: [Claude Code](executor-claude-code.spec.md) (`claude`), the [Agent SDK](executor-agent-sdk.spec.md) (`agent-sdk`), the [Messages API](executor-messages-api.spec.md) (`messages-api`, whose loop the engine owns, [ADR `engine-owned-tool-loop-for-the-messages-api`](../adr/engine-owned-tool-loop-for-the-messages-api.adr.md)) and [Antigravity](executor-antigravity.spec.md) (`antigravity`); release 1 registers `claude` only ([ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md)). All share one session launcher that owns what the engine must not delegate: argv from constants, prompt delivery, the timeout, the idle watchdog, process-tree lifetime and the start record, because executors offer unequal limits ([research `executor-capability-matrix`](../research/executor-capability-matrix.rsrch.md), [ADR `executors-as-capability-adapters`](../adr/executors-as-capability-adapters.adr.md)). Workflow authors, operators and every executor spec depend on these rules.
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `caller-provenance.spec.md`: a declaration cannot raise trust (PRV-B5); classification (PRV-B13); decider (PRV-B14); person turns (PRV-B15); where the block is written (PRV-B17); options (PRV-B18); engine sessions never drive the engine (PRV-B19)
+- `executor-messages-api.spec.md`: worker request document (EMA-B8)
+- `independence-guard.spec.md`: independence guard and judge views
+- `observability-and-cost.spec.md`: observability and cost
+- `run-events.spec.md`: common record envelope (EVT-B8); segment and sequence from the log (EVT-B9)
+- `schedule-ticks-and-unattended-fires.spec.md`: unattended credential kinds (TCK-B18); credential check per executor (TCK-B19)
+- `security.spec.md`: sanctioned launch sites (SEC-B7)
+- `session-contract.spec.md`: session result (SSN-B5)
+- `supervision-cost.spec.md`: supervising session (SCO-B9)
+
 ## Behaviours
 
 ### EXI-B16 Registry

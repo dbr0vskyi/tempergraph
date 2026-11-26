@@ -4,6 +4,18 @@
 
 Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace: the workspace is disposable, the branch is not. Paths resolve inside the workspace, the state root is the main checkout, and there is one graph per process, so N runs are N processes sharing one checkpoint database per workflow ([ADR `sqlite-checkpointer`](../adr/sqlite-checkpointer.adr.md)). The worktree itself (the `run.workspace` parameter, roots, bases, names, lifecycle, cleanup, executor pointing and the `worktree` verb) is [WTR](worktree-mode.spec.md). Operators, workflow authors and every component that stores files depend on these rules.
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: trip back clears (BUD-B4)
+- `check-contract-and-command-runs.spec.md`: the context a check receives (CHK-B10)
+- `complexity-routing.spec.md`: complexity routing between decompositions
+- `contest-unit.spec.md`: writer contest (CTS-B5)
+- `judge-model-by-risk.spec.md`: judge model by risk
+- `local-observability-store.spec.md`: state root top level (LOS-B7); run folder (LOS-B8); session folder (LOS-B9)
+- `orchestration.spec.md`: orchestration of runs
+- `run-state-on-a-branch.spec.md`: run state carried on a branch
+- `worktree-mode.spec.md`: resolving auto (WTR-B18); workflow declaration (WTR-B19); locations and names (WTR-B20); records (WTR-B24)
+
 ## Behaviours
 
 ### WSP-B8 The state root

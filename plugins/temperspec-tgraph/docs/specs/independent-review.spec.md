@@ -7,6 +7,7 @@ What reads a run's change before the outcome gate, in a session that knows nothi
 ## Depends on
 
 - `regeneration.spec.md`: the regeneration unit that runs between the code step and the join
+- `session-record-checks.spec.md`: without a session record the criterion does not apply (SRC-B8)
 
 ## Behaviours
 

@@ -4,6 +4,16 @@
 
 A workflow's finalizer runs once after the last pass (and after an approval pause, when one is set) and calls no model (OVR-B3). It is a workflow's final stage, such as pushing the branch and opening a draft pull request, often the only thing a person reviews. [CON-B4](contracts.spec.md) declares the field `WorkflowSpec.finalizer`, a callable `(ctx: FinalizerContext) -> FinalizerResult`; this spec defines what the finalizer receives, what it may do, what it returns, and the rule that it can never fail a run that has passed every gate, since the run's exit code is a contract for callers ([ADR `exit-codes-as-caller-contract`](../adr/exit-codes-as-caller-contract.adr.md)). It reuses the check's command machinery ([ADR `checks-get-a-context-and-an-engine-command-runner`](../adr/checks-get-a-context-and-an-engine-command-runner.adr.md)), so there is one guarded launch site for workflow commands. What to publish, where and how to word it are the workflow's choices. Workflow authors and callers reading exit codes depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `check-contract-and-command-runs.spec.md`: check contract and command runs
+- `flow-extensions.spec.md`: fallback target (FLX-B9)
+- `improvement-proposals.spec.md`: a URL names a pull request (PRP-B30)
+- `overview.spec.md`: every model call is an executor run (OVR-B3)
+- `security.spec.md`: canary (SEC-B2); scrubbing (SEC-B8)
+- `step-values-and-template-keys.spec.md`: template keys (VAL-B8)
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### FIN-B6 What it receives

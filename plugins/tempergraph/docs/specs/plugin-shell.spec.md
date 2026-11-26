@@ -4,6 +4,21 @@
 
 The `tempergraph` plugin wraps the engine CLI in skills a person uses from a conversation. A skill drives the engine; it never decides a gate. The skills ship in the engine plugin and know no workflow: they read the catalog; workflow-specific agents, skills and rules ship with each workflow ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)). The live monitor is the separate `tempergraph-monitor` plugin, which reads the observer documents and read-only verbs only ([EVT](run-events.spec.md), [RDD](run-detail-document.spec.md), [monitor docs](../../../tempergraph-monitor/docs/specs/overview.spec.md)). The shell is a Claude Code plugin; an operator may also drive the CLI directly or from CI. People using the skills, and the supervision measures that read the plugin's host hooks, depend on what the skills and hooks do. Each skill is a core file plus references read on demand, so its always-loaded text stays small.
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `caller-provenance.spec.md`: decider (PRV-B14); person turns (PRV-B15)
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `lifecycle-skills.spec.md`: upgrade skill procedure (LSK-B13)
+- `local-observability-store.spec.md`: ignored by git (LOS-B4)
+- `orchestrator-skill.spec.md`: orchestrator skill
+- `run-outcome.spec.md`: run-level good outcome
+- `schedule-ticks-and-unattended-fires.spec.md`: the schedule skill (TCK-B21); who may create a schedule (TCK-B22)
+- `supervision-cost.spec.md`: supervision journal (SCO-B10); journal writers (SCO-B11)
+- `workflow-authoring.spec.md`: skill modes and sessions (AUT-B12); intake limits (AUT-B15); criteria lint (AUT-B19); approvals (AUT-B24); revise mode (AUT-B25)
+
 ## Behaviours
 
 ### SHL-B5 The skills and what they never do

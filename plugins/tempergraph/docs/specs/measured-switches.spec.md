@@ -4,6 +4,13 @@
 
 A switch picks one arm by a pure predicate ([CMP-B10](compiler-and-flow.spec.md)). A switch whose choice is a cost bet, such as a router that runs a small plan in one session and a large one per phase, needs three more things before it can be trusted: a shadow mode that records what the predicate would pick and routes nothing, arm overrides that give the units of an arm their own limits and models, and re-arming that moves a run to the safer arm when the cheaper one spends its budget ([ADR `switches-are-measured-before-they-route`](../adr/switches-are-measured-before-they-route.adr.md)). A switch whose predicate the engine builds from declared complexity measures and a rules file, with a failsafe arm, one-way re-arming and an arm contract, is a complexity switch ([CXR](complexity-routing.spec.md)). Workflow authors and the run reports depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: trip back clears (BUD-B4)
+- `complexity-routing.spec.md`: complexity routing between decompositions
+- `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
+- `observability-and-cost.spec.md`: observability and cost
+
 ## Behaviours
 
 ### SWM-B4 Switch fields
