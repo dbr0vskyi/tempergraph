@@ -8,6 +8,8 @@ Three questions, asked together because they feed each other:
 2. Should the decision record format gain or name: context, current state, forces, constraints, options considered with how each works and its pros and cons, decision rationale, consequences, risks, and revisit when?
 3. How should the discovery stage find the uncertainties and gaps in a task's initial intent, and close them through code discovery (a code graph or syntax tree where one is available), document discovery and questions to the owner?
 
+4. Which mental model should the step prompts carry, and what should change in the prompts themselves?
+
 This note recommends; it changes no rule, prompt or check.
 
 ## Sources consulted
@@ -25,10 +27,13 @@ This note recommends; it changes no rule, prompt or check.
 | The 137 specs and 147 decision records of this repository | documents, counted | `plugins/*/docs/specs/*.spec.md`, `plugins/*/docs/adr/*.adr.md` |
 | The 58 triage notes of this repository | documents, counted | `plugins/*/docs/tasks/*.triage.md` |
 | Engine source, parsed with Python's `ast` | code, measured | `plugins/tempergraph/engine/src` |
+| The eleven step prompts, counted | prompt | `plugins/temperspec-tgraph/prompts/*.md` |
+| What the engine adds to every step prompt | code | `plugins/tempergraph/engine/src/tempergraph/render/prompt.py` (lines 60 to 104) |
 | MADR decision template | public | `https://raw.githubusercontent.com/adr/madr/develop/template/adr-template.md` |
 | Spec Kit clarify command | public | `https://raw.githubusercontent.com/github/spec-kit/main/templates/commands/clarify.md` |
 | Aider repository map | public | `https://raw.githubusercontent.com/Aider-AI/aider/main/aider/website/docs/repomap.md` |
 | Nygard's decision record form, the arc42 building-block template, the pattern form's "forces" | public, from memory, not fetched in this session | none |
+| Quality-attribute scenarios and architecture documents with as-is and to-be views, package coupling measures (who depends on a module, what it depends on, cycles), phase-and-role delivery workflows | public practice, from memory, not fetched in this session | none |
 
 ## Key findings
 
@@ -124,6 +129,41 @@ Aider's repository map shows the pattern at scale: definitions and references ex
 
 Reading sessions have no shell and no extra tools: read, search and list only. A map written as plain files (one line per definition, one line per reference: name, kind, path, line) is searchable with the tools they already have, the way the capability list is. No new tool surface is needed for the first step.
 
+### F10 The prompts carry rules, and almost never the reason or the reader `confirmed`
+
+Counted over the eleven step prompts:
+
+| Prompt | Words | Longest procedure step (characters) | "never", "do not", "not", "no" | "because", "so that", "since" |
+|---|---|---|---|---|
+| triage | 943 | 1,055 | 22 | 2 |
+| discovery | 1,433 | 813 | 36 | 1 |
+| plan | 746 | 743 | 13 | 0 |
+| code | 1,321 | 760 | 24 | 0 |
+| setup | 751 | 518 | 22 | 0 |
+| the other six | 346 to 690 | 239 to 855 | 7 to 20 | 0 or 1 |
+
+Every prompt has the same good skeleton: one line on the role, the inputs, the rules to open, a procedure, limits, what to hand over. Inside it, single procedure steps hold five or more instructions (triage step 4, discovery step 3), and format detail that the prompt says it does not repeat is repeated there (the owner-decision entry in triage step 4). These are the marks of fixes added one clause at a time. Only triage tells the session who reads its output ("later steps start with no memory of this one"). Four limits are repeated across the prompts: no shell (6 prompts), do not run git (6), stay in the working directory (9), report and let the gate decide (8).
+
+The engine already adds to every step prompt the tools it may use, the list of criteria the gate will judge, the command that previews the gate's check where the step declares one, and the `UPSTREAM <unit>: <defect>` line (`render/prompt.py`). So a self-check list and the tool limits need no place in the step's own text.
+
+### F11 A step is easier to hold as "what uncertainty do I remove" than as a list of limits `inferred`
+
+Delivery workflows that split the work into roles share one model: each phase narrows what the next may decide. The system map says where things are, decisions say what is fixed, the spec says what must be true, the plan says where and in what order, and the code step decides only how. Their prompts state this as a lens ("think in behaviours and boundaries, never in algorithms"), as two short lists of what the role owns and does not own, and as a fixed way to report a conflict: what the document says, what was found, why both cannot hold, the options. A reviewing role is told that its job is to find gaps, that a rejection names the exact item, and that it never repairs what it reviews.
+
+temperspec holds the same model in its design (stateless steps, documents as the only memory, gates that decide, faults reported upstream). Its prompts state the lens in two places only: setup ("you describe; you do not design") and code ("you implement it, you do not improve it"). Triage, discovery and plan have none, and their boundaries are spread through the Limits as prohibitions.
+
+### F12 Requirements practice treats a vague word, a constraint and an assumption as three different things to challenge `supported`
+
+Architecture documentation practice gives each a form: a quality is stated with a number, the thing measured and how it is measured, and a vague one is pushed back to its author, never copied; a constraint carries its type, its reason and its effect, and is questioned ("real or assumed?"); an assumption carries how it will be checked and what it costs if wrong; a design is shown to meet each stated quality, one by one, with what was given up. Where facts are missing the writer says what is missing and what would find it, and does not fill the hole.
+
+temperspec's spec rule already bans words two readers would measure differently, in behaviours. Nothing applies the same test to the task's own criteria as they enter triage, and neither the triage note nor the decision record gives an assumption a cost.
+
+### F13 Describing an existing system has its own discipline, and it is short `supported`
+
+Practice for documenting a system from its code: orient from the build files and entry points; split a large code base into parts and read each alone; cite a file for every structural claim; say so when the code cannot answer; report, per module, what it depends on, what depends on it and any cycle; describe only the two to four flows that a reader would otherwise get wrong; and record a non-obvious design choice found in the code as found, with the code that shows it and without an invented reason. Sections with nothing to say are left out.
+
+temperspec's setup and reading sessions already follow the first four. The coupling figures, the limit on flows and a place for found design choices are missing.
+
 ## Conclusions
 
 ### Specs
@@ -213,6 +253,8 @@ The event or measurement that reopens the decision.
    - `Assumptions` (in 104 records today) is recognised as optional: what was taken as true without being checked, each one a candidate for `Revisit when`.
    - A record is at most about 10 KB (today's 90th percentile is 6.7 KB). A longer one holds two decisions.
    - A small decision fills each section with one line. The sections are a checklist of thought, not a quota of text.
+   - The rationale answers every force by its id: met by the chosen option, or given up and why. A model-free check can read that each id appears (F12).
+   - A constraint names where it comes from. One with no source is an assumption and moves there. An assumption carries how it could be checked and what it costs if wrong (F12).
 8. The same option form (how it works, for, against) should be used for the `Owner decisions` of the triage note, so the owner chooses between described options and not between labels.
 
 ### Discovery
@@ -225,7 +267,7 @@ The event or measurement that reopens the decision.
 - Goal: one sentence
 - In scope: …
 - Out of scope: … (stated by the task, or assumed)
-- Assumptions: A1 what triage took as true that the task does not say
+- Assumptions: A1 what triage took as true that the task does not say. If wrong: what it costs
 
 ## Uncertainties
 
@@ -235,16 +277,30 @@ The event or measurement that reopens the decision.
 ```
 
 10. **The scan uses a fixed list of categories**, each marked clear, partial or missing, and every category that is not clear yields a row (F7): goal and success (a criterion two readers would measure differently, a goal with no criterion, two criteria that conflict); scope boundary; actors and triggers; data and state (identity, life cycle); names others depend on; side effects (written, notified, logged); failures and edges (empty, boundary, concurrent, retried); limits (time, size, cost); dependencies inside and outside; existing behaviour and what the change could break; terms used with two meanings.
+    A criterion that uses a word two readers would measure differently is copied unchanged, as today, and gets a row of its own: triage raises it, it never rewrites it (F12).
 11. **Each row carries an impact and a route.** Impact: `blocks` (no behaviour can be written without it), `shapes` (the answer changes the design) or `detail` (the plan settles it). Route, tried in this order because each is cheaper and more certain than the next: `code`, `docs`, `source` (a public source), `owner`. Only `blocks` and `shapes` rows are worked in discovery; `detail` rows go to the plan through the hand-off. A `blocks` row keeps a task out of the quick lane.
-12. **Code discovery works from a generated code map.** Prepare writes it next to the capability list, as plain files the read and search tools can query: definitions (name, kind, path, line), references (name, path, line), imports (file to file) and, from those, which tests reach which source files. Reading sessions use it to answer four questions for each thing the task touches: where it is defined, what uses it, what it uses, which tests pin it. The answers are the task's reach, and they feed the `existing behaviour` gaps and the plan's reading list. The map is built by the best rung available (F9) and every hit is confirmed in the file (F8). In the engine this is a general capability, stated without any workflow: a script that indexes a repository's code.
+12. **Code discovery works from a generated code map.** Prepare writes it next to the capability list, as plain files the read and search tools can query: definitions (name, kind, path, line), references (name, path, line), imports (file to file) and, from those, which tests reach which source files. Reading sessions use it to answer four questions for each thing the task touches: where it is defined, what uses it, what it uses, which tests pin it. The answers are the task's reach, and they feed the `existing behaviour` gaps and the plan's reading list. The map also gives, for each file, how many files depend on it, how many it depends on, and any cycle it is part of; a file many others depend on raises a row's impact (F13). The hand-off carries the result as a `## Reach` section: what uses the things the task changes and which tests pin them. The map is built by the best rung available (F9) and every hit is confirmed in the file (F8). In the engine this is a general capability, stated without any workflow: a script that indexes a repository's code.
 13. **Document discovery gains two generated aids**: the "used by" direction of the spec dependencies (conclusion 2), and the list of every decision record's `Revisit when` line, so that triage can see when a task is the event that reopens a decision. For public sources the research rule should rank them (official documentation, then source code, then the maintainers' own announcements, then other writing) and keep its existing confidence marks.
 14. **The owner is asked last and once.** The pause moves from after triage to after the reading sessions. A row routed `owner` is asked as before; a row routed `code` or `docs` that the reading could not close becomes an owner question then, carrying what was found. The questions are ordered by impact, each with its options in the form of conclusion 8, a default and the cost of a wrong default, as today.
 15. **Discovery ends when every row has an end state**: answered (with the path or source that answers it), decided (by the owner or by a default), passed to the plan, or open. The hand-off lists them, so the judge and the owner can see what was assumed and what was found.
-16. **Build in four steps, each useful alone**: (a) the `Intent` and `Uncertainties` sections, their form check and one judge criterion with seeds, which needs prompts and rules only; (b) the code map as an engine capability and its use by reading sessions; (c) the pause after reading; (d) the spec and decision format changes, with checks that apply to new and changed documents only. Step (a) is the one that addresses F6 directly.
+16. **Discovery ends with a completeness pass that writes rows, not behaviours.** For each behaviour it wrote, it asks what happens on missing input, at the boundary, on failure, on a repeat and on two at once. An answer the task's criteria need becomes a behaviour; any other becomes a `detail` row for the plan or a question, so the scope rule ("close the task's gaps and nothing more") still holds. A non-obvious design choice found in the code is listed in the hand-off as found, with its path, and no reason is invented for it (F13).
+17. **Build in four steps, each useful alone**: (a) the `Intent` and `Uncertainties` sections, their form check and one judge criterion with seeds, which needs prompts and rules only; (b) the code map as an engine capability and its use by reading sessions; (c) the pause after reading; (d) the spec and decision format changes, with checks that apply to new and changed documents only. Step (a) is the one that addresses F6 directly.
+
+### Mental model and prompts
+
+18. **Give every step prompt the same opening of three sentences**: what uncertainty this step removes, who reads its output and what they cannot do without it, and the lens (F11). Proposed lenses: triage, "you find what is asked and what is not yet known; you answer nothing"; discovery, "you state what must be true and why; you think in rules an outsider can observe, never in files and functions"; plan, "you decide where and in what order; you design nothing a spec does not state"; code keeps its own.
+19. **Replace scattered prohibitions with two short lists, `You own` and `You do not own`**, the second saying where each thing goes instead (a missing spec: report discovery at fault; a wider fix: a deviation line). What is left in Limits is what has no owner to send it to.
+20. **Give a non-mechanical rule its reason in half a line.** A session follows a rule it understands in cases the rule's words do not reach; the prompts today give one or two reasons in a thousand words (F10).
+21. **One action per procedure step, about 400 characters at most**, and format detail only in the rule file, which the session must open anyway. Each fix then lands in one home.
+22. **Move the four repeated limits out of the step prompts** into one shared block, or drop the ones the engine's own tools section already states (F10). The step's text is then about the step.
+23. **One form for reporting a fault upstream**, used by plan, expand, phase and code before the `UPSTREAM` line: what the document says (quoted, with its id or row), what was found (path and line), why both cannot hold, and the smallest change that would resolve it. The step that receives the return trip then starts from a brief, not from one line.
+24. **No change to the judges' stance**: they already grade only listed criteria and need quoted evidence for every pass. The reviewing lens ("find what is wrong; a rejection names the item; never repair") is already what the independent review prompt says.
+25. Each of 18 to 23 is a prompt change with a measurable effect (gate failures on the first visit, return trips, tokens per step). Change one step first, discovery or triage, run the package's trial, and compare before changing the rest.
 
 ## Open questions
 
 - Whether the executor's unattended mode offers language-server queries (definitions and references) to a step. Until answered: the code map is built by a parser and read as files.
 - Whether tree-sitter may become an optional dependency of the engine, which today depends on three packages. Until answered: Python's own parser for Python, text search for other languages.
 - How often a later gate has sent a run back to discovery, and how often the owner corrected a run after the fact, for want of a question that an intent scan would have raised. The triage notes show what triage listed (F6), not what it missed. Until answered: step (a) is justified by the absence of any scan, and its effect is measured on the next runs by counting `blocks` rows and returns to discovery.
+- How often a step fails its gate on the first visit, by criterion, across past runs. That figure would say which prompt to change first and would be the baseline for conclusion 25. Until answered: start with triage, where F6 shows the largest gap.
 - Whether the cap on owner questions in one pause should fall from 20 toward the five that Spec Kit uses, once questions are ordered by impact. Until answered: 20.
