@@ -373,6 +373,71 @@ def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None,
     return found
 
 
+def _passes_after_failures(found: list[CheckFinding], criterion: str) -> list[CheckFinding]:
+    """The findings without the pass of `criterion` when a later part of the check failed it."""
+    if any(f.criterion == criterion and f.status == "fail" for f in found):
+        return [f for f in found if not (f.criterion == criterion and f.status == "pass")]
+    return found
+
+
+def _ownership(ctx: Any, specs: list[str], criterion: str, lead: str | None = None) -> list[CheckFinding]:
+    """The spec rule's `Depends on` and `Does not own`, on each edited spec in the current layout. A failure under
+    `criterion`: a behaviour or criterion the run added or changed links another spec (by its path, or by an id
+    only that spec defines) that `## Depends on` does not name; a `Depends on` row that names no existing spec and
+    is not `Outside:`; a `Does not own` row that names no existing spec other than this one. A lead under `lead`: a
+    listed spec that no behaviour or criterion links. Behaviours the run left alone are not read, so an old spec
+    gains the list as tasks change it."""
+    texts = {p: _read_path(ctx, p) for p in specs}
+    current = [p for p, t in texts.items() if t is not None and not fmt.LEGACY.search(t)]
+    if not current:
+        return [] if lead is None else [_find("n_a", lead, message="the run edited no spec in the current layout")]
+    index = _definitions(ctx, current)
+    known = {f for files in index.values() for f in files} | {p for p in _walk(ctx) if p.endswith(".spec.md")}
+    found: list[CheckFinding] = []
+    leads: list[CheckFinding] = []
+    for path in current:
+        text = texts[path] or ""
+        own = set(fmt.defined_ids(text))
+        prefixes = {i.rsplit("-", 1)[0] for i in own}
+        base = _at_base(ctx, path) if getattr(ctx.git, "base", None) else None
+        before = fmt.linking_blocks(base) if base is not None else {}
+        listed: dict[str, int] = {}
+        for row in fmt.spec_rows(text, fmt.DEPENDS):
+            hits = [h for t in row.paths if (h := fmt.resolve_spec(path, t, known))]
+            if not hits and not row.outside:
+                found.append(_find("fail", criterion, f"{path}:{row.line}", "a `Depends on` row names no existing "
+                                   "spec and is not `Outside:`", "name the spec by its path, or write `- Outside: …`"))
+            for h in hits:
+                listed.setdefault(h, row.line)
+        for row in fmt.spec_rows(text, fmt.NOT_OWNED):
+            hits = [h for t in row.paths if (h := fmt.resolve_spec(path, t, known)) and h != path]
+            if not hits:
+                found.append(_find("fail", criterion, f"{path}:{row.line}", "a `Does not own` row names no other "
+                                   "existing spec as the owner", "name the spec that owns the rule, or drop the row "
+                                   "(work nobody has built is an issue, not a spec line)"))
+        linked: set[str] = set()
+        lines = text.splitlines()
+        for key, block in fmt.linking_blocks(text).items():
+            targets = {h for t in fmt.spec_paths(block) if (h := fmt.resolve_spec(path, t, known))}
+            for ref in fmt.linked_ids(block) - own:
+                homes = set(index.get(ref, []))
+                if len(homes) == 1 and ref.rsplit("-", 1)[0] not in prefixes:
+                    targets |= homes
+            targets.discard(path)
+            linked |= targets
+            if before.get(key) == block:
+                continue
+            line = next((n for n, ln in enumerate(lines, 1) if ln.lstrip("#- ").startswith(key)), 1)
+            found += [_find("fail", criterion, f"{path}:{line}", f"{key} links `{t}`, which `## Depends on` does "
+                            "not name", f"add `- `{t}`: what this capability uses of it` under `## Depends on`")
+                      for t in sorted(targets) if t not in listed]
+        if lead is not None:
+            leads += [_find("maybe", lead, f"{path}:{n}", f"`{t}` is listed under `Depends on` but no behaviour or "
+                            "criterion links it", "link it where a behaviour uses it, or drop the row")
+                      for t, n in sorted(listed.items()) if t not in linked and t != path]
+    return found[:12] + ([] if lead is None else (leads[:8] or [_ok(lead)]))
+
+
 def _related(ctx: Any, specs: list[str], index: dict[str, list[str]], plan: fmt.Plan | None) -> list[str]:
     """Specs the run did not edit that an edited spec links by id, plus the specs the plan references."""
     out: list[str] = []
@@ -580,6 +645,7 @@ def setup_check(ctx: Any) -> Any:
         if path != overview_path and path not in overview:
             listed.append(_find("fail", "ts-set-listed", overview_path, f"the overview does not name `{path}`",
                                 "name each component spec by its path in the overview's Purpose"))
+    found += _ownership(ctx, [p for p in specs if _read_path(ctx, p) is not None], "ts-set-form")
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-set-form", overview_path))
     found += listed or [_ok("ts-set-listed", note_path)]
@@ -660,10 +726,14 @@ def triage_check(ctx: Any) -> Any:
     if note.deliver not in fmt.DELIVER:
         found.append(_find("fail", "ts-tri-form", path, "the Route section has no `Deliver: code` or `Deliver: docs`",
                            "state what the run delivers"))
+    found += [_find("fail", "ts-tri-form", place, message, fix) for place, message, fix in fmt.intent_problems(note)]
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-tri-form", path))
 
-    want = "plan" if note.gaps == "none" else ("discovery-only" if note.deliver == "docs" else "discovery")
+    # An open question that blocks or shapes the change is answered before the plan, so it keeps the run out of
+    # `plan` as a gap does.
+    settled = note.gaps == "none" and not note.working
+    want = "plan" if settled else ("discovery-only" if note.deliver == "docs" else "discovery")
     route, gaps = _value(ctx, "route"), _value(ctx, "gaps")
     bad = []
     if note.route not in fmt.ROUTES:
@@ -675,14 +745,15 @@ def triage_check(ctx: Any) -> Any:
         bad += [f.message for f in _commands(ctx, fmt.Plan(commands=note.change_commands), "ts-tri-route")
                 if note.change_commands]
     elif note.gaps and note.route != want:
-        bad.append(f"the note's route is `{note.route}` but its gaps and delivery give `{want}`")
-    if note.gaps == "none" and note.deliver == "docs":
+        bad.append(f"the note's route is `{note.route}` but its gaps, open questions and delivery give `{want}`")
+    if settled and note.deliver == "docs":
         bad.append("a docs delivery with no gap has nothing to write")
     if route is not None and route != note.route:
         bad.append(f"the route value `{route}` differs from the note's `{note.route}`")
     if gaps is not None and note.gaps and gaps != note.gaps:
         bad.append(f"the gaps value `{gaps}` differs from the note's gap list (`{note.gaps}`)")
-    found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gap list") for b in bad] or [
+    found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gaps and the open questions")
+              for b in bad] or [
         _ok("ts-tri-route", path)]
     found += _covered(ctx, note, path)
     found += _ruleread(ctx, "triage", "ts-tri-ruleread")
@@ -710,16 +781,16 @@ def _owner(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
         entered = {e.gap for e in note.owners}
         for gap, sort in note.sorts.items():
             if sort == "owner decision" and gap not in entered:
-                bad.append((gap, f"gap row {gap} says `Owner decision` but `{fmt.OWNER_HEADING}` has no entry for it",
+                bad.append((gap, f"row {gap} goes to the owner but `{fmt.OWNER_HEADING}` has no entry for it",
                             f"add `- {gap}: <question>` with its options, default and cost"))
         low, high = fmt.OWNER_OPTIONS
         for e in note.owners:
             gap, fix = e.gap, f"complete the entry for {e.gap}"
             if e.gap not in note.sorts:
-                bad.append((gap, f"entry {gap} answers no gap row", f"drop the entry or add the row {gap}"))
+                bad.append((gap, f"entry {gap} answers no row", f"drop the entry or add the row {gap}"))
                 continue
             if note.sorts[e.gap] == "findable":
-                bad.append((gap, f"entry {gap} is for a gap row that says `Findable`", "drop the entry"))
+                bad.append((gap, f"entry {gap} is for a row that does not go to the owner", "drop the entry"))
                 continue
             n = len(e.options)
             if not e.question:
@@ -762,10 +833,11 @@ def _covered(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
             bad.append((place, wrong))
     value = _value(ctx, "covered")
     if value is not None:
-        every = note.gap_rows > 0 and note.covered_rows == note.gap_rows
+        every = note.gap_rows > 0 and note.covered_rows == note.gap_rows and not note.working
         if value != ("yes" if every else "no"):
-            bad.append((path, f"the covered value `{value}` differs from the gap rows "
-                              f"({note.covered_rows} of {note.gap_rows} say `Covered by`)"))
+            bad.append((path, f"the covered value `{value}` differs from the note ({note.covered_rows} of "
+                              f"{note.gap_rows} gap rows say `Covered by`, {len(note.working)} open question(s) "
+                              "block or shape the change)"))
     if bad:
         return [_find("fail", crit, place, message, fix) for place, message in bad]
     if note.covered or value is not None:
@@ -794,7 +866,8 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def discovery_check(ctx: Any) -> Any:
     """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-named, ts-dis-literal,
-    ts-dis-wording, ts-dis-specname, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
+    ts-dis-wording, ts-dis-specname, ts-dis-depends, ts-dis-adrform, ts-dis-adrlead, ts-dis-reading, ts-dis-uncertain,
+    ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -805,13 +878,72 @@ def discovery_check(ctx: Any) -> Any:
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
     specs, _ = _edited_specs(ctx)
+    found = _passes_after_failures(found + _ownership(ctx, specs, "ts-dis-form", "ts-dis-depends"), "ts-dis-form")
     found += _general(ctx, specs, "ts-dis-named", "ts-dis-literal", "ts-dis-wording")
     found += _spec_names(ctx, specs, "ts-dis-specname")
+    found += _decisions(ctx, "ts-dis-adrform", "ts-dis-adrlead")
     found += _reading(ctx, text, path)
+    found += _uncertain(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
     found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
+
+
+def _decisions(ctx: Any, form_id: str, lead_id: str) -> list[CheckFinding]:
+    """The decision rule's form on every decision record the run created or changed (`form_id`, failures) and its
+    leads for the judge (`lead_id`): a record over about 10 KB, a `Revisit when` that names nothing observable.
+    Records the run did not touch are not read."""
+    records = [p for p in _changed_docs(ctx) if p.endswith(".adr.md")]
+    texts: list[tuple[str, str]] = []
+    for p in records:
+        t = _read_path(ctx, p)
+        if t is not None:
+            texts.append((p, t))
+    if not texts:
+        return [_find("n_a", c, message="the step created or changed no decision record") for c in (form_id, lead_id)]
+    form: list[CheckFinding] = []
+    leads: list[CheckFinding] = []
+    for path, text in texts:
+        fails, said = fmt.decision_problems(text)
+        form += [_find("fail", form_id, f"{path}:{n}", msg, fix) for n, msg, fix in fails[:LITERAL_MAX]]
+        leads += [_find("maybe", lead_id, f"{path}:{n}", msg, fix) for n, msg, fix in said[:LITERAL_MAX]]
+    return (form or [_ok(form_id)]) + (leads or [_ok(lead_id)])
+
+
+CLOSED_HEADING = "Uncertainties closed"
+# How a row of `Uncertainties closed` ends its question: what was found, the owner's answer, or an assumption taken.
+CLOSED_ROW = re.compile(r"\b(Answered|Owner|Assumed)\b\s*:", re.I)
+
+
+def _uncertain(ctx: Any, text: str, path: str) -> list[CheckFinding]:
+    """ts-dis-uncertain: every open question of the triage note that blocks or shapes the change has one line under
+    the hand-off's `Uncertainties closed` that names its id and says how it ended: `Answered:` with where it was
+    read, `Owner:` with the answer, or `Assumed:` with the assumption taken and `If wrong:`."""
+    crit = "ts-dis-uncertain"
+    note_text, note_path = _read(ctx, "triage_note")
+    working = fmt.parse_triage(note_text or "").working
+    if not working:
+        return [_find("n_a", crit, path, "the triage note has no open question that blocks or shapes the change")]
+    lines = {k.lower(): v for k, v in fmt.sections(text).items()}.get(CLOSED_HEADING.lower())
+    if lines is None:
+        return [_find("fail", crit, path, f"hand-off section `## {CLOSED_HEADING}` is missing",
+                      f"add `## {CLOSED_HEADING}` with one line for each of {', '.join(u.id for u in working)}")]
+    found: list[CheckFinding] = []
+    for u in working:
+        mine = [ln for ln in lines if re.search(rf"(?<![\w-]){u.id}(?![\w-])", ln)]
+        if not mine:
+            found.append(_find("fail", crit, u.id, f"`## {CLOSED_HEADING}` has no line for {u.id}",
+                               f"add `- {u.id}: Answered: …`, `Owner: …` or `Assumed: …`"))
+            continue
+        end = CLOSED_ROW.search(mine[0])
+        if end is None:
+            found.append(_find("fail", crit, u.id, f"the line for {u.id} says neither `Answered:`, `Owner:` nor "
+                               "`Assumed:`", "say how the question ended"))
+        elif end.group(1).lower() == "assumed" and not fmt.IF_WRONG.search(mine[0]):
+            found.append(_find("fail", crit, u.id, f"the assumption taken for {u.id} does not say what it costs if it "
+                               "is wrong", "end the line with `If wrong: <what it costs>`"))
+    return found or [_ok(crit, path)]
 
 
 # The spec rule's `General rules, not cases`: words that narrate a change, and an issue reference. Leads for the
@@ -1811,6 +1943,7 @@ def outcome_check(ctx: Any) -> Any:
     # Only the edited specs: a task note or a plan names ids the task retired on purpose, and is history.
     found += _links(ctx, "ts-spec-links", specs) if specs else [
         _find("n_a", "ts-spec-links", message="the run edited no spec")]
+    found = _passes_after_failures(found + _ownership(ctx, specs, "ts-spec-form"), "ts-spec-form")
     found += _fresh(ctx, specs)
     if _docs_only(ctx):
         found += [_find("n_a", c, message="the run delivers documents only") for c in ("ts-traced", "ts-verify")]

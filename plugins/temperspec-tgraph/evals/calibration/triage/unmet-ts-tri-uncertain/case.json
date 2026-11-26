@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-tri-uncertain",
+  "gate": "triage",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-tri-uncertain",
+    "expected": "UNMET",
+    "reason": "The task does not say whether the message replaces the stack trace for every unreadable file or only a missing one, which changes the behaviours written, and the Uncertainties section is None."
+  }
+}

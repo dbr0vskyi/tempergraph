@@ -8,9 +8,20 @@ Source: the start request. Summary: the tool reports a missing config file inste
 
 The task states what to build in prose.
 
+## Intent
+
+- Goal: the tool reports a missing config file instead of crashing
+- In scope: the change the acceptance criteria describe
+- Out of scope: any behaviour the criteria do not name
+- Assumptions: None
+
 ## Existing documents
 
 - `README.md`: says the tool reads `tool.toml`, says nothing about a missing file
+
+## Uncertainties
+
+None
 
 ## Gaps
 

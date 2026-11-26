@@ -65,9 +65,9 @@ Taken from temperspec's decision-record rule:
 
 - One decision per record, in `adr/<the-decision-in-a-few-words>.adr.md`, with no number.
 - Header: status (`proposed`, `accepted`, `rejected`, `deprecated`, `superseded`), date, authors, supersedes.
-- Sections: **Context**, **Decision** ("We will …"), **Options considered** (pros and cons each), **Decision rationale** (a comparison table), **Consequences** (positive, negative, risks with mitigations), and optionally **Revisit when**.
+- Sections, in reasoning order: **Context**, **Current state** (every sentence cites a path, a link or an id), **Forces** (constraints first, each with its source), **Options considered** (how each works, its pros and cons against the forces), **Decision** ("We will …"), **Decision rationale** (answers every force by its id), **Consequences**, **Risks** (each with what limits it and how it is noticed), **Assumptions** (each with how to check it and its cost if wrong) and **Revisit when** (an observable event or measurement). The full form is temperspec's [`decision.rule.md`](../../temperspec-tgraph/rules/decision.rule.md); the discovery check applies it to the records a run creates or changes.
 - A record holds the decision and links the specs; it restates none of their requirements.
-- Because this set was written without the owner available, every record states the **assumptions** it rests on, so a reviewer can overturn exactly those.
+- Because this set was written without the owner available, the **Assumptions** section matters here: a reviewer can overturn exactly those.
 
 ## Research rules
 

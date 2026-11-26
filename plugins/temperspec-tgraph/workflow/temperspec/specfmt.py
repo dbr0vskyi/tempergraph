@@ -1,10 +1,11 @@
-"""The formats the checks read: specs, the triage note, the hand-off and the plan.
+"""The formats the checks read: specs, decision records, the triage note, the hand-off and the plan.
 
 One home per format: the rule files under `rules/` say the same in words, and `tests/test_rules_match.py`
 fails when a rule and this module disagree on a heading or a pattern."""
 
 from __future__ import annotations
 
+import posixpath
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -13,7 +14,15 @@ SPEC_CAP_LINES = 400
 # The repository's spec budget is at most 400 lines and at most 30 KB; "over" means strictly more.
 SPEC_CAP_BYTES = 30 * 1024
 SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
-TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", "Route")
+DEPENDS = "Depends on"  # optional, between Purpose and Behaviours: what the capability uses, outgoing only
+NOT_OWNED = "Does not own"  # optional, after Depends on: rules a reader could expect here, each with its owner
+SPEC_ORDER = ("Purpose", DEPENDS, NOT_OWNED, "Behaviours", "Acceptance criteria", "Open questions")
+# Sections the spec rule leaves out on purpose: the behaviour headings are the responsibilities, "used by" is
+# generated into the capability list, and a task's scope lives in its triage note.
+SPEC_NO_SECTION = ("Responsibilities", "Used by", "Out of scope")
+OUTSIDE = re.compile(r"^\s*[-*]\s+Outside:\s*\S", re.IGNORECASE)
+SPEC_PATH = re.compile(r"\]\(\s*<?([^)\s>]+\.spec\.md)>?\s*\)|`([^`\s]+\.spec\.md)`")
+TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Intent", "Existing documents", "Uncertainties", "Gaps", "Route")
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions", "Reading list")
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
 REPORT_HEADINGS = ("Verification", "Deviations")  # the quick lane adds `## Rows` before them (no plan to mark)
@@ -38,7 +47,18 @@ ROUTES = ("discovery", "plan", "discovery-only", "quick")
 # What the quick lane may hold at most (the task-notes rule lists the same); over any of these the task is planned.
 QUICK_MAX = {"criteria": 3, "code_files": 2, "lines": 200}
 PROOF_HEADER = ("criterion", "test", "command")
-DECISION_HEADINGS = ("Context", "Decision", "Options considered", "Consequences")
+# The decision rule's sections, in reasoning order; the check reads that each is present, not their order.
+DECISION_HEADINGS = ("Context", "Current state", "Forces", "Options considered", "Decision", "Decision rationale",
+                     "Consequences", "Risks", "Assumptions", "Revisit when")
+DECISION_CAP_BYTES = 10 * 1024  # "at most about 10 KB": over it the record reaches the judge as a lead
+FORCE_ROW = re.compile(r"^\s*[-*]\s+\**([CF])(\d+)\b\**")
+ASSUMPTION_ROW = re.compile(r"^\s*[-*]\s+\**(A\d+)\b")
+# A sentence of `Current state` cites when it holds a code span, a link or a behaviour or criterion id.
+CITES = re.compile(r"`[^`]+`|\]\([^)]+\)|\b[A-Z][A-Z0-9]{1,7}-(?:B|AC)\d+\b")
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z`\[(])")
+VAGUE_REVISIT = re.compile(r"\b(if|when|as) (needs?|requirements?|circumstances|things) change|\bas needed\b|"
+                           r"\bif necessary\b|\bwhen appropriate\b|\bif (it|this) (no longer works|stops working)\b",
+                           re.I)
 RESEARCH_HEADINGS = ("Problem statement", "Sources consulted", "Key findings", "Conclusions", "Open questions")
 TEMPLATE_DIR = "docs/templates"
 EXAMPLE = re.compile(r"^```markdown\n(.*?)^```$", re.M | re.S)
@@ -62,7 +82,23 @@ COVERED = re.compile(rf"\b(?i:Covered by)\s+`?({ID}-B\d+)`?\s+and\s+`?({ID}-AC\d
 OWNER_HEADING = "Owner decisions"
 SORT_END = re.compile(r"\b(findable|owner decision)\W*$", re.I)
 GAP_ID = re.compile(r"\bG\d+\b")
-OWNER_ENTRY = re.compile(r"^\s*(?:[-*]\s+)?\**(G\d+)\**\s*:\s*(.*?)\s*$")
+OWNER_ENTRY = re.compile(r"^\s*(?:[-*]\s+)?\**([GU]\d+)\**\s*:\s*(.*?)\s*$")
+# The triage note's `## Intent` (what the task is for and where it stops) and `## Uncertainties` (what the task leaves
+# open about its own intent, one row for each question, found by a scan of fixed categories). A row is
+# `U<n> <category>: <question>. <Impact> <what>. Route: <route>`: the impact says how much rests on the answer and
+# the route where the answer is looked for. `Detail` rows are settled by the plan; every other row is working.
+INTENT_FIELDS = ("Goal", "In scope", "Out of scope", "Assumptions")
+ASSUMPTION = re.compile(r"^\s*(?:[-*]\s+)?\**(A\d+)\**\s*:\s*(.*?)\s*$")
+IF_WRONG = re.compile(r"\bIf wrong\s*:\s*\S", re.I)
+UNCERTAINTY_CATEGORIES = ("goal", "scope", "actors", "data", "names", "side effects", "failures", "limits",
+                          "life cycle", "dependencies", "existing behaviour", "terms")
+UNCERTAINTY_IMPACTS = ("blocks", "shapes", "detail")
+UNCERTAINTY_ROUTES = ("code", "docs", "source", "owner", "plan")
+READ_ROUTES = ("code", "docs", "source")  # the routes a reading session can follow
+UNCERTAINTY_ROW = re.compile(r"^\s*(?:[-*]|\|)\s*\**(U\d+)\**\s+([^:|]*?)\s*:\s*(\S.*)$")
+UNCERTAINTY_IMPACT = re.compile(r"(?:^|[.?!]\s+)\**(Blocks|Shapes|Detail)\b")
+UNCERTAINTY_ROUTE = re.compile(r"\bRoute\s*:\s*`?([a-z]+)`?\W*$", re.I)
+UNCERTAINTY_ID = re.compile(r"\bU\d+\b")
 # An option written on a line of its own under an empty `Options:` (`a) 30 minutes`, `- b) 15 minutes`).
 OWNER_OPTION_LINE = re.compile(r"^\s*(?:[-*]\s+)?\(?([a-z])\)\s+(.+?)\s*$")
 OWNER_ITEM = re.compile(r"^\s*(?:[-*]\s+)?\**(Options|Default|If wrong)\**\s*:\s*(.*?)\s*$", re.I)
@@ -211,6 +247,16 @@ def parse_spec(text: str, defined_elsewhere: Mapping[str, Sequence[str]] | None 
                 if c.group(1) in spec.criteria:
                     spec.problems.append((n, f"criterion id {c.group(1)} is defined twice", "use a new id"))
                 spec.criteria[c.group(1)] = SpecCriterion(line=n, proves=proves, text=c.group(3))
+    for n, line in enumerate(text.splitlines(), 1):
+        m = HEADING.match(line)
+        if m and len(m.group(1)) == 2 and m.group(2).strip().lower() in {h.lower() for h in SPEC_NO_SECTION}:
+            spec.problems.append((n, f"a spec has no `## {m.group(2).strip()}` section",
+                                  ("list what this spec uses under `## Depends on` and rules another spec owns under "
+                                   "`## Does not own`; a task's scope goes in its triage note")))
+    order = [h for h in sections(text) if h.lower() in {o.lower() for o in SPEC_ORDER}]
+    ranks = [[o.lower() for o in SPEC_ORDER].index(h.lower()) for h in order]
+    if ranks != sorted(ranks) and not headings_missing(text, SPEC_HEADINGS):
+        spec.problems.append((1, "the sections are out of order", "order them " + ", ".join(SPEC_ORDER)))
     found = {h.lower() for h in sections(text)}
     if "behaviours" in found and not spec.behaviours:
         spec.problems.append((1, "no behaviour is defined", "add `### PREFIX-B1 name` with its WHEN … SHALL line"))
@@ -235,6 +281,58 @@ def parse_spec(text: str, defined_elsewhere: Mapping[str, Sequence[str]] | None 
         if not crit.proves:
             spec.problems.append((crit.line, f"{cid} names no behaviour", "add the behaviour id in brackets"))
     return spec
+
+
+def spec_paths(text: str) -> list[str]:
+    """The spec files a text links: a markdown link target or a code span ending `.spec.md`, as written."""
+    return [a or b for a, b in SPEC_PATH.findall(text)]
+
+
+@dataclass
+class SpecRow:
+    line: int
+    text: str
+    paths: list[str]
+    outside: bool = False
+
+
+def spec_rows(text: str, heading: str) -> list[SpecRow]:
+    """The list items of one section of a spec (`Depends on` or `Does not own`), with the spec paths each names."""
+    rows: list[SpecRow] = []
+    inside = False
+    for n, line in enumerate(text.splitlines(), 1):
+        m = HEADING.match(line)
+        if m:
+            inside = len(m.group(1)) == 2 and m.group(2).strip().lower() == heading.lower()
+            continue
+        if inside and re.match(r"^\s*[-*]\s+\S", line):
+            rows.append(SpecRow(line=n, text=line.strip(), paths=spec_paths(line), outside=bool(OUTSIDE.match(line))))
+    return rows
+
+
+def linking_blocks(text: str) -> dict[str, str]:
+    """Behaviour id or criterion id -> its block, the places where a spec's links to other specs count: every
+    behaviour block, and every acceptance criterion's line."""
+    out = dict(behaviour_blocks(text))
+    inside = False
+    for line in text.splitlines():
+        m = HEADING.match(line)
+        if m and len(m.group(1)) == 2:
+            inside = m.group(2).strip().lower() == "acceptance criteria"
+        elif inside and (c := CRITERION_LINE.match(line)):
+            out[c.group(1)] = " ".join(line.split())
+    return out
+
+
+def resolve_spec(spec_path: str, target: str, known: set[str]) -> str | None:
+    """A linked spec path as a repository path: against the linking spec's folder first, then the repository's
+    root, then a file name only one known spec has; None when no known spec matches."""
+    target = target.split("#", 1)[0]
+    for cand in (posixpath.normpath(posixpath.join(posixpath.dirname(spec_path), target)), posixpath.normpath(target)):
+        if cand in known:
+            return cand
+    same = [k for k in known if posixpath.basename(k) == posixpath.basename(target)]
+    return same[0] if len(same) == 1 else None
 
 
 DEFINITION = re.compile(rf"^\s*(?:#{{1,6}}\s+|\|\s*|[-*]\s+(?:\[[ xX]\]\s+)?)?\*{{0,2}}({ID}-(?:B|AC)\d+)\b")
@@ -308,8 +406,32 @@ def _owner_entries(lines: list[str]) -> list[OwnerEntry]:
 
 
 @dataclass
+class Uncertainty:
+    """One row of the `Uncertainties` section: its id, its category, its impact and its route as written (lower
+    case, empty when the row names none), and the row itself."""
+
+    id: str
+    category: str = ""
+    impact: str = ""
+    route: str = ""
+    text: str = ""
+
+    @property
+    def working(self) -> bool:
+        """A row the run has to answer before the plan: every row but a `Detail` one."""
+        return self.impact != "detail"
+
+
+@dataclass
 class Triage:
     criteria: list[int] = field(default_factory=list)
+    # The Intent section's fields by lower-case name (`goal`, `in scope`, `out of scope`, `assumptions`), the
+    # assumption rows `A<n>` with whether each states `If wrong:`, and the Uncertainties section: `none`, `some`, or
+    # empty when it is neither, and its rows.
+    intent: dict[str, str] = field(default_factory=dict)
+    assumptions: dict[str, bool] = field(default_factory=dict)
+    uncertain: str = ""
+    uncertainties: list[Uncertainty] = field(default_factory=list)
     deliver: str = ""
     gaps: str = ""  # `none`, `some`, or empty when the Gaps section is neither
     gap_rows: int = 0
@@ -331,6 +453,16 @@ class Triage:
     owner_section: bool = False
     owner_none: bool = False
     owners: list[OwnerEntry] = field(default_factory=list)
+
+    @property
+    def working(self) -> list[Uncertainty]:
+        """The uncertainty rows the run answers before the plan (`Blocks` and `Shapes`)."""
+        return [u for u in self.uncertainties if u.working]
+
+    @property
+    def readable(self) -> list[Uncertainty]:
+        """The working rows a reading session can answer: routed to the code, the documents or a public source."""
+        return [u for u in self.working if u.route in READ_ROUTES]
 
 
 def _field(lines: list[str], name: str) -> str:
@@ -365,6 +497,26 @@ def parse_triage(text: str) -> Triage:
         sort, gap = SORT_END.search(ln.rstrip()), GAP_ID.search(ln)
         if gap:
             t.sorts[gap.group(0)] = sort.group(1).lower() if sort else ("findable" if COVERED_WORDS.search(ln) else "")
+    intent = low.get("intent", [])
+    for name in INTENT_FIELDS:
+        t.intent[name.lower()] = _field(intent, name)
+    for ln in intent:
+        if (a := ASSUMPTION.match(ln)):
+            t.assumptions[a.group(1)] = bool(IF_WRONG.search(a.group(2)))
+    listed = [ln for ln in low.get("uncertainties", []) if ln.strip()]
+    for ln in listed:
+        if (u := UNCERTAINTY_ROW.match(ln)) is None or any(u.group(1) == seen.id for seen in t.uncertainties):
+            continue
+        rest = u.group(3).strip().strip("|").strip()
+        impact, route = UNCERTAINTY_IMPACT.search(rest), UNCERTAINTY_ROUTE.search(rest)
+        t.uncertainties.append(Uncertainty(
+            id=u.group(1), category=" ".join(u.group(2).lower().split()), text=ln.strip(),
+            impact=impact.group(1).lower() if impact else "", route=route.group(1).lower() if route else ""))
+        t.sorts[u.group(1)] = "owner decision" if t.uncertainties[-1].route == "owner" else "findable"
+    if t.uncertainties:
+        t.uncertain = "some"
+    elif len(listed) == 1 and re.fullmatch(r"\W*none\W*", listed[0], re.I):
+        t.uncertain = "none"
     owner = [ln for ln in low.get(OWNER_HEADING.lower(), []) if ln.strip()]
     t.owner_section = OWNER_HEADING.lower() in low
     t.owner_none = len(owner) == 1 and bool(re.fullmatch(r"\W*none\W*", owner[0], re.I))
@@ -408,6 +560,47 @@ def parse_reading_list(text: str) -> list[ReadingItem]:
     return items
 
 
+def uncertainty_rows(text: str) -> list[str]:
+    """The lines of a triage note's Uncertainties section that open a row, unchanged and in order."""
+    low = {k.lower(): v for k, v in sections(text).items()}
+    return [ln for ln in low.get("uncertainties", []) if UNCERTAINTY_ROW.match(ln)]
+
+
+def intent_problems(note: Triage) -> list[tuple[str, str, str]]:
+    """What is wrong with a note's Intent and Uncertainties sections, as (place, message, fix); empty when both
+    hold what the task-notes rule asks. Measured from the note alone."""
+    bad: list[tuple[str, str, str]] = []
+    for name in INTENT_FIELDS[:3]:
+        if not note.intent.get(name.lower()):
+            bad.append(("Intent", f"the Intent section has no `{name}:` line with words after it",
+                        f"add `- {name}: …`"))
+    stated = note.intent.get("assumptions", "")
+    if not note.assumptions and not re.fullmatch(r"\W*none\W*", stated, re.I):
+        bad.append(("Intent", "the Intent section has neither `Assumptions: None` nor assumption rows `A1`, `A2`, …",
+                    "write `- Assumptions: None`, or one row `A<n>: <assumption>. If wrong: <cost>` for each"))
+    for aid, costed in note.assumptions.items():
+        if not costed:
+            bad.append((aid, f"assumption {aid} does not say what it costs if it is wrong",
+                        f"end {aid} with `If wrong: <what it costs>`"))
+    if not note.uncertain:
+        bad.append(("Uncertainties", "the Uncertainties section is neither `None` nor rows `U1`, `U2`, …",
+                    "write `None`, or one row for each open question"))
+    for u in note.uncertainties:
+        if u.category not in UNCERTAINTY_CATEGORIES:
+            bad.append((u.id, f"row {u.id} names the category `{u.category}`, not one of "
+                              f"{', '.join(UNCERTAINTY_CATEGORIES)}", f"open {u.id} with one of the categories"))
+        if not u.impact:
+            bad.append((u.id, f"row {u.id} states no impact after its question",
+                        f"add a sentence that opens `Blocks`, `Shapes` or `Detail` to {u.id}"))
+        if u.route not in UNCERTAINTY_ROUTES:
+            bad.append((u.id, f"row {u.id} does not end `Route:` with one of {', '.join(UNCERTAINTY_ROUTES)}",
+                        f"end {u.id} with `Route: <where the answer is looked for>`"))
+        elif u.impact and (u.impact == "detail") != (u.route == "plan"):
+            bad.append((u.id, f"row {u.id} is `{u.impact.capitalize()}` with the route `{u.route}`: a `Detail` row "
+                              "goes to `plan`, and no other row does", f"change the impact or the route of {u.id}"))
+    return bad
+
+
 def quick_problems(note: Triage) -> list[str]:
     """Why a note may not take the quick lane; empty when it may. Measured from the note alone."""
     bad = []
@@ -415,6 +608,8 @@ def quick_problems(note: Triage) -> list[str]:
         bad.append("the quick lane needs `None` under Gaps")
     if note.deliver != "code":
         bad.append("the quick lane delivers code")
+    if note.working:
+        bad.append(f"the quick lane takes no open question that blocks or shapes the change ({note.working[0].id})")
     if len(note.criteria) > QUICK_MAX["criteria"]:
         bad.append(f"{len(note.criteria)} acceptance criteria, over {QUICK_MAX['criteria']}")
     if not note.change:
@@ -707,8 +902,17 @@ INVENTORY_PURPOSE_MAX = 300
 
 def inventory(specs: Sequence[tuple[str, str]]) -> str:
     """The capability list: for each spec (path, text), its path, its title, the first sentence of its Purpose (or
-    its earlier layout's Overview) and its behaviour headings, without statements or scenarios. Generated from the
+    its earlier layout's Overview), the specs that name it under `## Depends on` (its "used by", never written by hand)
+    and its behaviour headings, without statements or scenarios. Generated from the
     specs, never edited by hand (documents rule 3), so triage and discovery can find the spec that owns a rule."""
+    known = {path for path, _ in specs}
+    used_by: dict[str, set[str]] = {}
+    for path, text in specs:
+        for row in spec_rows(text, DEPENDS):
+            for target in row.paths:
+                hit = resolve_spec(path, target, known)
+                if hit and hit != path:
+                    used_by.setdefault(hit, set()).add(path)
     out = ["# Capabilities", "",
            "Generated from the repository's specs at the start of the run. Do not edit: change a spec instead.", ""]
     for path, text in specs:
@@ -726,6 +930,120 @@ def inventory(specs: Sequence[tuple[str, str]]) -> str:
         out += [f"## `{path}`: {title}", ""]
         if first:
             out += [first, ""]
+        if used_by.get(path):
+            out += ["Used by: " + ", ".join(f"`{u}`" for u in sorted(used_by[path])), ""]
         heads = [f"- {m.group(1)}{m.group(2).rstrip()}" for m in map(BEHAVIOUR_HEAD.match, text.splitlines()) if m]
         out += (heads or ["- (no behaviours)"]) + [""]
     return "\n".join(out)
+
+
+def _section_lines(text: str) -> dict[str, list[tuple[int, str]]]:
+    """Level-2 heading (lower case) -> its (line number, line) pairs, outside fenced code."""
+    out: dict[str, list[tuple[int, str]]] = {}
+    current: list[tuple[int, str]] | None = None
+    fenced = False
+    for n, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        m = None if fenced else HEADING.match(line)
+        if m and len(m.group(1)) <= 2:
+            current = out.setdefault(m.group(2).strip().lower(), []) if len(m.group(1)) == 2 else None
+            continue
+        if current is not None:
+            current.append((n, line))
+    return out
+
+
+def _filled(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    return [(n, ln) for n, ln in lines if ln.strip() and not ln.strip().startswith("<!--")]
+
+
+def decision_problems(text: str) -> tuple[list[tuple[int, str, str]], list[tuple[int, str, str]]]:
+    """The decision rule's form, read from a decision record: (failures, leads), each (line, message, fix).
+    Failures: a section missing or empty; a `Current state` sentence that cites nothing; a constraint with no
+    source; fewer than two options, or an option with no `How it works:` line; a force id the rationale never
+    names; a risk without `Limited by:` and `Noticed by:`; an assumption without `If wrong:`. Leads: a record over
+    about 10 KB, a `Revisit when` that names nothing observable."""
+    fails: list[tuple[int, str, str]] = []
+    leads: list[tuple[int, str, str]] = []
+    secs = _section_lines(text)
+    for h in DECISION_HEADINGS:
+        if h.lower() not in secs:
+            fails.append((1, f"section `## {h}` is missing", f"add `## {h}` as the decision rule says"))
+        elif not _filled(secs[h.lower()]) and h != "Options considered":
+            fails.append((1, f"section `## {h}` is empty", "fill it, with one line for a small decision"))
+    current = _filled(secs.get("current state", []))
+    if not (len(current) == 1 and current[0][1].strip().lower().rstrip(".") == "nothing exists yet"):
+        for n, line in current:
+            body = line.strip().lstrip("-*|").strip()
+            for sentence in SENTENCE_END.split(body):
+                if sentence.strip() and not CITES.search(sentence):
+                    fails.append((n, f"a sentence of `Current state` cites no path, link or id: "
+                                     f"`{sentence.strip()[:80]}`", "cite the file, document or id it was read in"))
+                    break
+    forces: list[str] = []
+    for n, line in _filled(secs.get("forces", [])):
+        row = FORCE_ROW.match(line)
+        if row is None:
+            continue
+        forces.append(row.group(1) + row.group(2))
+        if row.group(1) == "C" and not re.search(r"\bSource\s*:", line, re.I):
+            fails.append((n, f"constraint {forces[-1]} names no source", "add `Source:` with the spec id, document, "
+                          "file or person it comes from, or move it under `Assumptions`"))
+    if "forces" in secs and not forces:
+        fails.append((1, "`Forces` lists no force with an id", "list each force as `- C1 (constraint): …` or `- F1: …`"))
+    options = _option_blocks(text)
+    if "options considered" in secs and len(options) < 2:
+        fails.append((1, f"`Options considered` describes {len(options)} option(s) under `###` headings",
+                      "compare at least two real options, each under its own `###` heading"))
+    for n, title, body in options:
+        if not re.search(r"^\s*\**How it works\**\s*:", body, re.I | re.M):
+            fails.append((n, f"option `{title}` has no `How it works:` line",
+                          "say in one to three sentences what would be built or changed"))
+    rationale = " ".join(ln for _, ln in secs.get("decision rationale", []))
+    for fid in forces:
+        if not re.search(rf"(?<![\w-]){fid}(?![\w-])", rationale):
+            fails.append((1, f"`Decision rationale` does not answer force {fid}",
+                          f"say whether the chosen option meets {fid} or gives it up, and why"))
+    risks = _filled(secs.get("risks", []))
+    if not (len(risks) == 1 and risks[0][1].strip().lower().rstrip(".") == "none known"):
+        for n, line in risks:
+            if re.match(r"^\s*[-*]\s+", line) and not (re.search(r"\bLimited by\s*:", line, re.I)
+                                                       and re.search(r"\bNoticed by\s*:", line, re.I)):
+                fails.append((n, "a risk does not say what limits it and how it would be noticed",
+                              "add `Limited by:` and `Noticed by:`, or write `None known.`"))
+    assumptions = _filled(secs.get("assumptions", []))
+    if not (len(assumptions) == 1 and assumptions[0][1].strip().lower().rstrip(".") == "none"):
+        for n, line in assumptions:
+            row = ASSUMPTION_ROW.match(line)
+            if row and not re.search(r"\bIf wrong\s*:", line, re.I):
+                fails.append((n, f"assumption {row.group(1)} does not say what it costs if wrong",
+                              "add `If wrong:` with what it would cost"))
+    size = len(text.encode("utf-8"))
+    if size > DECISION_CAP_BYTES:
+        leads.append((1, f"the record has {size:,} bytes, over about 10 KB", "a longer record holds two decisions: "
+                      "split it"))
+    for n, line in _filled(secs.get("revisit when", [])):
+        vague = VAGUE_REVISIT.search(line)
+        if vague:
+            leads.append((n, f"`{vague.group(0)}` names nothing observable",
+                          "name an event or a measurement that reopens the decision"))
+    return fails, leads
+
+
+def _option_blocks(text: str) -> list[tuple[int, str, str]]:
+    """(line, title, body) of each `###` option under `## Options considered`."""
+    out: list[tuple[int, str, list[str]]] = []
+    inside = False
+    for n, line in enumerate(text.splitlines(), 1):
+        m = HEADING.match(line)
+        if m and len(m.group(1)) == 2:
+            inside = m.group(2).strip().lower() == "options considered"
+            continue
+        if not inside:
+            continue
+        if m and len(m.group(1)) == 3:
+            out.append((n, m.group(2).strip(), []))
+        elif out:
+            out[-1][2].append(line)
+    return [(n, t, "\n".join(b)) for n, t, b in out]

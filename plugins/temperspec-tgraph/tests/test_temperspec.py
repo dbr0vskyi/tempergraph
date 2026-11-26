@@ -376,17 +376,17 @@ def _view(**values: str) -> Any:
     return SimpleNamespace(values=values)
 
 
-def test_routes_follow_the_values() -> None:  # AC 4, PRL-AC1, OWQ-AC2: the full discovery starts with the owner's questions
+def test_routes_follow_the_values() -> None:  # AC 4, PRL-AC1, OWQ-AC2: the full discovery starts with the reading sessions
     assert routing.route_triage(_view(route="plan")) == "plan"
-    assert routing.route_triage(_view(route="discovery")) == "owner_questions"
+    assert routing.route_triage(_view(route="discovery")) == "read_gap"
     assert routing.route_triage(_view(route="quick")) == "code"
-    assert routing.route_triage(_view()) == "owner_questions"  # an unreadable route takes the longer path
+    assert routing.route_triage(_view()) == "read_gap"  # an unreadable route takes the longer path
     assert routing.route_triage(_view(route="discovery", covered="yes")) == "discovery_short"
-    assert routing.route_triage(_view(route="discovery", covered="no")) == "owner_questions"
-    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "owner_questions"  # docs are the goal
+    assert routing.route_triage(_view(route="discovery", covered="no")) == "read_gap"
+    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "read_gap"  # docs are the goal
     # OWQ-AC2: a script's key reaches a route as an artifact key; `owner_questions` leaves `empty` only for no question
-    assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=("question_list", "empty"))) == "read_gap"
-    assert routing.route_ask(SimpleNamespace(values={"empty": "yes"}, artifact_keys=())) == "read_gap"
+    assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=("question_list", "empty"))) == "discovery"
+    assert routing.route_ask(SimpleNamespace(values={"empty": "yes"}, artifact_keys=())) == "discovery"
     assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=("question_list",))) == "ask_owner"  # a question
     assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=())) == "ask_owner"  # a list that failed pauses
     assert routing.route_short(_view(settled="yes")) == "plan"

@@ -18,7 +18,16 @@ Sections in this order, with these headings:
 
 ## Purpose
 
-One short paragraph: what the capability is for and who depends on it.
+One short paragraph: what the capability is for.
+
+## Depends on
+
+- `session-store.spec.md`: reads and ends session records
+- Outside: the system clock
+
+## Does not own
+
+- Signing in and creating a session: `sign-in.spec.md`
 
 ## Behaviours
 
@@ -34,7 +43,15 @@ WHEN a session has been idle for 30 minutes THE service SHALL end the session.
 - SES-AC1 (SES-B1): A request on a session idle for 31 minutes is refused as signed out
 ```
 
-An `## Open questions` section may follow, only while a question is open. Remove it when the last question is answered. No other section exists: no interface section, no contract tables, no status, no history.
+`## Depends on` and `## Does not own` are written only when they have a row. An `## Open questions` section may follow the criteria, only while a question is open. Remove it when the last question is answered. No other section exists: no interface section, no contract tables, no status, no history, no `Responsibilities` (the behaviour headings are the list of what the capability does), no `Used by` and no `Out of scope`.
+
+## Depends on
+
+What this capability uses, outgoing only: one row for each other spec its behaviours or criteria link (the spec's path in a code span, relative to this spec's folder, a colon and what is used), and one `- Outside: <what>` row for each thing outside the repository it needs, such as a command-line tool, a service or a file format someone else owns. A behaviour or criterion that links another spec, by its path or by an id that spec defines, has that spec in this list; the check fails a behaviour or criterion added or changed without it, and reports a listed spec that nothing links as a lead. Who uses this capability is never written by hand (`documents.rule.md`, rule 2): the capability list that a run generates prints it beside each spec, from the other specs' lists. The Purpose then carries no list of links.
+
+## Does not own
+
+Rules a reader could expect to find here that another spec owns, one row each: the rule, a colon, and the path of the spec that owns it in a code span. Every row names its owner, an existing spec other than this one; work nobody has built has no row, because it is not a rule of any spec yet (it is an issue or a task). What a task leaves out or defers is the task's scope and goes in its triage note, never here.
 
 ## Behaviours
 
@@ -49,7 +66,7 @@ An `## Open questions` section may follow, only while a question is open. Remove
 
 ## Naming a spec
 
-A spec is named for the capability it owns, never for the task that created it: no task id, issue number or work verb (add, fix, support, remove, update) in its file name or its title. When a neighbouring spec could be mistaken for the owner of a rule, the Purpose says in one sentence what this spec does not own. Before a new spec is written, the existing specs are searched for the capability: a rule that belongs to an existing capability goes into its spec, not into a near-duplicate.
+A spec is named for the capability it owns, never for the task that created it: no task id, issue number or work verb (add, fix, support, remove, update) in its file name or its title. When a neighbouring spec could be mistaken for the owner of a rule, `## Does not own` names that rule and its owner. Before a new spec is written, the existing specs are searched for the capability: a rule that belongs to an existing capability goes into its spec, not into a near-duplicate.
 
 ## General rules, not cases
 
@@ -82,7 +99,7 @@ A spec has at most 400 lines and at most 30 KB (30,720 bytes). A spec that would
 
 ## Editing a spec
 
-Edit only the behaviours and criteria the task changes, in place. Do not touch other specs to "keep them consistent" unless one of their behaviours or criteria changes. Follow `documents.rule.md` for the rules against cascade edits.
+Edit only the behaviours and criteria the task changes, in place, and the `Depends on` and `Does not own` rows they need. A spec written before these sections existed gains them as tasks change its behaviours: a changed behaviour that links another spec adds that spec's row, and the rest of the list waits for the behaviours that need it. Do not touch other specs to "keep them consistent" unless one of their behaviours or criteria changes. Follow `documents.rule.md` for the rules against cascade edits.
 
 ## The overview spec
 

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 24,
+  "revision": 27,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -46,7 +46,7 @@
       "severity": "blocker",
       "verified_by": "check",
       "text": "Every spec the run edited passes the spec rule's structure check",
-      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour",
+      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour; and the spec rule's `Depends on` and `Does not own`: each behaviour or criterion the run added or changed that links another spec, by its path or by an id only that spec defines, has that spec under `## Depends on`; each `Depends on` row names an existing spec or is `Outside:`; each `Does not own` row names an existing spec other than this one; no `Responsibilities`, `Used by` or `Out of scope` section, and the sections in the rule's order",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -414,14 +414,14 @@
       ]
     },
     "triage": {
-      "statement": "The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps and the size of the task",
+      "statement": "The triage note states the task's acceptance criteria, its intent, the questions it leaves open, the gaps in the specs, and a route that follows the gaps, the open questions and the size of the task",
       "criteria": [
         {
           "id": "ts-tri-form",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The triage note has each section the triage rule requires",
-          "check_method": "Read the note's headings against the rule's list",
+          "text": "The triage note has each section the triage rule requires, states the task's intent (goal, in scope, out of scope, assumptions each with what it costs if wrong) and lists each open question as a row with one of the fixed categories, an impact (Blocks, Shapes or Detail) and a route (code, docs, source, owner or plan), a Detail row and no other going to plan",
+          "check_method": "Read the note's headings against the rule's list, and its Intent and Uncertainties sections against the rule's fields, categories, impacts and routes",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -431,8 +431,8 @@
           "id": "ts-tri-route",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The route follows the gap list: discovery with a gap, plan or quick with none, and quick only within the quick lane's limits and never on a return to triage",
-          "check_method": "Compare the route with the gap list and the delivery; for quick, measure the note's criteria count and its Change section against the limits, resolve its commands, and read the visit number",
+          "text": "The route follows the gap list and the open questions: discovery with a gap or with a question that blocks or shapes the change, plan or quick with neither, and quick only within the quick lane's limits and never on a return to triage",
+          "check_method": "Compare the route with the gap list, the impacts of the uncertainty rows and the delivery; for quick, measure the note's criteria count and its Change section against the limits, resolve its commands, and read the visit number",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -517,6 +517,29 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-tri-uncertain",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "Every question the task leaves open about its own intent that would change which behaviours are written is an uncertainty row, and no row's impact is lower than what rests on its answer",
+          "check_method": "Read the task against each category of the rule's scan (goal, scope, actors, data, names, side effects, failures, limits, life cycle, dependencies, existing behaviour, terms); compare what it leaves open with the rows and their impacts",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "request"
+            ],
+            "scale": {
+              "met": "each open question that would change the behaviours written is a row, and each row's impact fits what rests on its answer",
+              "partial": "each such question is a row, but one is marked Detail although its answer changes which behaviours are written",
+              "unmet": "the task leaves open a question that changes which behaviours are written and no row lists it",
+              "evidence": "per category that the task leaves open: the words of the task, and the row or its absence",
+              "seeds": [
+                "met-ts-tri-uncertain",
+                "unmet-ts-tri-uncertain"
+              ]
+            }
+          }
         },
         {
           "id": "ts-tri-covered",
@@ -924,6 +947,42 @@
           ]
         },
         {
+          "id": "ts-dis-depends",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "A spec that discovery edited and lists under `Depends on` a spec that none of its behaviours or criteria links reaches the judge as a lead",
+          "check_method": "For each edited spec in the current layout, resolve each `Depends on` row's spec path and each spec its behaviours and criteria link, by path or by an id only that spec defines; report each listed spec that nothing links as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-adrform",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every decision record the discovery step created or changed has every section of the decision rule, filled: a `Current state` whose every sentence cites a path, a link or an id, constraints that name their source, at least two options each with how it works, a rationale that answers every force by its id, risks with what limits them and how they are noticed, and assumptions with what they cost if wrong",
+          "check_method": "Read each `.adr.md` the step created or changed (the changed paths and the hand-off's `Changed documents`): the ten sections `Context`, `Current state`, `Forces`, `Options considered`, `Decision`, `Decision rationale`, `Consequences`, `Risks`, `Assumptions`, `Revisit when` present and not empty in any order; each `Current state` sentence holds a code span, a link or an id unless the section is `Nothing exists yet.`; each `C<n>` force has `Source:`; two or more `###` options, each with `How it works:`; each `C<n>` and `F<n>` id appears in `Decision rationale`; each risk bullet has `Limited by:` and `Noticed by:` unless the section is `None known.`; each `A<n>` assumption has `If wrong:` unless the section is `None.`. Records the step did not touch are not read",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-adrlead",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "A decision record the discovery step created or changed that is over about 10 KB, or whose `Revisit when` names nothing observable, reaches the judge as a lead",
+          "check_method": "Read each `.adr.md` the step created or changed: its size over 10,240 bytes, and a `Revisit when` line with `if needs change`, `when requirements change`, `as needed`, `if necessary` or `when appropriate`; report each as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
           "id": "ts-dis-general",
           "severity": "blocker",
           "verified_by": "judge",
@@ -978,6 +1037,17 @@
           "verified_by": "check",
           "text": "The hand-off of a task that goes on to a plan has a reading list with one item for each file the plan will need, naming an existing file, the line ranges or ids that matter and one line on why",
           "check_method": "Read the hand-off's reading list: each item names a file that exists, with its ranges or ids and a reason",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-uncertain",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every open question of the triage note that blocks or shapes the change has one line under the hand-off's Uncertainties closed that says how it ended: answered with where it was read, the owner's answer, or an assumption with what it costs if wrong",
+          "check_method": "Read the uncertainty rows of the triage note that say Blocks or Shapes; find each id under the hand-off's Uncertainties closed with Answered, Owner or Assumed, and If wrong on an assumption",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:discovery_check"
@@ -1889,7 +1959,8 @@
     "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-ran from the gate's own command runs.",
     "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch.",
     "The triage check given no conversation value reads no sort: the engine's fixture rung gives a check no settings, so ts-tri-owner is not applicable to each triage fixture, and the cases of `never`, `blocking` and `always` are proved by the package's tests.",
-    "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions)."
+    "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions).",
+    "The eleven categories of the uncertainty scan, the three impacts and the five routes are first values with no measured run behind them; ts-tri-uncertain is a warning until runs show how often its judge and the owner agree (research note spec-decision-and-discovery-formats)."
   ],
   "revisions": [
     {
@@ -2034,6 +2105,24 @@
       "origin": "authored",
       "at": "2026-11-26T18:00:00.000Z",
       "note": "issue 173: the unit independent_review after code_join, a read-only reader that sees the change, the task's criteria and the repository, with numbered findings checked model-free and one trip back (ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step, ts-rev-blockers; specs independent-review, review-findings)"
+    },
+    {
+      "revision": 25,
+      "origin": "authored",
+      "at": "2026-11-26T20:00:00.000Z",
+      "note": "decision records gain the sections Current state, Forces (constraints first, each with its source), Decision rationale (answers every force by id), Risks, Assumptions (each with its cost if wrong) and a required Revisit when, options run before the decision and each says how it works; the discovery check reads the form of every decision record a run creates or changes (ts-dis-adrform) and reports an oversized record or a vague Revisit when as a lead (ts-dis-adrlead)"
+    },
+    {
+      "revision": 26,
+      "origin": "authored",
+      "at": "2026-11-26T21:00:00.000Z",
+      "note": "spec format: a spec's `Depends on` (outgoing only, held to the links of the behaviours and criteria a run adds or changes) and `Does not own` (each row names the owning spec) are part of the structure check (ts-spec-form, ts-dis-form, ts-set-form); a listed spec nothing links is a lead (ts-dis-depends); the capability list prints who uses each spec; no Responsibilities, Used by or Out of scope section"
+    },
+    {
+      "revision": 27,
+      "origin": "authored",
+      "at": "2026-11-26T22:00:00.000Z",
+      "note": "discovery of intent: the triage note states the task's intent and lists its open questions as uncertainty rows with a category, an impact and a route (ts-tri-form reads both sections and ts-tri-route the rows; ts-tri-uncertain is a warning until it is measured), the reading sessions also read the rows routed to the code, the documents or a source, the one pause moves after them and asks each blocking question the reading could not answer, and the hand-off says how each row ended (ts-dis-uncertain); specs triage, read-gap, owner-questions, ask-route, discovery, conversation, parallel-reading; decision record the-owner-is-asked-once-after-the-reading-sessions"
     }
   ]
 }
