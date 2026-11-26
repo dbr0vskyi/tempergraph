@@ -291,7 +291,9 @@ def test_a_finding_with_nothing_recorded_gets_no_row(
     assert row["reason"] == "unresolved_gap" and row["decision"] == pause_facts.UNKNOWN and row["unit"] == "review"
     nothing = {"kind": "finding", "thread": "demo/F-22", "segment_exit": 3, "unit": "ghost", "fingerprint": "ghost",
                "segment_started": "2000-01-01T00:00:00+00:00", "at": "2000-01-01T00:00:01+00:00"}
-    assert pause_facts.of(state_root_path(repo), "demo", "F-22", [nothing]) == {}  # no pause, decision or gate
+    answers = pause_facts.of(state_root_path(repo), "demo", "F-22", [nothing])
+    assert answers == {}  # no pause, decision or gate
+    assert SECTION not in child.prompt([nothing], [], answers)  # and no row means no section
 
 
 def mapped_pause(repo: Path, task: str) -> tuple[Any, Any]:
