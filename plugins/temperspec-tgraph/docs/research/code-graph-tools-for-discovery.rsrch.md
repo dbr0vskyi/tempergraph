@@ -1,10 +1,10 @@
-# Would codegraph improve temperspec's code discovery, and how would an unattended run use it?
+# Which code graph tool, if any, should temperspec's code discovery use, and how would an unattended run use it?
 
 ## Problem statement
 
 The discovery proposal in `spec-decision-and-discovery-formats.rsrch.md` has triage list the uncertainties of a task and close the ones routed `code` through a generated code map: definitions, references, imports and test reach, built with Python's own parser and written as plain files that reading sessions search with the tools they already have. It leaves two questions open: whether an unattended `claude -p` step can use language-server style queries, and whether tree-sitter may become an optional engine dependency. The owner wants code discovery to use a code graph or a syntax tree where possible.
 
-codegraph (`github.com/colbymchenry/codegraph`) is a tool that builds such a graph with tree-sitter and serves it to coding agents over MCP. This note answers whether temperspec should use it, what it would take, and where in temperspec's stages it would help. The engine knows no workflow (ADR `the-engine-names-no-workflow`), so any engine change it needs must be a general capability.
+codegraph (`github.com/colbymchenry/codegraph`) is a tool that builds such a graph with tree-sitter and serves it to coding agents over MCP. F1 to F9 assess it; F10 to F13 compare the alternatives the owner asked about: graphify, Serena (language servers over MCP), CodeGraphContext and code-graph-rag. This note answers whether temperspec should use any of them, what it would take, and where in temperspec's stages it would help. The engine knows no workflow (ADR `the-engine-names-no-workflow`), so any engine change it needs must be a general capability.
 
 ## Sources consulted
 
@@ -15,6 +15,13 @@ codegraph (`github.com/colbymchenry/codegraph`) is a tool that builds such a gra
 | Six headless `claude -p` sessions, Claude Code 2.1.332, Sonnet, with and without codegraph | measured | this note, F7 |
 | The discovery proposal | doc | `plugins/temperspec-tgraph/docs/research/spec-decision-and-discovery-formats.rsrch.md` (F8, F9, conclusion 12) |
 | Step MCP tools in the engine | spec, code | `executor-claude-code.spec.md` ECC-B18, ECC-B19; `engine/src/tempergraph/executors/mcpconfig.py`; `executors/preflight.py:175-182`; `executors/claude.py:111-131` |
+| graphify repository at v0.9.120 (2026-11-25): README, BENCHMARKS.md, LICENSE, NOTICE, pyproject.toml | code, docs | `github.com/Graphify-Labs/graphify` |
+| graphify 0.9.120 from PyPI (`graphifyy`), run on this repository | measured | `pip install "graphifyy[mcp]==0.9.120"` |
+| Serena repository (2026-11-24): README, LICENSE, `serena_config.template.yml`, `serena tools list` | code, docs | `github.com/oraios/serena` |
+| Serena from PyPI (`serena-agent`), run on this repository | measured | `pip install serena-agent` |
+| CodeGraphContext v0.6.13 and code-graph-rag v0.7.129: README, LICENSE, pyproject.toml | docs | `github.com/CodeGraphContext/CodeGraphContext`, `github.com/vitali87/code-graph-rag` |
+| Eight more headless sessions with graphify, Serena or codegraph, three of them told to use the tool | measured | this note, F13 |
+| How a step's MCP config is built | code | `engine/src/tempergraph/executors/mcpconfig.py` `build_config` |
 | temperspec units and their tools | code | `plugins/temperspec-tgraph/workflow/temperspec/__init__.py:94`, `:172-224`; `routing.py:498-523` |
 
 ## Key findings
@@ -109,20 +116,66 @@ The two are not alternatives on the same rung. The proposal's map is a floor tha
 | code | Little: the plan names the files | Low |
 | independent review | Blast radius of the diff against the plan's reach | Medium |
 
+### F10 graphify: the same graph as a plain JSON file, from a Python package `supported`
+
+graphify parses about 40 languages with tree-sitter (25 grammar packages pinned in `pyproject.toml`) and writes the graph to `graphify-out/graph.json`, a plain file, plus a report. Docs, PDFs and media can join the graph through an optional model pass; `GRAPHIFY_BACKEND=none` turns every model call off, and code is parsed locally either way. A local stdio MCP server, `graphify-mcp <graph.json>`, offers `query_graph`, `affected`, `shortest_path`, `get_node`, `get_neighbors` and five more. The README leads with a hosted MCP endpoint (Graphify Cloud), where the graph lives on the vendor's servers; only the local server fits a run.
+
+- Licence: Apache-2.0, with earlier contributions still under MIT (NOTICE). No telemetry. Every query is logged locally to `~/.cache/graphify-queries.log` unless `GRAPHIFY_QUERY_LOG_DISABLE=1`.
+- Install: 175 MB virtual environment, Python 3.11.5 or later, nothing compiled.
+- Measured here: `graphify update . --no-cluster` read 2,240 files (code, docs and config) in 32 seconds into 23,570 nodes and 67,539 edges; `graph.json` is 31 MB and `graphify-out/` 88 MB. `affected render_step` gave the same callers and test functions as codegraph and `grep`, plus the plan and report headings that name the function, so code and documents sit in one graph. `affected load` refused the ambiguous name and listed its 19 definitions (exit code 3, by design); given the id of `executors/binding.py`'s `load`, it gave the same three callers codegraph found through the aliased imports. 89% of edges are marked `EXTRACTED`, 11% `INFERRED`.
+- `graphify-out/` is not ignored by git. temperspec's `commit_step` stages everything (`git add -A`), so an index built inside a run's working folder would be committed, 88 MB of it, unless the folder is ignored first.
+- Maturity: first commit 2026-04-04, 3,242 commits, 266 tags, still at 0.9.x. The top author wrote about 42% of commits under two spellings and there are several regular contributors. A company sells a hosted version on top of it.
+
+### F11 Serena: real language servers over MCP, with editing and shell tools in the same server `supported`
+
+Serena (Oraios AI) is an MCP server that drives language servers (more than 40 languages; a paid JetBrains backend as an alternative) and offers symbol-level tools: `find_symbol`, `find_referencing_symbols`, `find_declaration`, `find_implementations`, `get_symbols_overview`, diagnostics. It does not build a stored graph; each question is answered by the language server.
+
+- It answers the proposal's first open question: an unattended `claude -p` session can get language-server queries today, as MCP tools. Serena connected in every headless session here.
+- Licence: the application is GPL-3.0-or-later; its language-server client library, SolidLSP, is MIT. Run as a separate program the operator installs, the GPL does not reach the engine. Vendoring it, or making it a dependency, would bring that question in. Its `analytics` module counts tokens locally; no outbound telemetry was found in it.
+- The same server offers editing and shell tools: `serena tools list` shows `execute_shell_command`, `create_text_file`, `replace_symbol_body`, `rename_symbol`, `replace_in_files` and more. A step's private MCP config names the operator's server directly (`build_config(..., direct=True)`), with no filtering proxy, unlike a judge's. So a reading session is offered all 21 of Serena's tools, and only `--allowedTools` stops the unlisted ones. In the runs here, one call to an unlisted tool was denied under `--permission-mode dontAsk`.
+- Defaults that do not fit a run: since 2.x it exposes a single `serena_repl` tool unless started with `--agent-interface tools`. It also starts a web dashboard unless `--enable-web-dashboard false`. Language servers are downloaded on first use.
+- Install: 103 MB virtual environment plus the language servers. Maturity: since 2025-03, 3,658 commits, two main maintainers.
+
+### F12 CodeGraphContext and code-graph-rag put a database or a model between the session and the code `supported`
+
+Surveyed, not run. CodeGraphContext (MIT, v0.6.13) indexes code into a graph database (FalkorDB Lite by default, or KuzuDB, Neo4j and others) and serves it over MCP and a CLI. code-graph-rag (MIT, v0.7.129) stores the graph in SQLite by default (Memgraph or Neo4j optional), and its query path turns a natural-language question into a Cypher query with a model (README: "User Query -> AI Model (Cypher Gen) -> Cypher Query"). Each adds a database engine, a model call or both, and answers the same four questions as codegraph and graphify. Nothing in their documents shows an advantage for temperspec over those two.
+
+### F13 A session uses the tool only when the prompt names it, and none of the tools saved cost on the question here `supported`
+
+The same reach question as F7, Sonnet, `Read,Grep,Glob` plus the tool's read-only MCP tools.
+
+| Tool | Prompt names the tool | Runs | Tool calls of the code tool | Turns | Cost (USD) | All six reach items found |
+|---|---|---|---|---|---|---|
+| none (F7) | | 3 | | 13-16 | 0.158-0.264 | yes |
+| codegraph (F7) | no | 2 | 1, 0 | 12, 9 | 0.236, 0.185 | yes |
+| codegraph | yes | 1 | 1 | 9 | 0.199 | yes |
+| graphify | no | 2 | 0, 0 | 16, 17 | 0.287, 0.266 | yes |
+| graphify | yes | 1 | 3 | 17 | 0.174 | yes |
+| Serena, `tools` interface | no | 1 | 1 | 22 | 0.329 | yes |
+| Serena, `tools` interface | yes | 1 | 0 (it called an unlisted tool, denied) | 17 | 0.293 | yes |
+
+Two earlier Serena runs were left out: they were offered only `serena_repl` (F11), so they measured nothing. With no instruction, a session falls back to `Grep` and `Read` almost every time, even when the tool is connected. Every arm found the same definitions, callers and test files. On this repository and this question, no tool lowered cost or turns beyond the spread between runs.
+
 ## Conclusions
 
-1. **Do not make codegraph a dependency of the engine or of temperspec.** It is young and single-maintainer (F3), large (F2) and on by default in telemetry, and a run must work without it. The proposal's plain-file map stays the floor every run has (its conclusion 12), built by the language's own parser.
-2. **Offer it as an optional tool where the operator has it.** temperspec's reading steps (`read_component`, `read_gap`, discovery, plan, independent review) would declare `mcp:codegraph/codegraph_explore` as optional, and their prompts would treat its answers as leads to confirm in the file, the rule reading sessions already follow for findings.
-3. **That needs one general engine capability: an optional step tool.** A step may mark a declared tool optional; it is offered when the executor and the operator's configuration can supply it, and left out with a recorded note when not, instead of the preflight refusal `mcp-server-undefined` (F5). The engine already appends the tools a session got to its prompt, so the session knows whether it has the tool. Stated without any workflow, with an engine fixture that declares an optional MCP tool against a configuration that has the server and one that does not.
-4. **The operator's server definition should switch off telemetry and the update check and leave the daemon on**: `"args": ["serve", "--mcp", "--no-telemetry"]`, `CODEGRAPH_NO_UPDATE_CHECK=1`, no `CODEGRAPH_NO_DAEMON` (F2, F6). This goes in temperspec's guide, not in the engine.
-5. **Index freshness is the package's job.** `prepare` can run `codegraph index` when the CLI is present and the working folder has no index, and skip it otherwise; it is a script, so no session needs a shell (F6). Whether to rebuild per run or trust the watcher is a measurement, not a guess.
-6. **Keep it only if it measurably helps.** F7 shows no saving on one Python reach question here; codegraph's own figures show savings that grow with how much searching a question needs. Measure with the package's trial on a non-Python repository and on a wide reach question here, counting cost, turns and missed callers, before recommending it in the guide.
-7. **Two cheap uses need no session at all**: `codegraph cycles` as an optional finding in setup (it found a five-file import cycle in temperspec's own package, F4), and `callers --json` / `impact --json` in a script that writes the reach of the symbols triage names into the hand-off, the same plain-file shape the proposal uses.
-8. **Build order, after the proposal's step (b)**: the optional step tool (3), then the optional declaration on `read_gap` alone with the guide entry (2, 4), then the trial (6), then the other reading steps. Conclusions 5 and 7 follow if the trial keeps it.
+1. **Make no code graph tool a dependency of the engine or of temperspec.** Every candidate is young and fast-moving (F3, F10, F11), and each brings tens to hundreds of MB. One has telemetry on by default (F2), and one is GPL (F11). The proposal's plain-file map stays the floor every run has (its conclusion 12), built by the language's own parser. The alternatives do not change this.
+2. **Offer such a tool as optional, where the operator has it, and name it in the prompt.** temperspec's reading steps (`read_component`, `read_gap`, discovery, plan, independent review) would declare the tool's read-only MCP tools as optional. When the tool was offered, the prompt would say to use it for definitions and references and to confirm each answer in the file. Without that line the tool goes almost unused (F13). The rule to confirm in the file is the one reading sessions already follow for findings.
+3. **That needs one general engine capability: an optional step tool.** A step may mark a declared tool optional. It is offered when the executor and the operator's configuration can supply it, and left out with a recorded note when not, instead of the preflight refusal `mcp-server-undefined` (F5). The engine already appends the tools a session got to its prompt, so a prompt can say "if you have a code index tool" and stay true either way. Stated without any workflow, with an engine fixture that declares an optional MCP tool against a configuration that has the server and one that does not.
+4. **A second general capability is worth weighing: route a step's MCP servers through the filtering proxy that judges already use.** A step is offered every tool of the operator's server today, editing and shell tools included, and only `--allowedTools` holds them back (F11). Showing only the declared tools would also keep a session's tool list short.
+5. **Choose the tool by how it is used, not one tool for everything** (F8, F10, F11):
+   - For a session that queries during reading: codegraph (one `explore` call answers a reach question; 20+ languages; MCP-first). Serena when exact language-server answers matter more than speed, started with `--agent-interface tools` and given only its read tools.
+   - For a script that writes the plain-file map in more languages than Python: graphify's `graph.json` (Python, Apache-2.0, no telemetry, plain JSON, docs linked to code). It can only feed a script: at 31 MB here, no session should read it whole. This is how tree-sitter could reach the map without becoming an engine dependency: an optional extra that the map script uses when installed.
+   - Not CodeGraphContext or code-graph-rag (F12).
+6. **The operator's setup belongs in temperspec's guide, not in the engine.** For codegraph: `--no-telemetry`, `CODEGRAPH_NO_UPDATE_CHECK=1` and the shared daemon (F2, F6). For graphify: `GRAPHIFY_BACKEND=none`, `GRAPHIFY_QUERY_LOG_DISABLE=1`, the local server only, and `graphify-out/` ignored before any run (F10). For Serena: `--agent-interface tools` and the dashboard off (F11).
+7. **Index freshness is the package's job.** `prepare` can build or update the index when the tool is present and skip it otherwise. It is a script, so no session needs a shell (F6).
+8. **Keep a tool only if it measurably helps.** No tool saved anything on one Python reach question here (F7, F13). codegraph's own figures show savings that grow with how much searching a question needs. Measure with the package's trial, with the prompt line of conclusion 2, on a non-Python repository and on a wide reach question here, counting cost, turns and missed callers, before recommending any tool in the guide.
+9. **Two cheap uses need no session at all.** `codegraph cycles` can be an optional finding in setup (it found a five-file import cycle in temperspec's own package, F4). `callers --json` or `impact --json` (codegraph), or `affected` (graphify), can run in a script that writes the reach of the symbols triage names into the hand-off, in the plain-file shape the proposal uses.
+10. **Build order, after the proposal's step (b):** the optional step tool (3), then the optional declaration and prompt line on `read_gap` alone with the guide entry (2, 6), then the trial (8), then the other reading steps. Conclusions 4, 5 (graphify as a map backend), 7 and 9 follow if the trial keeps a tool.
 
 ## Open questions
 
-- Whether Claude Code offers a headless step language-server queries of its own (definitions, references, types). Until answered: structural queries come from the plain-file map or an optional MCP tool.
+- Whether Claude Code offers a headless step language-server queries of its own, without an MCP server (definitions, references, types). Serena shows that they can be had through MCP (F11). Until answered: structural queries come from the plain-file map or an optional MCP tool.
 - Whether codegraph's daemon, which outlives a session by 5 minutes, conflicts with any engine rule that every process a session starts ends with it. Not read in the engine's specs for this note. Until answered: the operator's definition may set `CODEGRAPH_DAEMON_IDLE_TIMEOUT_MS` low.
 - How much codegraph saves on a large or non-Python repository driven by temperspec's own prompts. codegraph's benchmark uses its own questions and instructions that steer the agent to the tool. Until answered: conclusion 6.
-- How often codegraph's resolution is wrong on Python in this repository. Checked on two names (F4). Until answered: its answers are leads, confirmed in the file.
+- How often codegraph's or graphify's resolution is wrong on Python in this repository. Each was checked on two names (F4, F10). Until answered: their answers are leads, confirmed in the file.
+- Whether a step offered tools it may not use (F11) can reach them in another permission mode than `dontAsk`, for example `acceptEdits` in the engine's worktree. Not tested. Until answered: conclusion 4.
