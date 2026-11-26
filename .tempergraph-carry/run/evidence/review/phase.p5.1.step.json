@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.1.step",
+  "view_chars": 14510,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        55
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.85,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 7 (search the specs outside the plan for behaviours the changed source files make false) was skipped, and the final message admits it."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asked for one edit of the plan marking all rows, but the session made five separate edits, one per row."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        47
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 6 says to run only the test files the phase's rows name, yet test_loop_child, test_loop_issues, test_filing and test_improve were run, and the turns do not show that any row names them."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        38
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session tried an inline python heredoc to patch tests, which the limits forbid and the shell refused, and then recovered with Edit calls."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Step 1: read plan rows and triage note, then the files the rows name",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "item": "Step 3: write tests first and see them fail for the right reason",
+      "status": "followed",
+      "turns": [
+        19,
+        27
+      ]
+    },
+    {
+      "item": "Step 4: smallest code change in the named files",
+      "status": "followed",
+      "turns": [
+        29,
+        30,
+        31,
+        32,
+        35
+      ]
+    },
+    {
+      "item": "Step 6: run only the test files the rows name",
+      "status": "unclear",
+      "turns": [
+        36,
+        45,
+        47
+      ]
+    },
+    {
+      "item": "Step 7: check specs outside the plan that the change touches",
+      "status": "not_followed",
+      "turns": [
+        55
+      ]
+    },
+    {
+      "item": "Step 8: write all completed marks in one plan edit",
+      "status": "not_followed",
+      "turns": [
+        50,
+        51,
+        52,
+        53,
+        54
+      ]
+    },
+    {
+      "item": "Limits: plain single commands, no inline python",
+      "status": "not_followed",
+      "turns": [
+        38
+      ]
+    }
+  ],
+  "none_found": false
+}

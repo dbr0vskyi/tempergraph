@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.2.step",
+  "view_chars": 8383,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The procedure asks for the triage note to be read after the plan rows, but no call in the session reads it."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read plan rows of the phase",
+      "status": "followed",
+      "turns": [
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Procedure 1: read the triage note",
+      "status": "not_followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Procedure 1: set plan status to in-progress when planned",
+      "status": "unclear",
+      "turns": [
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Procedure 2: build only rows with an empty Completed cell",
+      "status": "followed",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Procedure 3: tests first, failing for the right reason",
+      "status": "not_applicable",
+      "turns": [
+        5,
+        7
+      ]
+    },
+    {
+      "item": "Procedure 4: smallest code change for code rows",
+      "status": "not_applicable",
+      "turns": [
+        7,
+        9
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the test files the rows name, as plain commands",
+      "status": "followed",
+      "turns": [
+        12
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs the change touches that the plan does not name",
+      "status": "not_applicable",
+      "turns": [
+        7,
+        9
+      ]
+    },
+    {
+      "item": "Procedure 8: write completed marks in one plan edit after tests pass",
+      "status": "followed",
+      "turns": [
+        12,
+        14
+      ]
+    },
+    {
+      "item": "Limits: no commit, push or gh; plain single commands",
+      "status": "followed",
+      "turns": [
+        10,
+        12
+      ]
+    },
+    {
+      "item": "Hand over: end with ARTIFACT phase_note line",
+      "status": "unclear",
+      "turns": [
+        15
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.2.step",
+  "view_chars": 7633,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        1,
+        15
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The step never opened the specs named in the plan's front matter, which Procedure step 1 requires, yet it declared the plan complete."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        4,
+        15
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Verification commands were not checked against tempergraph.commands.json (only a grep for tool names was run), yet the final report says the plan was checked against the rules."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        15
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Only seven code and test files were opened although many rows with empty marks name files, so the rule to open each named file before accepting its row may not have been met."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "plan.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "Procedure 1: read the plan, then the specs its front matter names",
+      "status": "not_followed",
+      "turns": [
+        1
+      ]
+    },
+    {
+      "item": "Procedure 2: open each file a task row names with the read tool",
+      "status": "unclear",
+      "turns": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Procedure 4: check verification commands against tempergraph.commands.json",
+      "status": "not_followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Limits: no shell, no git, no edits to specs or code",
+      "status": "followed",
+      "turns": [
+        15
+      ]
+    },
+    {
+      "item": "Procedure 3 and 5: write task rows and proof table",
+      "status": "not_applicable",
+      "turns": [
+        15
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.2.retry",
+  "view_chars": 7823,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        2,
+        3,
+        4
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The step said to read the code the gap concerns, but the retry ran two greps, never used Read, and carried over the earlier attempt's filing.py, release.py and test claims unverified."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        4
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The reviewer asked for the gap finding in full and the step requires an ARTIFACT gap_finding line, but the recorded turn 4 is cut off mid-word and shows no ARTIFACT line."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "retry fix: cite SIL-AC10 not SIL-AC3 for SIL-B19",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "retry fix: give gap_finding in full",
+      "status": "unclear",
+      "turns": [
+        4
+      ]
+    }
+  ],
+  "none_found": false
+}

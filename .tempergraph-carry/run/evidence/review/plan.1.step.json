@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.1.step",
+  "view_chars": 13112,
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        37,
+        38,
+        39,
+        50,
+        53,
+        54
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The same files were read three times in a row, probably as paged reads of large files, so a ranged read or a search for the needed lines would save turns."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        63,
+        65
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.2,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The same grep for improve backlog/show/aa was run twice with only a small change to the pattern."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "plan.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "item": "documents.rule.md opened with the read tool",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "Start from the hand-off's reading list and name extra files in section 0",
+      "status": "unclear",
+      "turns": [
+        7,
+        55,
+        56,
+        60,
+        61
+      ]
+    },
+    {
+      "item": "Write the plan in parts (sections first, then one edit per phase)",
+      "status": "unclear",
+      "turns": [
+        67
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.2.judge",
+  "view_chars": 4801,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read only the plan and used greps for everything else, so the files named by the rows were never opened and ts-phs-change could not be quoted from a file it read."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3,
+        5
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Test and change evidence came from search output (names such as held, loop_log, recorded) rather than from reading the lines around them, which the intent treats as PARTIAL evidence at most."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

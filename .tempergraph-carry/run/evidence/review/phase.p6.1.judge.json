@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.1.judge",
+  "view_chars": 4951,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        6,
+        8,
+        9
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge opened none of the changed files (changed_read 0 of 7) and checked the rows' changes only through grep hits, which it admits for rows 6.5 and 6.6."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        9
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The intent says search-only evidence caps a criterion at PARTIAL, but the judge's turn 9 verdict relies on grep lines, and the visible text does not show it lowering the `ts-phs-change` grade."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

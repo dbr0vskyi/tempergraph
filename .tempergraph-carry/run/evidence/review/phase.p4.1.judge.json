@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.1.judge",
+  "view_chars": 5276,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        7,
+        11
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge never opened the changed test file test_outbox_verbs.py and relied on grep-printed lines for the test row's change, which the intent says can only support PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

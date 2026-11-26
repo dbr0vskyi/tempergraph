@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.2.step",
+  "view_chars": 8595,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        14
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent skipped the step 7 check of specs that the changed source file touches and admitted it in the final message, so a falsified spec behaviour could go unflagged."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        10,
+        11,
+        12,
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asks for one edit of the plan marking all rows, but the agent made a failed edit and then three separate edits, one per row."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        10,
+        11,
+        12,
+        13
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "One Edit failed on a string mismatch and the marks were then applied in repeated single-row edits to the same file instead of one combined edit."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Step 1: read plan rows and triage note",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Step 3: write tests first and see them fail",
+      "status": "unclear",
+      "turns": [
+        6,
+        7,
+        14
+      ]
+    },
+    {
+      "item": "Step 6: run only the test files the rows name",
+      "status": "followed",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Step 7: check specs touched by the changed source file",
+      "status": "not_followed",
+      "turns": [
+        14
+      ]
+    },
+    {
+      "item": "Step 8: write completed marks in one edit",
+      "status": "not_followed",
+      "turns": [
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Limits: no git commit, push or gh",
+      "status": "followed",
+      "turns": [
+        8
+      ]
+    }
+  ],
+  "none_found": false
+}

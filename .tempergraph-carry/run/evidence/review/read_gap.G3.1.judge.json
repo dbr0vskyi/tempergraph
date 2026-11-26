@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G3.1.judge",
+  "view_chars": 4061,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        6,
+        7,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge quoted the spec at runs-without-a-final-exit.spec.md:18 as evidence for MET without ever reading that file, relying on grep output, which the brief says should only earn PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

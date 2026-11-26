@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.2.judge",
+  "view_chars": 4693,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        5
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.75,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only the plan and two greps, never the files the rows name, yet graded row 6.6 against improve/child.py and left row 6.4 unchecked, although ts-phs-change requires reading each row's file and quoting its line."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge matched test files to rows from phase notes without opening them and admitted the doubt, so it settled for a surface match where the criteria call for a read."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

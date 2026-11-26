@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.2.retry",
+  "view_chars": 13262,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        9,
+        10,
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The phase limits allow only Completed cells to change in the plan, and the plan is the authority; the session reworded rows 3.1 and 3.7 and kept their marks, which it admits goes beyond its limit and the rule to empty a changed row's mark."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        8,
+        9,
+        10,
+        13
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The retry feedback told the phase session to amend the plan's row wording, while the phase prompt forbids plan edits other than marks, so the session had to break one of the two instructions."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        7,
+        12
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Nothing in the turns shows the step-7 search of the spec folders for specs the change makes false, and the previous attempt had also skipped it; the one grep at turn 12 for outbox_dropped may or may not have covered it."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read the phase rows in the plan before changing",
+      "status": "followed",
+      "turns": [
+        4,
+        5
+      ]
+    },
+    {
+      "item": "Procedure 2: build only rows whose Completed cell is empty, leave other marks",
+      "status": "not_applicable",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Procedure 3: tests first, fail for the right reason",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Procedure 6: run only the test files the rows name, as plain commands",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs outside the plan that the change may make false",
+      "status": "unclear",
+      "turns": [
+        12
+      ]
+    },
+    {
+      "item": "Procedure 8: write the completed marks in one edit of the plan",
+      "status": "not_applicable",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Limits: in the plan change only the Completed cells of rows you build",
+      "status": "not_followed",
+      "turns": [
+        9,
+        10
+      ]
+    },
+    {
+      "item": "Limits: if the plan is at fault, leave the row unmarked and name the conflict in the note",
+      "status": "not_followed",
+      "turns": [
+        13
+      ]
+    },
+    {
+      "item": "Limits: plain single commands, no git commit/push",
+      "status": "followed",
+      "turns": [
+        3,
+        7
+      ]
+    },
+    {
+      "item": "What to hand over: phase_note with ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        13
+      ]
+    }
+  ],
+  "none_found": false
+}

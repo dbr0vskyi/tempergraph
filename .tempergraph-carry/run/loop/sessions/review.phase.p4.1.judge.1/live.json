@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.phase.p4.1.judge.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 1421,
+  "turns_so_far": 1,
+  "pgid": 118478,
+  "last_event_at": "2026-11-26T21:12:03.334Z",
+  "updated_at": "2026-11-26T21:12:03.335Z",
+  "pid": 4174472,
+  "ended": false
+}

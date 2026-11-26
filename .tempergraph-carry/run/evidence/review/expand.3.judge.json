@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.3.judge",
+  "view_chars": 5102,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        1,
+        3
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only the plan file and never the triage note, specs or earlier plan version, so it had nothing to compare the design sections against."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge said it could not confirm the design was unchanged but still graded ts-exp-design MET from a row-to-requirement mapping alone."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

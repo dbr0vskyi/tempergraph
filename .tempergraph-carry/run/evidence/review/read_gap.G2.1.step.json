@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.step",
+  "view_chars": 5367,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        2,
+        4,
+        5
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Three overlapping greps for 'outbox' (the last with a broad 'hold' alternative returning about 10k characters) could have been one scoped search over docs/ and engine/src."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure: read the triage row and the documents it names",
+      "status": "followed",
+      "turns": [
+        1,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "item": "Procedure: read the code the gap concerns, searching names first",
+      "status": "followed",
+      "turns": [
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        13
+      ]
+    },
+    {
+      "item": "Procedure: use the web only for a cited research source",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Limits: read only, no file written, no command run, inside the working directory",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    {
+      "item": "Hand over: gap_finding as one line of at most 1,500 characters naming files and line ranges, ending with the ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        15
+      ]
+    },
+    {
+      "item": "If blocked: end with a BLOCKED line",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

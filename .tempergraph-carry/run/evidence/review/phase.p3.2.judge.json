@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.2.judge",
+  "view_chars": 4889,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        5,
+        7
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge never opened any of the six changed files (changed_read is 0) and quoted code and test lines from grep output, so ts-phs-change and ts-phs-proof should have been PARTIAL, not MET."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        1,
+        2,
+        7
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded every criterion MET after three greps and one plan read, and it admitted its evidence was search output, which the brief says caps the grade at PARTIAL."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        7
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The verdict speaks of seven criteria while six are listed, which suggests the judge mixed up rows with criteria."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

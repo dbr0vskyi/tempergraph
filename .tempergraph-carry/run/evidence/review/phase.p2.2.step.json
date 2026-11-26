@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p2.2.step",
+  "view_chars": 9495,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        15,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.85,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 says to write all completed marks in one plan edit, but the session made five separate Edit calls, one per row, after a first failed attempt at turn 15."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        6,
+        8,
+        9,
+        12
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "No search of the spec folders for behaviours touched by the changed source files (step 7) is visible before the rows were marked, though the truncated final note may have covered it."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read plan rows and triage note first",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Procedure 3: tests first, fail for the right reason",
+      "status": "not_applicable",
+      "turns": [
+        11
+      ]
+    },
+    {
+      "item": "Procedure 4: code rows changed in the named files",
+      "status": "not_applicable",
+      "turns": [
+        4,
+        5
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the phase's test files, as plain commands",
+      "status": "followed",
+      "turns": [
+        11
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs the change touches that the plan does not name",
+      "status": "unclear",
+      "turns": [
+        6,
+        8,
+        9
+      ]
+    },
+    {
+      "item": "Procedure 8: write the completed marks in one edit",
+      "status": "not_followed",
+      "turns": [
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
+    },
+    {
+      "item": "Limits: no commit, push or gh; change only the plan's marks",
+      "status": "followed",
+      "turns": [
+        13,
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
+    },
+    {
+      "item": "What to hand over: phase_note ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        22
+      ]
+    }
+  ],
+  "none_found": false
+}

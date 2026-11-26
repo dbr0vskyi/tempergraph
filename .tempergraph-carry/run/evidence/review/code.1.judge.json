@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.judge",
+  "view_chars": 11822,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        15
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.75,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge never opened an edited or related spec and only grepped four listed source files, yet graded spec-alignment criteria from the plan's description of the behaviours."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        12,
+        13,
+        15
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Test-proof criteria were graded MET from test names and ids found by grep, with no test body read, though the instructions call for PARTIAL when the evidence is only search output."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

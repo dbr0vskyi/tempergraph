@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.discovery.1.judge.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 1442,
+  "turns_so_far": 1,
+  "pgid": 229567,
+  "last_event_at": "2026-11-26T21:18:51.078Z",
+  "updated_at": "2026-11-26T21:18:51.079Z",
+  "pid": 4174472,
+  "ended": false
+}

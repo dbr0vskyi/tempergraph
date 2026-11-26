@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p7.2.step",
+  "view_chars": 7729,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        2,
+        5,
+        6,
+        7
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session skipped the triage note and never read the guide, so it ended on an inherited mark for row 7.1 even though its own search (three matching lines) hinted the guide text might be incomplete."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure: read the plan rows and the triage note",
+      "status": "not_followed",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "Procedure: set plan status to in-progress when planned",
+      "status": "not_applicable",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "Procedure: build only rows with an empty Completed cell",
+      "status": "followed",
+      "turns": [
+        4,
+        7
+      ]
+    },
+    {
+      "item": "Procedure: check specs touched by changed source files",
+      "status": "not_applicable",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Limits: change no file outside the phase rows, no commit, no push",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "What to hand over: phase_note line ending with ARTIFACT",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Skills and subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

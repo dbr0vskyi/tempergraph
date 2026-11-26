@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p2.1.step",
+  "view_chars": 14567,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.85,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asks for one plan edit marking all built rows, but the session made six separate edits, one per row."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        16,
+        58
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "No search of the spec folders for behaviours touched by the changed source files is visible, though step 7 requires it and the final note does not mention one."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        50
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session sent inline `python3 -I -c` despite the rule against it, and the call was denied."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        33,
+        35,
+        38,
+        41
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "After the first test failure the session ran a pointless --pdb rerun that passed, then reran the test plainly, and only then edited the test file."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

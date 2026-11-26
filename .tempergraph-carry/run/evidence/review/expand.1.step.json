@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.1.step",
+  "view_chars": 12171,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        8,
+        14,
+        37,
+        58
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "About 164K tokens of whole-file reads (child.py, filing.py, the 28K pause-findings test) were loaded before the first edit, so the table edits ran near the 200K mark."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rules to follow: open plan.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "Procedure 1: read the plan, then the specs its front matter names",
+      "status": "unclear",
+      "turns": [
+        1,
+        22,
+        47,
+        49
+      ]
+    },
+    {
+      "item": "Procedure 2: open each file a row names with the read tool",
+      "status": "followed",
+      "turns": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        14,
+        15,
+        29,
+        30,
+        35,
+        36,
+        37,
+        39,
+        40,
+        41,
+        42
+      ]
+    },
+    {
+      "item": "Procedure 3: one edit per phase, Completed cells empty on new rows",
+      "status": "followed",
+      "turns": [
+        58,
+        60,
+        62,
+        64,
+        66,
+        68,
+        70
+      ]
+    },
+    {
+      "item": "Procedure 4: verification commands checked against tempergraph.commands.json",
+      "status": "followed",
+      "turns": [
+        6,
+        72
+      ]
+    },
+    {
+      "item": "Procedure 5: proof table with one row per acceptance criterion",
+      "status": "followed",
+      "turns": [
+        72
+      ]
+    },
+    {
+      "item": "Limits: no shell, no git, edit only task tables and Verification",
+      "status": "followed",
+      "turns": [
+        58,
+        60,
+        62,
+        64,
+        66,
+        68,
+        70,
+        72
+      ]
+    },
+    {
+      "item": "What to end with: ARTIFACT phases line",
+      "status": "unclear",
+      "turns": [
+        73
+      ]
+    }
+  ],
+  "none_found": false
+}

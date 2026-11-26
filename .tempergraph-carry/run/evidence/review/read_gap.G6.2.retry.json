@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G6.2.retry",
+  "view_chars": 8035,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        3,
+        4,
+        5
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The retry re-read only pause_facts.py and grepped once, then restated read and tested bases for child.py, record.py and the tests without opening those ranges in this attempt."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure step 2: read the code the gap concerns",
+      "status": "unclear",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Limits: read only, no writes or commands, inside the working directory",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Handover: end with a single-line ARTIFACT gap_finding",
+      "status": "unclear",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Web tools only for research-needed gaps",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

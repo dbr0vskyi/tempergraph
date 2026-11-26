@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G4.1.judge",
+  "view_chars": 3946,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5,
+        6,
+        9,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded both criteria MET and said it confirmed the CLI and brief claims, but for the CLI it opened no file and rested on grep output, which the brief says should only earn PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

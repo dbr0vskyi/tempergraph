@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G5.1.judge",
+  "view_chars": 3782,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5,
+        6,
+        8
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded both criteria MET while saying it did not check whether a test pins the missing class rule, and some quoted evidence may come only from grep output rather than a read of the file."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

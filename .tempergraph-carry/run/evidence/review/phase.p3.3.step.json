@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.3.step",
+  "view_chars": 10246,
+  "observations": [
+    {
+      "category": "wasted_turns",
+      "turns": [
+        18,
+        19
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The agent tried an inline `python3 -I -c \"print(1)\"` shell command, which the phase prompt forbids and which was denied, before falling back to Edit for the plan marks."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The prompt asks for all completed marks in one edit of the plan, but the agent made five separate Edit calls (one failed on a string mismatch), and the digest flags the repeats."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        20,
+        22,
+        23,
+        24,
+        25
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 says to write the completed marks of the phase in one edit, not one edit per row, and the agent edited the plan once per row."
+    },
+    {
+      "category": "context_bloat",
+      "turns": [
+        1,
+        2,
+        4
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "About 52k tokens were read before the first write, mostly the 40k-character plan that includes other phases' rows, though peak context stayed low at 55k."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Read the phase rows in the plan, then the triage note, then the files the rows name",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        4
+      ]
+    },
+    {
+      "item": "Build only rows with empty Completed cell; leave other marks as they are",
+      "status": "followed",
+      "turns": [
+        27
+      ]
+    },
+    {
+      "item": "Write tests first and see them fail for the right reason",
+      "status": "unclear",
+      "turns": [
+        8,
+        16
+      ]
+    },
+    {
+      "item": "Test carries the criterion id in name or comment",
+      "status": "followed",
+      "turns": [
+        13,
+        14
+      ]
+    },
+    {
+      "item": "Run only the test files the rows name, as plain commands",
+      "status": "followed",
+      "turns": [
+        16
+      ]
+    },
+    {
+      "item": "Write the completed marks in one edit of the plan",
+      "status": "not_followed",
+      "turns": [
+        20,
+        22,
+        23,
+        24,
+        25
+      ]
+    },
+    {
+      "item": "Shell: plain single commands only, no inline python -c",
+      "status": "not_followed",
+      "turns": [
+        18
+      ]
+    },
+    {
+      "item": "Check specs touched by the changed files that the plan does not name",
+      "status": "unclear",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Set plan status to in-progress when it is planned",
+      "status": "unclear",
+      "turns": [
+        1
+      ]
+    },
+    {
+      "item": "Hand over phase_note as the final ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        27
+      ]
+    }
+  ],
+  "none_found": false
+}

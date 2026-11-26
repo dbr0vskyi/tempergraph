@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.judge",
+  "view_chars": 4747,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        5
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge never read filing.py or test_filing.py (changed_read 0) and based the row-change grading on grep lines, although the intent requires reading the file around each row's change line and quoting it."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

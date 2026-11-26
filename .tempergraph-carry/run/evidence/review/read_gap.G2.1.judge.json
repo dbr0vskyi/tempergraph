@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.judge",
+  "view_chars": 4273,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge says the findings line was cut off at \"CLI pa…\" and graded only the visible claims, yet gave MET on both criteria, so the unseen claims were never checked for files or line ranges; the brief should hand the judge the full findings text, or the judge should grade PARTIAL when it cannot read all of it."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

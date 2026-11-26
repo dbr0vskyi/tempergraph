@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "session_key": "code.4.step",
+  "view_chars": 21383,
+  "observations": [
+    {
+      "category": "environment_fault",
+      "turns": [
+        63,
+        65,
+        67,
+        68
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The self-check preview was killed at the default 10-minute background limit and had to be started a second time, although the step says to call it once."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        70,
+        72,
+        75,
+        76,
+        77,
+        78
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "About 45 minutes went to repeated polling of the background self-check output, which a foreground call with a long enough limit would have avoided."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        65,
+        70,
+        72,
+        76,
+        78
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The polling used until/sleep/cat chains and read files outside the working directory, against the plain-single-command and stay-inside-the-workspace limits."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        16,
+        17,
+        28,
+        29,
+        43,
+        44,
+        45
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Source fixes were written before their tests, and the failure was only shown afterwards by reverting the fixes (turns 49-51) rather than by writing the test first."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rules to follow: open task-notes and plan rule files with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Procedure 1: read plan, triage note, specs",
+      "status": "unclear",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Procedure 3: write the test first and see it fail",
+      "status": "not_followed",
+      "turns": [
+        16,
+        17,
+        43,
+        51
+      ]
+    },
+    {
+      "item": "Procedure 6: after each phase run only the test files the rows name",
+      "status": "followed",
+      "turns": [
+        46,
+        51,
+        55
+      ]
+    },
+    {
+      "item": "Procedure 7: search specs the plan does not name",
+      "status": "unclear",
+      "turns": []
+    },
+    {
+      "item": "Procedure 8: write the code report",
+      "status": "followed",
+      "turns": [
+        58,
+        59
+      ]
+    },
+    {
+      "item": "Procedure 9: call the preview once, change no file after",
+      "status": "not_followed",
+      "turns": [
+        63,
+        68
+      ]
+    },
+    {
+      "item": "Limits: plain single commands, stay inside the working directory",
+      "status": "not_followed",
+      "turns": [
+        65,
+        70,
+        72,
+        76,
+        78
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.1.step",
+  "view_chars": 14271,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.65,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asked for one edit of the plan marking all rows, but the session made seven separate edits to the plan, one per row."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "No search of the spec folders for behaviours of the changed source files appears after the code edits, so the step 7 check for specs outside the plan was not shown."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Step 1: read plan rows and triage note, read named files before changing them",
+      "status": "followed",
+      "turns": [
+        2,
+        3,
+        5,
+        6,
+        12,
+        14,
+        16
+      ]
+    },
+    {
+      "item": "Step 1: set plan status to in-progress when planned",
+      "status": "unclear",
+      "turns": [
+        59
+      ]
+    },
+    {
+      "item": "Step 2: build only rows with empty Completed cell",
+      "status": "followed",
+      "turns": [
+        59,
+        65
+      ]
+    },
+    {
+      "item": "Step 3: write tests first and see them fail for the right reason",
+      "status": "followed",
+      "turns": [
+        23,
+        32,
+        39,
+        40
+      ]
+    },
+    {
+      "item": "Step 4: smallest code change that makes the tests pass",
+      "status": "followed",
+      "turns": [
+        41,
+        53,
+        55
+      ]
+    },
+    {
+      "item": "Step 6: run only the test files the rows name, as plain commands",
+      "status": "followed",
+      "turns": [
+        39,
+        55
+      ]
+    },
+    {
+      "item": "Step 7: check specs the plan does not name",
+      "status": "not_followed",
+      "turns": [
+        56,
+        57,
+        58
+      ]
+    },
+    {
+      "item": "Step 8: one edit of the plan for all completed marks",
+      "status": "not_followed",
+      "turns": [
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ]
+    },
+    {
+      "item": "Limits: no commit or push, plain single commands",
+      "status": "followed",
+      "turns": [
+        39,
+        55,
+        57
+      ]
+    },
+    {
+      "item": "Hand over: end with ARTIFACT phase_note line",
+      "status": "unclear",
+      "turns": [
+        66
+      ]
+    }
+  ],
+  "none_found": false
+}

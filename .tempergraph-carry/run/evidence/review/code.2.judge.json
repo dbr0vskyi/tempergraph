@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.judge",
+  "view_chars": 11847,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        16
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge read only 5 of the 12 changed source files although its budget was 24, leaving the rest as grep lines or the check's PASS, and so could not give MET on criteria 9, 10 and 12."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

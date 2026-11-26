@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "session_key": "independent_review.2.step",
+  "view_chars": 9790,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        2,
+        4,
+        5,
+        7,
+        9
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The 54 KB change.diff was read five times in large slices before any other file was opened, so about 142k tokens of context were in place before the first write; per-file diffs or a size hint would shorten this."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        13,
+        14,
+        15,
+        18,
+        48,
+        49,
+        54
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "child.py and filing.py were each opened several times in short slices and the _holds/_read grep was repeated, where one read of the needed range would have done."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read the criteria, then the change",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Procedure 2: open each touched file and the code around it, searching names before reading ranges",
+      "status": "followed",
+      "turns": [
+        12,
+        13,
+        14,
+        18,
+        21,
+        26
+      ]
+    },
+    {
+      "item": "Procedure 3: check each criterion against the change and its tests",
+      "status": "followed",
+      "turns": [
+        33,
+        34,
+        35,
+        41,
+        45
+      ]
+    },
+    {
+      "item": "Procedure 4 and form of the draft: numbered findings with file:line and mark in findings.md",
+      "status": "unclear",
+      "turns": [
+        67
+      ]
+    },
+    {
+      "item": "What blocks: mark blocking only for a wrong result, failure, hang, data loss or break of earlier behaviour",
+      "status": "unclear",
+      "turns": [
+        68
+      ]
+    },
+    {
+      "item": "Limits: write only .tempergraph/review/findings.md",
+      "status": "followed",
+      "turns": [
+        67
+      ]
+    },
+    {
+      "item": "Limits: run no command, use only the read, search, list and write tools",
+      "status": "followed",
+      "turns": [
+        1,
+        67
+      ]
+    },
+    {
+      "item": "Limits: open no other run document and never open a findings document",
+      "status": "followed",
+      "turns": [
+        58
+      ]
+    },
+    {
+      "item": "What to end with: ARTIFACT findings line",
+      "status": "unclear",
+      "turns": [
+        68
+      ]
+    }
+  ],
+  "none_found": false
+}

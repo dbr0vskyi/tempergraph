@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.retry",
+  "view_chars": 21803,
+  "observations": [
+    {
+      "category": "environment_fault",
+      "turns": [
+        69,
+        72,
+        73,
+        76,
+        77,
+        79,
+        80
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.65,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The self-check preview was started with the default 10-minute limit and killed, costing about 49 idle minutes and a second run; the step should give the preview a long timeout from the first call."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        70,
+        72,
+        73,
+        76
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.45,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The agent called the disabled Monitor tool and then polled empty output files outside the workspace, when the prompt could say how to wait for the preview."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        10,
+        12
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.2,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The first spec grep for the SIL ids used a pattern that matched almost nothing and had to be redone with an anchored pattern."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rules to follow: open task-notes and plan rule files with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Procedure 1: read the plan before building",
+      "status": "followed",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Procedure 2: build only rows with an empty Completed cell",
+      "status": "followed",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Procedure 6: phase test runs as plain commands, never the whole suite",
+      "status": "followed",
+      "turns": [
+        54
+      ]
+    },
+    {
+      "item": "Procedure 7: search specs outside the plan for behaviours the change makes false and list them",
+      "status": "followed",
+      "turns": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        17,
+        18,
+        19,
+        62,
+        63,
+        66,
+        67
+      ]
+    },
+    {
+      "item": "Procedure 8: write the code report",
+      "status": "followed",
+      "turns": [
+        66,
+        67
+      ]
+    },
+    {
+      "item": "Procedure 9: run the preview once, after the last change, and change no file afterwards",
+      "status": "unclear",
+      "turns": [
+        69,
+        79,
+        80
+      ]
+    },
+    {
+      "item": "Limits: change only the files the rows name, the plan's marks and status, and the report",
+      "status": "unclear",
+      "turns": [
+        51,
+        52,
+        53
+      ]
+    },
+    {
+      "item": "Limits: shell runs only declared commands, one per call, no listing or reading commands",
+      "status": "followed",
+      "turns": [
+        54,
+        69,
+        75,
+        80
+      ]
+    },
+    {
+      "item": "Limits: report results as seen",
+      "status": "followed",
+      "turns": [
+        83
+      ]
+    },
+    {
+      "item": "Quick lane",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

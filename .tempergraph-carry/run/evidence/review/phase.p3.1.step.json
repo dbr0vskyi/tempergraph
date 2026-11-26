@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.1.step",
+  "view_chars": 14464,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.85,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Step 8 asks for the completed marks in one edit of the plan, but the session made seven separate edits, one per row."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        47
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session tried to edit a test file with a shell `sed -i` even though the prompt says to use file tools and the shell allows only declared commands, so it was denied and the edit was redone with Edit."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        32,
+        33,
+        34,
+        35,
+        37
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Five separate small edits hit the same spot in filing.py, which could have been fewer and larger edits."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Write tests first and see them fail before changing source",
+      "status": "followed",
+      "turns": [
+        17,
+        18,
+        19,
+        21,
+        26,
+        28,
+        30
+      ]
+    },
+    {
+      "item": "Write the completed marks in one edit of the plan",
+      "status": "not_followed",
+      "turns": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60
+      ]
+    },
+    {
+      "item": "Use only declared shell commands and file tools for edits",
+      "status": "not_followed",
+      "turns": [
+        47
+      ]
+    },
+    {
+      "item": "Run only the test files the phase's rows name, not the whole suite",
+      "status": "followed",
+      "turns": [
+        28,
+        39,
+        50
+      ]
+    },
+    {
+      "item": "Check specs touched by the changed source files that the plan does not name",
+      "status": "unclear",
+      "turns": [
+        43
+      ]
+    },
+    {
+      "item": "Report deviations in the phase note",
+      "status": "followed",
+      "turns": [
+        45,
+        61
+      ]
+    }
+  ],
+  "none_found": false
+}

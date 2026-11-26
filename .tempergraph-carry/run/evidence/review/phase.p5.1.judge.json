@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.1.judge",
+  "view_chars": 5285,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        7,
+        11
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge read only child.py and record.py (2 of 5 changed files) and checked the three test files with one grep, so any row-change grade for the test rows rests on search-printed lines that the intent says should be PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

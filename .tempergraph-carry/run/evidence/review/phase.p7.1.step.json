@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p7.1.step",
+  "view_chars": 7872,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        1,
+        2,
+        3
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Procedure step 1 says to read the triage note, but the session read only the plan and the guide and never opened i170c.triage.md."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Step 1: read plan rows, then triage note, then named files",
+      "status": "not_followed",
+      "turns": [
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Step 1: set plan status to in-progress when planned",
+      "status": "unclear",
+      "turns": [
+        4,
+        7
+      ]
+    },
+    {
+      "item": "Step 2: build only the rows with an empty Completed cell",
+      "status": "followed",
+      "turns": [
+        2,
+        5,
+        6
+      ]
+    },
+    {
+      "item": "Step 5: edit the named document for a docs row",
+      "status": "followed",
+      "turns": [
+        5,
+        6
+      ]
+    },
+    {
+      "item": "Step 6: run only the test files the rows name, never the whole suite",
+      "status": "not_applicable",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Step 7: check specs touched by changed source files",
+      "status": "not_applicable",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Step 8: mark completed rows in one plan edit",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Limits: no commit, no push, no gh, stay in the working directory",
+      "status": "followed",
+      "turns": [
+        5,
+        6,
+        7
+      ]
+    }
+  ],
+  "none_found": false
+}

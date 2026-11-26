@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.1.judge",
+  "view_chars": 5102,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The visible verdict for ts-exp-design quotes one row line without a path or line number and does not show the design sections or phase goals being compared with the rows, so the MET rests on a mapping summary."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

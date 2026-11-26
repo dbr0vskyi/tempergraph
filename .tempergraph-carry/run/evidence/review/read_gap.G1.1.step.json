@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.step",
+  "view_chars": 5210,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        2,
+        5,
+        7,
+        8,
+        9
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Four more searches for 'outbox' or 'max_age' followed the broad turn 2 search, which suggests the scopes were not narrowed up front."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        6
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.2,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Turn 6 shows no call and no output."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        3
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The procedure says to read line ranges and not whole files, but turn 3 read all of filing.py (10.5k characters)."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read the gap's row in the triage note and the documents it names",
+      "status": "unclear",
+      "turns": [
+        1,
+        4
+      ]
+    },
+    {
+      "item": "Procedure 2: read the code narrowly, searching ids and names first",
+      "status": "not_followed",
+      "turns": [
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Procedure 3: web only for research-needed gaps",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Procedure 4: report what documents and code say and what is missing, with basis and file/lines",
+      "status": "followed",
+      "turns": [
+        10
+      ]
+    },
+    {
+      "item": "Limits: read only, no writes or commands, stay in the working directory",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "item": "Hand over: one-line gap_finding of at most 1,500 characters ending with an ARTIFACT line",
+      "status": "unclear",
+      "turns": [
+        10
+      ]
+    }
+  ],
+  "none_found": false
+}

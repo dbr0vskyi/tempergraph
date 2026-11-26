@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.4.retry",
+  "view_chars": 13451,
+  "observations": [
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The Fix text says to keep the mark of any row you leave unchanged, but the flagged rows were unchanged rows whose file changed in a later commit, so the prompt should say that a mark is also emptied when the row's file changed after its marking commit."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The step has no git or shell, so it can only unmark the rows the check names, and attempts 3 and 4 each cleared a different batch of marks; the engine should list every stale-marked row at once or drop all marks on a trip back."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "One edit was sent with identical old and new text and failed with no change, which cost a turn."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rules to follow: open plan.rule.md and documents.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Procedure step 9: edit an existing plan in place, keep marks of unchanged rows, empty marks of changed rows",
+      "status": "followed",
+      "turns": [
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "item": "Procedure steps 1-8: read triage, hand-off and specs; measure and write the plan",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Limits: no shell, no git, write only the plan",
+      "status": "followed",
+      "turns": [
+        3,
+        4,
+        5,
+        7,
+        9,
+        10,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    {
+      "item": "Limits: do not say the plan is correct, report what was done",
+      "status": "followed",
+      "turns": [
+        20
+      ]
+    },
+    {
+      "item": "What to end with: ARTIFACT plan and complexity lines",
+      "status": "unclear",
+      "turns": [
+        20
+      ]
+    }
+  ],
+  "none_found": false
+}

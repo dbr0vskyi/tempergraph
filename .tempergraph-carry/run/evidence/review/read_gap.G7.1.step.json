@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G7.1.step",
+  "view_chars": 4964,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        7,
+        8,
+        9
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Three back-to-back Grep calls on nearly the same pattern (exit_reason|reason) looked for the same thing; one scoped search would likely have done."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

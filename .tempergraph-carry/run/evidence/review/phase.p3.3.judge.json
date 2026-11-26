@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.3.judge",
+  "view_chars": 4829,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge never opened the files the phase rows name and graded from the plan and grep output alone, so quoting the changed line from the read file, as the brief requires, was not done."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        3,
+        5,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Evidence for the rows' changes is limited to a few grep hits where the brief asks for a quoted line with its path and line number from a file read, and that evidence should have been graded PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.4.judge",
+  "view_chars": 6026,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        5,
+        6,
+        7,
+        9,
+        10,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only two spec files and took the ISS, SIL and CLI behaviours from grep output alone, then reported all criteria as holding, though the intent says to open the specs and grade PARTIAL on search-only evidence."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

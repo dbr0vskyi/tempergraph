@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p7.2.judge",
+  "view_chars": 4917,
+  "observations": [
+    {
+      "category": "judge_shallow",
+      "turns": [
+        6,
+        7
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The ts-phs-scope verdict that the three test files are each named by an earlier row rests on one Grep's printed lines with no read of the plan around them, which the intent says should grade PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

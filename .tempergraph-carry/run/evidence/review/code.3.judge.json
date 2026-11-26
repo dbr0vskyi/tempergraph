@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "session_key": "code.3.judge",
+  "view_chars": 12176,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        5,
+        6,
+        7,
+        8,
+        20
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge never opened any spec file and its summary claims it read `record`, which does not appear among its reads, so the alignment and related-spec grades are not backed by the reads the brief requires."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        11,
+        12,
+        15,
+        20
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.45,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge read only two of the new test files and took the `outbox.max_age_days` location from a grep line, so its test-proof and param findings rest on partial evidence that the brief says to grade PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

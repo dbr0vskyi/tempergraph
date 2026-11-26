@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.step",
+  "view_chars": 10375,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        9,
+        13,
+        14,
+        17,
+        18,
+        22
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The procedure says to read each document found and read the code lines the search finds, but the loop-issues spec, the engine-cli spec, the guide and the engine code were judged from grep matches alone."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        1
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The conversation setting reached the prompt as the unresolved placeholder ⟨missing:settings.conversation⟩, so the step could not tell whether to write owner decisions or findable labels."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "task-notes.rule.md opened with read",
+      "status": "followed",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "item": "documents.rule.md opened with read",
+      "status": "followed",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "item": "Read the documents found and the code lines the search finds",
+      "status": "not_followed",
+      "turns": [
+        9,
+        13,
+        14,
+        17,
+        18
+      ]
+    },
+    {
+      "item": "Write only the triage note, no shell, no git",
+      "status": "followed",
+      "turns": [
+        21
+      ]
+    }
+  ],
+  "none_found": false
+}

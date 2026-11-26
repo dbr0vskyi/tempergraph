@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p3.1.judge",
+  "view_chars": 5195,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        5,
+        8,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge read only 2 of the 6 changed files and appears to have graded rows such as 3.2 from grep-printed lines (for example test_improve.py:342) instead of reading the file around the line as the intent requires."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

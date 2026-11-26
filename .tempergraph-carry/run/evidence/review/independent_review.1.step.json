@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "session_key": "independent_review.1.step",
+  "view_chars": 7803,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        2,
+        3,
+        5
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The diff was read three times in chunks (turns 2, 3, 5), which looks like repeated reads of one file where a narrower read or a view with offsets would have cost less."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        20,
+        21,
+        23
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "kept",
+      "corroborated": false,
+      "note": "filing.py was read again at turns 20, 21 and 23 after already being read in full at turn 10, so the same file was reopened several times rather than read once by line range."
+    },
+    {
+      "category": "context_bloat",
+      "turns": [
+        2,
+        3,
+        5,
+        9,
+        10
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Roughly 96k tokens went in before the first write, mostly whole-file and whole-diff reads, even though the procedure says to search for names first and read only the needed line ranges."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Read criteria first, then the change",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Read narrowly: search for names first, read line ranges",
+      "status": "not_followed",
+      "turns": [
+        2,
+        3,
+        5,
+        9,
+        10,
+        20,
+        21,
+        23
+      ]
+    },
+    {
+      "item": "Write only .tempergraph/review/findings.md with the write tool, no commands",
+      "status": "followed",
+      "turns": [
+        34
+      ]
+    },
+    {
+      "item": "Do not open other run documents or any findings document",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        5,
+        9,
+        10,
+        17,
+        20,
+        21,
+        23,
+        30
+      ]
+    },
+    {
+      "item": "Stay inside the working directory, no shell",
+      "status": "followed",
+      "turns": [
+        34
+      ]
+    },
+    {
+      "item": "End with ARTIFACT findings line",
+      "status": "unclear",
+      "turns": [
+        35
+      ]
+    },
+    {
+      "item": "Findings in numbered form with file:line and blocking/not blocking mark",
+      "status": "unclear",
+      "turns": [
+        34,
+        35
+      ]
+    }
+  ],
+  "none_found": false
+}

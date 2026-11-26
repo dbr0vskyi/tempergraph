@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p7.1.judge",
+  "view_chars": 5613,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        8,
+        9,
+        10,
+        12
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge never read the long plan rows of the phase in full, since the grep omitted them and the one plan read was too short, yet it graded ts-phs-change and ts-phs-scope on them."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        10,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge graded every criterion MET while admitting some row-to-file matches rested on partial search output, where its own rule says PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.2.step",
+  "view_chars": 14126,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        18
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent tried a heredoc python3 shell call that the Limits section forbids and the permission layer denied, so the prompt should state more firmly that file edits and checks go through the file tools."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        21,
+        22,
+        23,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent made 15 single edits to one new test file after its first runs failed on fixture and assertion scope, where one consolidated rewrite would have done."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        16,
+        24,
+        26,
+        27
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The test file was written before the agent had worked out how the fixtures behave (a second pause finding sat beside the gap one), so several runs went to fixing the test, not to checking the code."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        5,
+        11,
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The turns show no search of the spec folders for behaviours the changed source exposes (procedure step 7), and the final note does not say the check was made."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        14,
+        48,
+        50
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Row 5.4 was marked complete though its code was already in the source, and the session does not show whether an earlier attempt changed that file, which the reviewer's file-changed check requires."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

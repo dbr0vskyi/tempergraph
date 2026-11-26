@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "outcome",
+  "visit": 2,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-spec-sync",
+      "evidence": "PARTIAL: The report says the linked specs were read and no false behaviour found. The code matches the triage note: pause_facts.py:24 and cli/main.py:39 hold the same CLI-B24 word set, and filing.py:91 counts only 'fault' lines. I did not read the spec text and compare behaviours that share a subject.",
+      "fix": "Read each edited spec's behaviours against its linked specs' behaviours and quote the pairs compared."
+    }
+  ]
+}

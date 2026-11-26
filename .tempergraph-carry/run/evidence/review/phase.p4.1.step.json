@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.1.step",
+  "view_chars": 10763,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        35,
+        36,
+        37
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Procedure step 8 says to write all completed marks in one edit of the plan, but the session made three separate plan edits, one per row."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read plan rows and triage note first",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Procedure 3: write tests first and see them fail for the right reason",
+      "status": "followed",
+      "turns": [
+        22,
+        24,
+        25
+      ]
+    },
+    {
+      "item": "Procedure 4: smallest code change in the named files",
+      "status": "followed",
+      "turns": [
+        28,
+        29,
+        30,
+        31
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the test files the rows name, as plain commands",
+      "status": "unclear",
+      "turns": [
+        25,
+        33
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs the change touches that the plan does not name",
+      "status": "unclear",
+      "turns": [
+        6,
+        38
+      ]
+    },
+    {
+      "item": "Procedure 8: completed marks in one plan edit",
+      "status": "not_followed",
+      "turns": [
+        35,
+        36,
+        37
+      ]
+    },
+    {
+      "item": "Limits: no git commit, push or gh",
+      "status": "followed",
+      "turns": [
+        25,
+        33
+      ]
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.judge",
+  "view_chars": 3927,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        9,
+        11
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded criterion 1 without opening the test files, the release.py and cli/improve.py writers, params.py or the central-run-stats spec the findings name, so those claims were checked only against grep output."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.independent_review.1.judge.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 760,
+  "turns_so_far": 1,
+  "pgid": 68341,
+  "last_event_at": "2026-11-26T21:08:51.537Z",
+  "updated_at": "2026-11-26T21:08:51.538Z",
+  "pid": 4174472,
+  "ended": false
+}

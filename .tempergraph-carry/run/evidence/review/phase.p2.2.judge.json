@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p2.2.judge",
+  "view_chars": 4988,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        5,
+        6,
+        8
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge marked the row changes of rows 2.1 to 2.6 as in their files from Grep output alone, never read those files, and then said it had read the changed files, though the brief says search-only evidence is PARTIAL."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Its checks of the _own_segment and _pause_reason removal and of the ISS-AC13 test were two pattern searches with no read of the surrounding code or test body to confirm the change is real."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

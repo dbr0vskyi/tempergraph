@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.step",
+  "view_chars": 10172,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        22,
+        24,
+        25
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The procedure says to write all completed marks in one edit of the plan, but the session made separate edits for the status and for each row's Completed cell."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        12,
+        14,
+        16,
+        18
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The test used a counts key that does not exist, so it failed with a KeyError after the code change and needed a grep, a re-read of filing.py and a test edit to fix."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Test written first and seen failing for the right reason",
+      "status": "followed",
+      "turns": [
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "item": "Test carries its criterion ids and is not skipped",
+      "status": "followed",
+      "turns": [
+        7,
+        26
+      ]
+    },
+    {
+      "item": "Code row: smallest change in the named file",
+      "status": "followed",
+      "turns": [
+        10,
+        11
+      ]
+    },
+    {
+      "item": "Run only the test files the rows name, no verification commands or whole suite",
+      "status": "followed",
+      "turns": [
+        19,
+        21
+      ]
+    },
+    {
+      "item": "Completed marks written in one edit of the plan",
+      "status": "not_followed",
+      "turns": [
+        22,
+        24,
+        25
+      ]
+    },
+    {
+      "item": "Check specs touched by the changed source file but not named in the plan",
+      "status": "unclear",
+      "turns": [
+        14
+      ]
+    },
+    {
+      "item": "Do not read or build rows of other phases",
+      "status": "unclear",
+      "turns": [
+        1
+      ]
+    }
+  ],
+  "none_found": false
+}

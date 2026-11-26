@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.phase.p3.3.step.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "```",
+  "tokens_so_far": 913,
+  "turns_so_far": 1,
+  "pgid": 4187953,
+  "last_event_at": "2026-11-26T21:04:47.732Z",
+  "updated_at": "2026-11-26T21:04:47.733Z",
+  "pid": 4174472,
+  "ended": false
+}

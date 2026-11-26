@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.judge",
+  "view_chars": 8671,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        12,
+        14
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "One of the five changed documents was never opened, yet the judge declared all seven gaps closed, although the intent says to open each file and treat the hand-off summary as a claim."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        2,
+        14
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.45,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge accepted the hand-off's statement that the code disagrees with ISS-B14 without opening any source file, so the inferred-behaviour check was left to the report."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

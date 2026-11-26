@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "session_key": "code.3.retry",
+  "view_chars": 14428,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        9,
+        10,
+        12
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Phase 5 reported skipping the step 7 search of unnamed specs, and the join session neither ran it nor visibly checked that the report covers it before ending."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Open each named rule file with the read tool (task-notes.rule.md, plan.rule.md)",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Read the plan and set status/marks (already completed; build only empty Completed cells)",
+      "status": "followed",
+      "turns": [
+        5,
+        12
+      ]
+    },
+    {
+      "item": "Code report written with each deviation the notes name",
+      "status": "followed",
+      "turns": [
+        9
+      ]
+    },
+    {
+      "item": "Run the preview command once at the end and change no file after it",
+      "status": "followed",
+      "turns": [
+        10,
+        12
+      ]
+    },
+    {
+      "item": "Step 7: check specs the plan does not name",
+      "status": "unclear",
+      "turns": [
+        9,
+        12
+      ]
+    },
+    {
+      "item": "Shell limited to plain single commands",
+      "status": "followed",
+      "turns": [
+        6,
+        10
+      ]
+    },
+    {
+      "item": "No git commit/push/gh",
+      "status": "followed",
+      "turns": [
+        6,
+        10
+      ]
+    }
+  ],
+  "none_found": false
+}

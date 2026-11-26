@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.judge",
+  "view_chars": 4918,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        5,
+        7,
+        8
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge only grepped the repository and never opened a spec file to check the gap list and the Covered-by rows, so those criteria could not be graded above PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

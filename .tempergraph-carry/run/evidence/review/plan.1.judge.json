@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.1.judge",
+  "view_chars": 5863,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        6,
+        7,
+        9
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge opened only two of the five referenced specs and said it had read all five, so the CLI and IMD behaviours (and some SIL ones) were never read in their files."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        4,
+        9
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.7,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Criterion 8 was graded MET although some behaviours were quoted only from grep output, which the intent says must be PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.2.step",
+  "view_chars": 7963,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        8,
+        10
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.8,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent skipped the step 7 search of specs outside the plan for behaviours the changed source file exposes, admitted this in its note, and still marked row 4.2."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        4,
+        5,
+        6
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The agent judged row 4.2 already built from two Grep results without reading the file the row names, so the mark rests only on the test run."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Procedure 1: read plan rows and triage note",
+      "status": "followed",
+      "turns": [
+        1,
+        2
+      ]
+    },
+    {
+      "item": "Procedure 1: set plan status to in-progress when planned",
+      "status": "unclear",
+      "turns": []
+    },
+    {
+      "item": "Procedure 2: build only unmarked rows",
+      "status": "followed",
+      "turns": [
+        6,
+        8
+      ]
+    },
+    {
+      "item": "Procedure 3: tests first",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Procedure 4: smallest code change",
+      "status": "not_applicable",
+      "turns": [
+        6
+      ]
+    },
+    {
+      "item": "Procedure 6: run only the phase's named test files",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Procedure 7: check specs outside the plan that the change touches",
+      "status": "not_followed",
+      "turns": [
+        10
+      ]
+    },
+    {
+      "item": "Procedure 8: mark completed rows in one edit with today's date",
+      "status": "followed",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "item": "Limits: no commit or push, plain single commands",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Hand over: phase_note artifact line",
+      "status": "followed",
+      "turns": [
+        10
+      ]
+    }
+  ],
+  "none_found": false
+}

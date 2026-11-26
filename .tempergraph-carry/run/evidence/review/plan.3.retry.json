@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.3.retry",
+  "view_chars": 15370,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        3,
+        4,
+        5
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.25,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The retry never opened the triage note, hand-off or specs that procedure step 1 names, so it did not re-check criterion coverage after clearing the marks, though the retry only needed mark fixes."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Rules to follow: open plan.rule.md and documents.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        3,
+        4
+      ]
+    },
+    {
+      "item": "Procedure: read triage note, hand-off and specs",
+      "status": "not_followed",
+      "turns": [
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "item": "Procedure: edit existing plan in place, empty the Completed cell of changed rows, keep status planned",
+      "status": "followed",
+      "turns": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20
+      ]
+    },
+    {
+      "item": "Limits: no shell, no git, write only the plan",
+      "status": "followed",
+      "turns": [
+        3,
+        4,
+        5,
+        8,
+        20
+      ]
+    },
+    {
+      "item": "What to end with: ARTIFACT plan and complexity lines",
+      "status": "unclear",
+      "turns": [
+        22
+      ]
+    }
+  ],
+  "none_found": false
+}
