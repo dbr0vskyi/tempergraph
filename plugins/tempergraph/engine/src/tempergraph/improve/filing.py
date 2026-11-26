@@ -365,6 +365,45 @@ class Outbox:
         self.path.unlink(missing_ok=True)
         return [json.loads(ln) for ln in lines if ln.strip()]
 
+    def entries(self) -> list[dict[str, Any]]:
+        """CLI-B21: the payloads in file order; none when the file is absent, an unreadable line is skipped, and
+        nothing is written or removed."""
+        try:
+            lines = self.path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return []
+        out: list[dict[str, Any]] = []
+        for ln in lines:
+            try:
+                got = json.loads(ln)
+            except ValueError:
+                continue
+            if isinstance(got, dict):
+                out.append(got)
+        return out
+
+    def remove(self, fingerprint: str | None = None) -> int:
+        """CLI-B22: remove every entry (no fingerprint) or those of `fingerprint`; returns the number removed."""
+        try:
+            lines = [ln for ln in self.path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        except OSError:
+            return 0
+        if fingerprint is None:
+            self.path.unlink(missing_ok=True)
+            return len(lines)
+        keep: list[str] = []
+        for ln in lines:
+            try:
+                got = json.loads(ln)
+            except ValueError:
+                got = None
+            if isinstance(got, dict) and got.get("fingerprint") == fingerprint:
+                continue
+            keep.append(ln)
+        if len(keep) != len(lines):
+            self.path.write_text("".join(ln + "\n" for ln in keep), encoding="utf-8")
+        return len(lines) - len(keep)
+
 
 def _deliver(host: CodeHost, p: Mapping[str, Any]) -> str:
     if p["op"] == "comment":
