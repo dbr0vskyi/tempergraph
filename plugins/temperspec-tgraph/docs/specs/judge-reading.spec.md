@@ -8,9 +8,9 @@ What each judge of the temperspec workflow is told to read and to cite before it
 
 ### JRD-B1 Every changed source file is listed
 
-WHEN the code gate hands its judge the check evidence of a change THE code gate SHALL list every source file the change touched (any file other than a Markdown document) with the lines it changed (lines added plus lines removed since the run's base), the file with the most changed lines first.
+WHEN the code gate hands its judge the check evidence of a change THE code gate SHALL list every source file the change touched (any file other than a Markdown document and any file that [RGN-B13](regeneration.spec.md) leaves out of the changed paths) with the lines it changed (lines added plus lines removed since the run's base), the file with the most changed lines first.
 
-- GIVEN a change that touches source files of 120, 80 and 30 changed lines and one Markdown document WHEN the code gate hands its judge the check evidence THEN the evidence lists the three source files in the order of 120, 80 and 30 lines, each with its count, and does not list the document
+- GIVEN a change that touches source files of 120, 80 and 30 changed lines, one Markdown document and one file that only the regeneration unit's commit changed WHEN the code gate hands its judge the check evidence THEN the evidence lists the three source files in the order of 120, 80 and 30 lines, each with its count, and does not list the document or the file the regeneration wrote
 - GIVEN a change that touches 40 source files WHEN the judge's prompt is built THEN the prompt names all 40 files
 - GIVEN a change that touches only Markdown documents WHEN the code gate hands its judge the check evidence THEN the evidence says the change has no source file
 
@@ -58,7 +58,7 @@ WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to gra
 
 ## Acceptance criteria
 
-- JRD-AC1 (JRD-B1): The check evidence of the code gate for a change that touches source files of 120, 80 and 30 changed lines and one Markdown document lists exactly the three source files, in the order of 120, 80 and 30 lines, each with its count
+- JRD-AC1 (JRD-B1): The check evidence of the code gate for a change that touches source files of 120, 80 and 30 changed lines, one Markdown document and one file that only the regeneration unit's commit changed lists exactly the three source files, in the order of 120, 80 and 30 lines, each with its count, and states 230 changed source lines
 - JRD-AC2 (JRD-B1): The judge's prompt for a change that touches 40 source files names all 40
 - JRD-AC3 (JRD-B2): The check evidence for changes of 120, 2,100, 2,101 and 5,000 changed source lines states reading budgets of 10, 42, 43 and 50 files
 - JRD-AC4 (JRD-B3): The code judge's brief tells the judge to read each source file the evidence lists (the file itself, not only search results from it), up to the reading budget, before it grades `ts-code-aligned` or `ts-code-related`

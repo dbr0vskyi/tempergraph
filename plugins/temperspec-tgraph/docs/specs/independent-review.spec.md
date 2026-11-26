@@ -18,7 +18,7 @@ WHEN a run outside the quick lane passes the code step THE workflow SHALL run th
 
 WHEN a run in the quick lane passes the code step THE workflow SHALL go on to the outcome gate with no review.
 
-- GIVEN a run that went from triage straight to the code step and passed it WHEN it goes on THEN no reader session starts and the outcome gate runs next
+- GIVEN a run that went from triage straight to the code step and passed it WHEN it goes on THEN no reader session starts and the outcome gate runs after the regeneration unit ([RGN-B1](regeneration.spec.md))
 - GIVEN a run that the code gate sent back to triage, which then routed it to the plan step WHEN it passes the code step THEN the review runs
 
 ### IRV-B3 The reader is given the change
@@ -109,7 +109,7 @@ WHEN a review lists no blocking finding THE workflow SHALL go on to the outcome 
 ## Acceptance criteria
 
 - IRV-AC1 (IRV-B1): A fixture run outside the quick lane that passes the code step enters the review and then the outcome gate, on the arm that builds the plan at once and on the arm that builds it one phase at a time, and a documents-only run enters no review
-- IRV-AC2 (IRV-B2): A fixture run in the quick lane that passes the code step starts no reader session and enters the outcome gate next, and a fixture run that the code gate sent back to triage and the triage step routed to the plan step enters the review
+- IRV-AC2 (IRV-B2): A fixture run in the quick lane that passes the code step starts no reader session and enters the outcome gate after the regeneration unit, and a fixture run that the code gate sent back to triage and the triage step routed to the plan step enters the review
 - IRV-AC3 (IRV-B3): The change handed to the reader in a fixture run holds the source and test files the run's commits changed, the edit of a spec and a deletion, and holds none of the hand-over documents and none of the files the prepare step wrote or changed; in a review after a trip back it holds the commits of both visits
 - IRV-AC4 (IRV-B4): The criteria handed to the reader hold the numbered criteria of the triage note and nothing of its gaps or its owner decisions
 - IRV-AC5 (IRV-B5): On the loaded workflow, the reader's rendered prompt and each value it reads hold no text of the plan, the hand-off, the code report, an earlier judgement or a step's session, no path of a hand-over document and nothing of an earlier review's findings, for a state that holds all of them
