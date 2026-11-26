@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "session_key": "code.5.judge",
+  "view_chars": 11641,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        2,
+        3,
+        7,
+        11,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.65,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge admitted it did not open the remaining listed source files yet graded every other criterion MET instead of PARTIAL or UNVERIFIABLE."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        5,
+        6,
+        8,
+        9,
+        12
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge never read the plan or any edited spec and leaned on the report and search output, so its MET grades on alignment, rows and scope lack quoted spec and row evidence."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

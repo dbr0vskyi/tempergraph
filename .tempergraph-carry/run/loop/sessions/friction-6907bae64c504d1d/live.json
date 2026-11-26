@@ -3,12 +3,12 @@
   "session_key": "friction-6907bae64c504d1d",
   "open_tool": null,
   "recent": [],
-  "last_text": "",
-  "tokens_so_far": null,
-  "turns_so_far": null,
+  "last_text": "```",
+  "tokens_so_far": 2140,
+  "turns_so_far": 1,
   "pgid": 4174480,
-  "last_event_at": "2026-11-26T21:01:52.872Z",
-  "updated_at": "2026-11-26T21:01:52.873Z",
+  "last_event_at": "2026-11-26T21:02:07.924Z",
+  "updated_at": "2026-11-26T21:02:07.924Z",
   "pid": 4174472,
   "ended": false
 }
