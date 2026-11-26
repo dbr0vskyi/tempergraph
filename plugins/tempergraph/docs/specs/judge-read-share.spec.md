@@ -48,46 +48,45 @@ WHEN a judge's `agent_run` record holds a null `changed_base` THE engine SHALL w
 
 WHEN a judge's changed paths are recorded THE engine SHALL leave out of them each path that is not in the attempt's workspace when the judge starts.
 
-- GIVEN a visit that deleted one file and wrote two others WHEN the judge starts THEN its digest holds `changed_total` 2
-- GIVEN a visit that deleted a file and wrote a file at the same path WHEN the judge starts THEN the path is among the judge's changed paths
-- GIVEN a visit that deleted one file WHEN a check of the same attempt reads its changed paths THEN they name the deleted file
+- GIVEN a visit that deleted two files and wrote one WHEN the judge starts THEN its digest holds `changed_total` 1
+- GIVEN a visit that deleted a file and then wrote a different file at the same path WHEN the judge starts THEN the path is among the judge's changed paths
 
 ### SRV-B40 A name git prints quoted is counted by its own name
 
-WHEN a changed path's name holds a space or a character outside ASCII THE engine SHALL record the path in the judge's changed paths as the workspace holds it, not as git prints it quoted, so that `changed_read` counts it when the judge's session reports a read of that name.
+WHEN a changed path's name is one that git prints quoted, such as a name with a space or a letter outside ASCII, THE engine SHALL record the path in the judge's changed paths under the name the workspace holds, so that `changed_read` counts it when the judge's session reports a read of that name.
 
-- GIVEN a visit that added one file whose name holds a space and one whose name holds a letter outside ASCII, and a judge whose session reports a read of both WHEN the digest is written THEN it holds `changed_total` 2 and `changed_read` 2
-- GIVEN the same visit and a judge whose session reports a read of the file with the space only WHEN the digest is written THEN it holds `changed_read` 1
+- GIVEN a visit that added `plain.md`, `my notes.md` and `café.md`, and a judge whose session reports a read of `my notes.md` and `café.md` WHEN the digest is written THEN it holds `changed_total` 3 and `changed_read` 2
+- GIVEN the same visit and a judge whose session reports a read of `plain.md` only WHEN the digest is written THEN it holds `changed_read` 1
 
 ### SRV-B41 A declared file artifact is left out of every judge's counts
 
 WHEN a judge's changed paths are recorded THE engine SHALL leave out of them each file artifact that a unit the run has entered declares in `produces` ([CON-B6](contracts.spec.md)), at the path reported for it, taken relative to the workspace, so that no judge counts it in `changed_total` or `changed_read`.
 
-- GIVEN a step that writes its declared notes file and three other files, and a judge that opens only the notes file and passes every blocker WHEN findings are derived THEN `changed_total` is 3, `changed_read` is 0 and they carry `judge_unread_pass`
+- GIVEN a step that writes its declared summary file and two other files, and a judge that opens only the summary file and passes every blocker WHEN findings are derived THEN `changed_total` is 2, `changed_read` is 0 and they carry `judge_unread_pass`
 - GIVEN a declared file artifact that an earlier unit wrote and left uncommitted WHEN a later unit's judge starts THEN the file is not among that judge's changed paths
-- GIVEN a notes file that no unit declares in `produces` WHEN the judge starts THEN it is among the judge's changed paths
+- GIVEN a summary file that no unit declares in `produces` WHEN the judge starts THEN it is among the judge's changed paths
 
 ### SRV-B42 A gate's patterns leave paths out of its judge's counts
 
 WHEN a gate declares `judge_may_skip` ([WFM-B14](workflow-model.spec.md)) THE engine SHALL leave out of its judge's changed paths, and of no other judge's, each path that one of the patterns matches in full, case-sensitively, with `*` and `**` both crossing directories ([JRK-B7](judge-model-by-risk.spec.md)), so that neither `changed_total` nor `changed_read` of that judge counts it.
 
-- GIVEN a gate that declares `generated/**` and a step that wrote two files under `generated/` and two elsewhere WHEN its judge starts THEN its digest holds `changed_total` 2
-- GIVEN a gate that declares `generated/**`, a later gate that declares no pattern, and files under `generated/` that the first unit wrote and left uncommitted WHEN the later gate's judge starts THEN it counts those files
-- GIVEN a gate that declares `generated/**` and a judge that opened one changed file under `generated/` and one changed file elsewhere WHEN the digest is written THEN `changed_read` is 1
+- GIVEN a gate that declares `dist/**` and a step that wrote three files under `dist/` and one elsewhere WHEN its judge starts THEN its digest holds `changed_total` 1
+- GIVEN a gate that declares `dist/**`, a later gate that declares no pattern, and files under `dist/` that the first unit wrote and left uncommitted WHEN the later gate's judge starts THEN it counts those files
+- GIVEN a gate that declares `dist/**`, a step that wrote one file under `dist/` and one elsewhere, and a judge that opened only the file under `dist/` WHEN the digest is written THEN `changed_total` is 1 and `changed_read` is 0
 
 ### SRV-B43 A judge's record holds how many paths its gate's patterns left out
 
 WHEN a gate's judge starts to grade an attempt THE engine SHALL write on the judge's `agent_run` record `changed_left_out`, the number of paths, among those that would otherwise count, that the gate's `judge_may_skip` patterns left out, 0 when it declares none.
 
-- GIVEN a gate that declares `generated/**` and a step that wrote two files under `generated/` and two elsewhere WHEN its judge starts THEN the judge's record holds `changed_left_out` 2
+- GIVEN a gate that declares `dist/**` and a step that wrote three files under `dist/` and one elsewhere WHEN its judge starts THEN the judge's record holds `changed_left_out` 3
 - GIVEN a gate that declares no pattern WHEN its judge starts THEN the judge's record holds `changed_left_out` 0
 
 ### SRV-B44 A map's judgements are read item by item
 
 WHEN findings are derived for the judge of an item of a map THE engine SHALL decide whether that judge passed every blocker, and whether it gave a judgement, from the judgements recorded for that item alone, never from another item's.
 
-- GIVEN a sequential map whose first item's judge passed every blocker having opened none of the changed paths and whose second item's judge failed a blocker WHEN findings are derived THEN they carry `judge_unread_pass` once
-- GIVEN a map whose first item's judge failed a blocker and whose second item's judge passed having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass` once
+- GIVEN a sequential map of three items whose first and third items' judges failed a blocker and whose second item's judge passed every blocker having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass` once
+- GIVEN a map whose first item's judge failed a blocker and whose second item's judge passed every blocker having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass` once
 - GIVEN a map whose two items' judges each opened 1 of 10 changed paths, the first having given a judgement and the second having timed out WHEN findings are derived THEN they carry `judge_partial_read` once
 
 ### SRV-B31 A judge graded after reading little of the change
@@ -125,17 +124,17 @@ WHEN a judge's counts, or a finding made from them, are written to its digest, t
 - SRV-AC33 (SRV-B37): A fixture whose entry record holds no commit, one whose recorded commit git does not hold and one whose workspace is outside a git repository each leave `changed_base` null and no changed path, with the reasons `no_entry_commit`, `commit_unknown` and `outside_repository`
 - SRV-AC34 (SRV-B38, SRV-B12, SRV-B31): A fixture judge whose record holds a null `changed_base`, and that passed every blocker having opened none of the unit's files, has a digest with neither `changed_total` nor `changed_read`, and the findings derived for its unit carry neither `judge_unread_pass` nor `judge_partial_read`
 - SRV-AC35 (SRV-B38, SRV-B37): A fixture visit that changed nothing, entered at a recorded commit, leaves its judge's record with `changed_base` set and its digest with `changed_total` 0 and `changed_read` 0
-- SRV-AC36 (SRV-B39): A fixture visit that deletes one file and adds two leaves the judge's `changed_total` 2, and the changed paths given to the attempt's check, its git facts, the record of the paths the step session wrote (SIL-B33) and an eval suite's changed paths each name the deleted file
-- SRV-AC37 (SRV-B40, SRV-B39): A fixture visit that deletes one file and adds one file whose name holds a space and one whose name holds a letter outside ASCII, judged by a session that reports a read of both added files, leaves `changed_total` 2 and `changed_read` 2
-- SRV-AC38 (SRV-B41, SRV-B12): A fixture unit whose step writes its declared notes file and three other files, judged by a session that opens only the notes file and passes every blocker, leaves `changed_total` 3 and `changed_read` 0, and the findings derived for the unit carry `judge_unread_pass`
+- SRV-AC36 (SRV-B39): A fixture visit that deletes two tracked files and adds one leaves the judge's `changed_total` 1, and a fixture visit that deletes a tracked file and writes a different file at the same path leaves the judge's `changed_total` 1
+- SRV-AC37 (SRV-B40): A fixture visit that adds a file with a plain name, one with a space in its name and one with a letter outside ASCII in its name, judged by a session that reports a read of the last two, leaves `changed_total` 3 and `changed_read` 2
+- SRV-AC38 (SRV-B41, SRV-B12): A fixture unit whose step writes its declared summary file and two other files, judged by a session that opens only the summary file and passes every blocker, leaves `changed_total` 2 and `changed_read` 0, and the findings derived for the unit carry `judge_unread_pass`
 - SRV-AC39 (SRV-B41): A declared file artifact that an earlier unit wrote and left uncommitted, and one reported as `./notes.md` or as an absolute path inside the workspace, are each left out of the changed paths of the judge of a later unit
-- SRV-AC40 (SRV-B42): A fixture gate that declares `generated/**`, whose step writes two files under `generated/` and two elsewhere, leaves its judge's `changed_total` 2, and a fixture gate that declares no pattern leaves the judge of the same four files `changed_total` 4
-- SRV-AC41 (SRV-B43): The `agent_run` record of the judge of the fixture gate that declares `generated/**` in SRV-AC40 holds `changed_left_out` 2, and that of the judge of the gate that declares no pattern holds 0
-- SRV-AC42 (SRV-B44, SRV-B12): A fixture sequential map of two items, whose first item's judge passed every blocker having opened none of the changed paths and whose second item's judge failed a blocker, yields `judge_unread_pass` once
+- SRV-AC40 (SRV-B42): A fixture gate that declares `dist/**`, whose step writes three files under `dist/` and one elsewhere, leaves its judge's `changed_total` 1, and a fixture gate that declares no pattern leaves the judge of the same four files `changed_total` 4
+- SRV-AC41 (SRV-B43): The `agent_run` record of the judge of the fixture gate that declares `dist/**` in SRV-AC40 holds `changed_left_out` 3, and that of the judge of the gate that declares no pattern holds 0
+- SRV-AC42 (SRV-B44, SRV-B12): A fixture sequential map of three items, whose first and third items' judges failed a blocker and whose second item's judge passed every blocker having opened none of the changed paths, yields `judge_unread_pass` once
 - SRV-AC43 (SRV-B44, SRV-B31): A fixture map of two items whose judges each opened 1 of 10 changed paths, the first having given a judgement and the second having timed out, yields `judge_partial_read` once
 - SRV-AC44 (SRV-B45, SRV-B11): A canary fixture judge session of a unit whose workflow declares a file artifact and a gate pattern, each holding a canary string, leaves no canary string in its digest, in the findings derived for the unit, in the `loop.jsonl` records of its run or in the body of an issue built from those findings
-- SRV-AC45 (SRV-B31, SRV-B41, SRV-B12): Seven fixture judge sessions, each of a judge that gave a judgement and passed every blocker having opened only its unit's declared notes file, with two, three, three, four, eight, ten and ten changed paths in all, each yield `judge_unread_pass`, and none yields `judge_partial_read`
-- SRV-AC46 (SRV-B31): A fixture judge that gave a judgement after opening one of five counted paths yields `judge_partial_read`, and one that opened two of five yields none, with `digest.judge_read_share` at 0.25
+- SRV-AC45 (SRV-B31, SRV-B41, SRV-B12): Fixture judge sessions, each of a judge that gave a judgement and passed every blocker having opened only its unit's declared summary file, with one, four and nine other changed paths, each yield `judge_unread_pass`, and none yields `judge_partial_read`
+- SRV-AC46 (SRV-B31): A fixture judge that gave a judgement after opening one of eight counted paths yields `judge_partial_read`, and one that opened two of eight yields none, with `digest.judge_read_share` at 0.25
 - SRV-AC47 (SRV-B34, SRV-B40): SRV-AC21 and SRV-AC22 hold on fixture runs whose judge sessions are stand-in sessions scripted to open a named path, each reported as a `read` call whose input summary is that path relative to the workspace ([EVT-B21](run-events.spec.md)); their digests are built from the journals those runs write, and no test writes a judge's journal itself
 - SRV-AC48 (SRV-B34): A fixture workspace that holds one untracked file when a visit is entered, whose step modifies one tracked file and commits nothing, leaves the judge's `changed_total` 2
 - SRV-AC49 (SRV-B34, SRV-B42): A fixture visit that writes 250 files under a folder its gate's pattern leaves out and three files elsewhere leaves the judge's `changed_total` 3
