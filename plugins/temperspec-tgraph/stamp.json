@@ -101,7 +101,7 @@
     "validate:template-key-not-on-every-path|code||",
     "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 24,
+  "outcome_revision": 25,
   "baseline": {
     "error": 0,
     "warning": 37
