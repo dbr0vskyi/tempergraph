@@ -48,7 +48,8 @@ def test_skill_and_agent_files_are_linted_and_resolved(tmp_path: Path) -> None:
     assert [f.code for f in lint(load(pkg))] == ["lint-ref-missing"]
     write(pkg, "agents/checker.md", "---\nname: checker\ndescription: c\n---\nCheck.\n")
     write(pkg, "prompts/draft.md", "Write notes for {request} with skill `style` and `prompts/draft.md`.\n")
-    assert lint(load(pkg)) == []
+    # every name resolves; the step does not declare `skill:...:style`, which is the one error (LIF-B17)
+    assert [(f.code, f.severity) for f in lint(load(pkg))] == [("lint-skill-undeclared", "error")]
 
 
 def test_name_reader() -> None:

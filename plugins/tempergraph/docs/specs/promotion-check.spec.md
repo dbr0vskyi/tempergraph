@@ -4,6 +4,23 @@
 
 A workflow is improved locally until it needs little supervision, then moved to a pipeline ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)). This spec owns the three stages (`local-dev`, `local-stable`, `pipeline`), the model-free verb `promote-check` that measures a workflow version against each stage's criteria and writes a promotion stamp, the stage every run carries, and the regressed watch after a move ([ADR `promotion-is-a-model-free-stamp-per-workflow-version`](../adr/promotion-is-a-model-free-stamp-per-workflow-version.adr.md)). The engine never promotes or demotes a workflow by itself, and a pipeline run never answers its own pause. Effort ladders ([LAD](effort-ladder-and-model-escalation.spec.md)), risk rules ([JRK](judge-model-by-risk.spec.md)) and complexity switches ([CXR](complexity-routing.spec.md)) read the stage; until pipelines exist a paused run moves between machines by [CAR](run-state-on-a-branch.spec.md). Design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller kinds (PRV-B11)
+- `complexity-routing.spec.md`: records and report (CXR-B13)
+- `contracts.spec.md`: thread states and decisions (CON-B12)
+- `effort-ladder-and-model-escalation.spec.md`: stages (LAD-B13); ladder records (LAD-B16)
+- `engine-cli.spec.md`: engine cli
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `judge-model-by-risk.spec.md`: calibration per level (JRK-B9)
+- `measured-switches.spec.md`: measured switches
+- `overview.spec.md`: observability never changes a run (OVR-B4); read-only verbs call no model (OVR-B15)
+- `schedule-ticks-and-unattended-fires.spec.md`: credential check per executor (TCK-B19)
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-metrics.spec.md`: supervision criteria for promotion (SUP-B17)
+- `version-metadata.spec.md`: workflow version fields (VER-B14); stamp record (VER-B16)
+- `workflow-upgrade.spec.md`: verification (WUP-B19)
+
 ## Behaviours
 
 ### PRO-B1 Report, then stamp

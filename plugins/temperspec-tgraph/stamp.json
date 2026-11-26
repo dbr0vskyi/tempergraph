@@ -2,8 +2,8 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+eb88521d754b",
-  "docs_digest": "28543070c86bbeac8a1f4358312be9adf1035a221fef2111981677ed4c8fb6e7",
+  "workflow_version": "0.1.0+9eb9e4ad4abf",
+  "docs_digest": "4de5d82ce9a80cacd9fda00a3707518a1152e21206c6d287de39a77af8c69ea6",
   "shape_digest": "8e1c8b6ebcc28166eeb1fbb22a45f48920523ad73575f2f7577784189f415216",
   "entries_applied": [
     {
@@ -55,6 +55,7 @@
       "Write"
     ]
   },
+  "revisit": {},
   "audit": [
     "hold-time-exposure|code||workflow/temperspec/__init__.py",
     "hold-time-exposure|discovery||workflow/temperspec/__init__.py",
@@ -104,5 +105,5 @@
     "error": 0,
     "warning": 38
   },
-  "stamped_at": "2026-11-26T18:14:36.965Z"
+  "stamped_at": "2026-11-26T21:55:15.259Z"
 }

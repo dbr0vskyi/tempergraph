@@ -4,6 +4,20 @@
 
 A run is a durable thread in a per-workflow SQLite checkpoint under the state root ([ADR `sqlite-checkpointer`](../adr/sqlite-checkpointer.adr.md); Postgres stays a seam for many hosts or about 50 concurrent runs). Resume is defined for every thread state, and the engine reads that state before it spends anything. Status and wait are read-only, model-free observers. Operators, skills, CI and the `tempergraph-monitor` plugin depend on the thread states, the resume rules and the status document; its per-thread detail form is [RDD](run-detail-document.spec.md). State is JSON merged by reducers under a stable thread id, and a fresh run never merges into a thread.
 
+## Depends on
+
+- `contracts.spec.md`: tolerant read (CON-B1)
+- `finalizer-contract.spec.md`: what it returns (FIN-B8)
+- `gate-and-human.spec.md`: what pauses for a usage limit (HUM-B14)
+- `local-observability-store.spec.md`: state root top level (LOS-B7); run folder (LOS-B8); session folder (LOS-B9)
+- `orchestration.spec.md`: orchestration of runs
+- `reruns-and-feedback.spec.md`: rewind (RRN-B16); rerun (RRN-B17); rerun workspace (RRN-B18); thread state against action (RRN-B19)
+- `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); effective settings record (RST-B27)
+- `run-state-on-a-branch.spec.md`: run state carried on a branch
+- `runs-without-a-final-exit.spec.md`: a lost runner is a final exit (SIL-B29)
+- `schedule-ticks-and-unattended-fires.spec.md`: scheduled-run ledger (TCK-B23); what a scheduled run adds elsewhere (TCK-B24)
+- `state-and-run-migration.spec.md`: what a thread records (MIG-B8); a thread at its next resume (MIG-B12); one database per checkpoint format (MIG-B13); clearing a pin (MIG-B14)
+
 ## Behaviours
 
 ### DUR-B1 Fresh run never merges

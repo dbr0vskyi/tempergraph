@@ -4,6 +4,22 @@
 
 The options that `run`, `resume` and `rerun` take: the generic setting options, the named options that are spellings of them, the task id and inputs, and how a request becomes a thread id when the workflow has no resolver. People, skills and CI depend on the exact option names; the settings they set are the catalog of [RST](run-settings-and-overrides.spec.md). Split from the engine CLI spec ([CLI](engine-cli.spec.md)) when the specs moved to temperspec's format.
 
+## Depends on
+
+- `caller-provenance.spec.md`: classification (PRV-B13); decider (PRV-B14)
+- `durability-and-resume.spec.md`: status document (DUR-B11)
+- `executor-interface.spec.md`: strict permissions (EXI-B12)
+- `feedback-and-judge-reliability.spec.md`: reliability figures (FBK-B11); grade rule (FBK-B12); grades and queue verbs (FBK-B13)
+- `flow-extensions.spec.md`: operator breakpoints (FLX-B10)
+- `improvement-proposals.spec.md`: proposer is gated like any workflow (PRP-B4); draft pull request, never a merge (PRP-B8); clusters and the ranked backlog (PRP-B12); trial record and arms (PRP-B18); a/A runs (PRP-B21); show a record (PRP-B22)
+- `judge-calibration.spec.md`: score (JCL-B14); bar and label verbs (JCL-B18)
+- `orchestration.spec.md`: the supervisor's mark (ORC-B17); status, wait and other verbs (ORC-B24); attention and hooks across the state root (ORC-B26)
+- `run-settings-and-overrides.spec.md`: tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30); refusals before spend (RST-B32)
+- `schedule-ticks-and-unattended-fires.spec.md`: fire token and caller (TCK-B17)
+- `security.spec.md`: security posture
+- `self-improvement.spec.md`: code host unreachable (SIL-B19); daily cap (SIL-B20)
+- `workspace-and-concurrency.spec.md`: the state root outside git (WSP-B15); what needs git (WSP-B18)
+
 ## Behaviours
 
 ### ROP-B1 Generic setting options

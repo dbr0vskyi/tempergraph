@@ -47,7 +47,7 @@ WHEN the executor declares its capabilities THE executor SHALL declare `binds_al
 
 ### ECC-B7 Tool map
 
-WHEN a capability is mapped THE executor SHALL map `read` to `Read` with the rule `Read(./**)` on a step, plus a read rule for the workflow plugin's folder when the step is given one; `search` to `Grep` and `list` to `Glob` with no rule on a step, the CLI admitting them inside the workspace only; `web_fetch` to `WebFetch` and `web_search` to `WebSearch` with rules of the same name; `edit` and `write` to `Edit` and `Write` with `Edit(./**)` and `Write(./**)` in the engine's own worktree only; `shell` to `Bash` as ECC-B1; `subagent` to `Agent` (reported as `Task` by older releases); `mcp:<s>/<t>` to `mcp__<s>__<t>`; and `skill:<p>:<n>` to `Skill` with the rule `Skill(<p>:<n>)` once P-CC-8 confirms it, else `Skill` with the called name checked in the tool record ([ADR `skills-are-a-declared-tool-capability`](../adr/skills-are-a-declared-tool-capability.adr.md)).
+WHEN a capability is mapped THE executor SHALL map `read` to `Read` with the rule `Read(./**)` on a step, plus a read rule for the workflow plugin's folder when the step is given one; `search` to `Grep` and `list` to `Glob` with no rule on a step, the CLI admitting them inside the workspace only; `web_fetch` to `WebFetch` and `web_search` to `WebSearch` with rules of the same name; `edit` and `write` to `Edit` and `Write` with `Edit(./**)` and `Write(./**)` in the engine's own worktree only; `shell` to `Bash` as ECC-B1; `subagent` to `Agent` (reported as `Task` by older releases); `mcp:<s>/<t>` to `mcp__<s>__<t>`; and `skill:<p>:<n>` to `Skill` with the rule `Skill(<p>:<n>)` (other skills: ECC-B25) ([ADR `skills-are-a-declared-tool-capability`](../adr/skills-are-a-declared-tool-capability.adr.md)).
 
 - GIVEN a step declaring `edit` that runs in place WHEN it launches THEN no `Edit(./**)` rule is sent
 - GIVEN a step declaring `read` and `search` WHEN it reads or searches a file outside its workspace THEN the call is refused
@@ -98,7 +98,7 @@ WHEN a `claude` session ends not ok and the last `rate_limit_event` of its strea
 
 ### ECC-B13 Probe and preflight
 
-WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at preflight when `claude` is not on the engine's resolved `PATH`, or `claude auth status` reports signed out with no gateway variables set; read `--permission-prompts` and other flags from `--help`, sending them only when listed; record a judge view server that `system/init` reports in `mcp_server_errors` as deferred, its criterion rendered out of reach; and rest no control on a live probe until its result is recorded `confirmed` with date and pinned CLI version: P-CC-1 (`--bare` removes user-level plugins and hooks while gateway credentials work, `@builtin` plugins staying listed), P-CC-2 (`--tools Read,Grep,Glob` with `--disallowedTools "mcp__*"` leaves exactly those tools), P-CC-3 (the stream shape at `--max-budget-usd`), P-CC-4 (precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model), P-CC-5 (a prompt on stdin with no positional prompt is accepted), P-CC-6 (`dontAsk` refuses an unlisted call and emits `permission_denied`), P-CC-7 (whether a session keeps a native transcript under the isolation flags, and where, [EVT-B20](run-events.spec.md)), P-CC-8 (a `Skill(<plugin>:<name>)` rule admits only that skill and the record names it), P-CC-9 (`--plugin-dir` loads a workflow plugin's skills and agents with a step's isolation flags) and P-CC-13 (ECC-B24).
+WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at preflight when `claude` is not on the engine's resolved `PATH`, or `claude auth status` reports signed out with no gateway variables set; read `--permission-prompts` and other flags from `--help`, sending them only when listed; record a judge view server that `system/init` reports in `mcp_server_errors` as deferred, its criterion rendered out of reach; and rest no control on a live probe until its result is recorded `confirmed` with date and pinned CLI version: P-CC-1 (`--bare` removes user-level plugins and hooks while gateway credentials work, `@builtin` plugins staying listed), P-CC-2 (`--tools Read,Grep,Glob` with `--disallowedTools "mcp__*"` leaves exactly those tools), P-CC-3 (the stream shape at `--max-budget-usd`), P-CC-4 (precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model), P-CC-5 (a prompt on stdin with no positional prompt is accepted), P-CC-6 (`dontAsk` refuses an unlisted call and emits `permission_denied`), P-CC-7 (whether a session keeps a native transcript under the isolation flags, and where, [EVT-B20](run-events.spec.md)), P-CC-8 (a `Skill(<plugin>:<name>)` deny rule refuses that skill alone), P-CC-9 (`--plugin-dir` loads a workflow plugin's skills and agents with a step's isolation flags) and P-CC-13 (ECC-B24).
 
 - GIVEN a signed-out `claude` and no gateway variables WHEN preflight runs THEN it exits 2
 
@@ -184,6 +184,12 @@ WHEN P-CC-13 is run THE probe SHALL pass only when it has read the tools a sessi
 - GIVEN an account that has MCP servers and a session launched as ECC-B18 and ECC-B20 say WHEN the probe reads every turn THEN no turn shows a tool of an undeclared server and the probe passes
 - GIVEN an account that has MCP servers and a session launched with neither `--strict-mcp-config` nor `ENABLE_CLAUDEAI_MCP_SERVERS=false` WHEN the probe reads every turn THEN a later turn shows tools of the account's MCP servers and the probe fails
 
+### ECC-B25 A step calls only the skills it declares
+
+WHEN a step launches THE executor SHALL deny each skill that `system/init` lists and the step does not declare, or pass `--disable-slash-commands` when it declares none, and refuse the attempt when the list cannot be read.
+
+- GIVEN a step declaring `skill:n:a` where `n:a`, `n:b` and a bundled skill are listed WHEN it calls each THEN only `n:a` runs
+
 ## Acceptance criteria
 
 - ECC-AC1 (ECC-B1, ECC-B2, ECC-B7, ECC-B8, ECC-B9): Argv for every launch shape is built from constants and the binding table only (source-scan and planted-canary tests)
@@ -205,6 +211,8 @@ WHEN P-CC-13 is run THE probe SHALL pass only when it has read the tools a sessi
 - ECC-AC17 (ECC-B22): Against a stand-in operator MCP configuration, a step declaring a server that configuration does not define, or a configuration file that cannot be read, exits 2 at preflight naming the step and each such server with no session started; the same step with every declared server defined passes
 - ECC-AC18 (ECC-B23): Against stand-ins of the operator's MCP configuration and of `claude`, a step launch whose declared server is not defined, or that has no scratch folder, starts no session and fails with a reason naming the server; with the server defined and a scratch folder it starts one
 - ECC-AC19 (ECC-B24): The live probe for P-CC-13 reads every turn of a step session and of a judge session, each of more than one turn and launched as ECC-B18 and ECC-B20 say, and passes; it fails when the launch omits `--strict-mcp-config` and `ENABLE_CLAUDEAI_MCP_SERVERS=false` in an account that has MCP servers
+- ECC-AC20 (ECC-B7, ECC-B25): A step's argv denies each undeclared skill a stand-in's `system/init` lists; live (P-CC-8) only the declared one runs
+- ECC-AC21 (ECC-B25): A step declaring no skill gets `--disable-slash-commands` when probed
 
 ## Open questions
 

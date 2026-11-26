@@ -4,17 +4,21 @@
 
 What the gates of the temperspec steps confirm from the record of the step's session, so that what a prompt asks for is held by what the session did and not by what it reported: a session opens the rule files its prompt names, the expand step opens the files its task rows name, and the code step writes each phase's tests before its source. The record is the tool calls of the attempt's session that the engine gives a check ([CHK-B24](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)); where the engine gives none ([CHK-B25](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)), the criterion does not apply. The expand step's check of the files its task rows name reads the record of the whole visit, the calls of every session of the visit up to the attempt checked ([VSR-B1](../../../tempergraph/docs/specs/visit-session-record.spec.md)); every other criterion reads the attempt's record alone. "Opening" a file means a call of the read tool that ended without an error; lines printed by a search of a file never count. The seven steps are setup, triage, the short discovery, the full discovery, plan, expand and code, and a rule file is one of the `*.rule.md` files in the repository's `.claude/rules/temperspec/` folder. The reasons are in [the decision on rule files](../adr/a-step-check-confirms-that-each-rule-file-its-prompt-names-was-opened.adr.md) and [the decision on phases](../adr/a-phases-tests-and-source-are-the-files-of-its-test-and-code-rows.adr.md). The owner who reads a retry's findings and the maintainers of the step prompts depend on it. Part of the [overview](overview.spec.md).
 
+## Depends on
+
+- `kept-marks.spec.md`: a kept mark is accepted (KMK-B1)
+
 ## Behaviours
 
 ### SRC-B1 A rule file the prompt names must be opened
 
-WHEN the check of a step runs and the session record shows no opening of a rule file that the step's prompt names and the repository holds THE step's check SHALL fail, naming the rule file.
+WHEN the check of a step runs and the session record shows no opening of a rule file that the step's prompt names and the repository holds, and the CLI did not attach it ([SRC-B13](#src-b13-a-rule-the-cli-attached-counts-as-opened)) THE step's check SHALL fail, naming the rule file.
 
-- GIVEN a triage prompt that names `task-notes.rule.md` and `documents.rule.md`, a repository that holds both, and a session that opened `task-notes.rule.md` and only searched `documents.rule.md` WHEN the triage check runs THEN it fails naming `documents.rule.md` and does not name `task-notes.rule.md`
+- GIVEN a triage prompt that names `task-notes.rule.md` and `documents.rule.md`, a repository that holds both, and a session that opened `documents.rule.md` and only searched `task-notes.rule.md` WHEN the triage check runs THEN it fails naming `task-notes.rule.md` and does not name `documents.rule.md`
 - GIVEN a session that opened every rule file its prompt names WHEN the step's check runs THEN it does not fail for a rule file
 - GIVEN a session whose only call on `plan.rule.md` ended with an error WHEN the plan check runs THEN it fails naming `plan.rule.md`
 - GIVEN a session that opened `plugins/x/rules/spec.rule.md` and a repository that holds `.claude/rules/temperspec/spec.rule.md` WHEN the discovery check runs THEN it does not fail for `spec.rule.md`
-- GIVEN a prompt that names `task-notes.rule.md` and `documents.rule.md` and a repository that holds only `task-notes.rule.md`, and a session that opened neither WHEN the check runs THEN it fails naming `task-notes.rule.md` and does not name `documents.rule.md`
+- GIVEN a prompt that names `task-notes.rule.md` and `documents.rule.md` and a repository that holds only `task-notes.rule.md`, and a session that opened neither and read no task note WHEN the check runs THEN it fails naming `task-notes.rule.md` and does not name `documents.rule.md`
 - GIVEN attempt 1 that opened every rule file its prompt names and a retry attempt whose session opened none WHEN the check runs after the retry THEN it fails naming each of them
 
 ### SRC-B2 The prompt tells the session to open the files it names
@@ -65,6 +69,14 @@ WHEN the expand check runs on a task row whose completed mark is kept ([KMK-B1](
 - GIVEN row `1.1` marked `✓ 2026-11-22` by a commit of the run, left as it was by the expand step, and naming `src/a.py`, which no session of the visit opened WHEN the expand check runs THEN it makes no finding about the opening of `src/a.py`
 - GIVEN the same row after the expand step rewrote its change and emptied its mark, and `src/a.py` opened only in an earlier visit WHEN the expand check runs THEN it fails naming row `1.1` and `src/a.py`
 
+### SRC-B13 A rule the CLI attached counts as opened
+
+WHEN the check of a step looks for the opening of a rule file and the rule has no `paths` in its front matter, or the session record shows a read that ended without an error of a file its `paths` match before any write of such a file THE step's check SHALL count the rule as opened, and SHALL fail naming the rule and the file when the first matching call is a write and the rule was never opened.
+
+- GIVEN `documents.rule.md`, which has no `paths`, and a session that never opened it WHEN the check runs THEN it does not fail for `documents.rule.md`
+- GIVEN `plan.rule.md` with `paths: **/*.plan.md` and a session that read `docs/plans/old.plan.md` and then wrote `docs/plans/new.plan.md` WHEN the plan check runs THEN it does not fail for `plan.rule.md` and its pass names it as attached by path
+- GIVEN the same rule and a session whose first call on a plan file wrote `docs/plans/new.plan.md` WHEN the plan check runs THEN it fails naming `plan.rule.md` and `docs/plans/new.plan.md`
+
 ### SRC-B6 A phase's source changed before its tests fails the code check
 
 WHEN the code check runs on a plan whose phase has `test` rows and `code` rows and the session record shows the file of a `code` row of the phase changed before the file of any `test` row of the phase was first written (a change or a write being a call of the edit or the write tool that ended without an error, and a file named by rows of several phases counting for the first phase that names it) THE code check SHALL fail, naming the phase.
@@ -114,6 +126,7 @@ WHEN a check of this spec fails a criterion THE check SHALL name in its finding 
 - SRC-AC14 (SRC-B5): In a fixture in which a first session of the visit misses one existing file and a retry opens only that file, the expand check does not fail for any row's file
 - SRC-AC15 (SRC-B11): For two rows that name two different unread files the expand check makes one finding that names both rows and both paths, and for two rows that name one unread file the finding names both rows
 - SRC-AC16 (SRC-B12): The expand check makes no finding about the opening of the file of a row whose mark is kept, and fails naming the row and the path for a row whose change was rewritten and whose mark was emptied when no session of the visit opened its file
+- SRC-AC17 (SRC-B13): The rule-file check does not fail for a rule with no `paths` that the session never opened, nor for a path-scoped rule whose matching file the session read before it wrote one; it fails naming the rule and the file for a session whose first matching call is a write, and a read that ended with an error attaches nothing
 
 ## Open questions
 

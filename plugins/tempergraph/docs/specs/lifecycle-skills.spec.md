@@ -4,6 +4,14 @@
 
 Three skills of the `tempergraph` plugin let a person say "install tempergraph", "update tempergraph" or "upgrade my workflow" to their agent and have it done. Each skill drives the CLI verbs that do the work: `install` and `update` ([UPD](engine-update.spec.md)), `workflows` ([UPD-B24](engine-update.spec.md)) and `upgrade` ([WUP](workflow-upgrade.spec.md)); the update skill also runs Claude Code's own plugin commands, because the engine cannot update the plugin that carries it ([research `updating-a-tool-with-long-lived-runs`](../research/updating-a-tool-with-long-lived-runs.rsrch.md) U1). The rule of the shell holds: a skill drives, the verbs decide ([SHL](plugin-shell.spec.md), [ADR `lifecycle-skills-drive-plugin-commands-then-engine-verbs`](../adr/lifecycle-skills-drive-plugin-commands-then-engine-verbs.adr.md)). A skill reads the verbs' JSON and exit codes, never their prose, shows the person one plan, asks once and carries the whole plan out, asking again only before something that spends money and before a pause that belongs to the person. Reinstalling workflows is the engine's job, not the skill's ([ADR `registered-workflows-are-reinstalled-and-pinned-never-lost`](../adr/registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md)). People installing and updating the engine and workflow owners depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `contracts.spec.md`: thread states and decisions (CON-B12)
+- `engine-update.spec.md`: a failed install changes nothing (UPD-B1); the update verb (UPD-B14); report (UPD-B15)
+- `lifecycle-and-evals.spec.md`: executor compatibility (LIF-B10)
+- `plugin-shell.spec.md`: pauses go to the person (SHL-B2); executor choice with consequences (SHL-B3); the skills and what they never do (SHL-B5)
+- `security.spec.md`: security posture
+
 ## Behaviours
 
 ### LSK-B6 The skills

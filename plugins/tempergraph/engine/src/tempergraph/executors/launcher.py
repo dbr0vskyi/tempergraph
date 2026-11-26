@@ -10,6 +10,7 @@ probes and the host-speed timing (EXI-B14), so every executor launch stays at th
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import queue
 import signal
@@ -20,7 +21,7 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Literal
+from typing import IO, Any, Literal
 
 from tempergraph.contracts import Event, EventSink
 
@@ -300,6 +301,44 @@ def run_probe(argv: list[str], *, timeout_s: float = 20.0, cwd: Path | None = No
         return ProbeRun(exit_code=None, stdout="", stderr="", error=type(exc).__name__)
     return ProbeRun(exit_code=done.returncode, stdout=done.stdout.decode("utf-8", "replace"),
                     stderr=done.stderr.decode("utf-8", "replace"))
+
+
+def first_message(argv: list[str], payload: bytes, workdir: Path, overlay: Mapping[str, str],
+                  wanted: Callable[[Mapping[str, Any]], bool], *, drop: tuple[str, ...] = (),
+                  keep: tuple[str, ...] = (), timeout_s: float = 60.0) -> dict[str, Any] | None:
+    """Launch a session, read its stream to the first JSON message ``wanted`` accepts, then end the whole process
+    group; None when the stream ends or the time runs out first (ECC-B25 reads `system/init` this way)."""
+    found: list[dict[str, Any] | None] = [None]
+    try:
+        proc = subprocess.Popen(  # noqa: S603 - list argv from an executor module
+            argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, cwd=workdir,
+            env=session_env(overlay, "first-message", drop=drop, keep=keep),
+            **_popen_kwargs())  # type: ignore[call-overload]
+    except OSError:
+        return None
+
+    def read() -> None:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(msg, dict) and wanted(msg):
+                found[0] = msg
+                return
+
+    reader = threading.Thread(target=read, daemon=True)
+    reader.start()
+    with contextlib.suppress(OSError):
+        assert proc.stdin is not None
+        proc.stdin.write(payload)
+        proc.stdin.close()
+    reader.join(timeout_s)
+    _signal_group(proc, hard=True)
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        proc.wait(timeout=10)
+    return found[0]
 
 
 @dataclass(frozen=True, kw_only=True)

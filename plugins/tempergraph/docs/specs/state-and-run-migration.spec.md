@@ -4,6 +4,19 @@
 
 Runs outlive releases: a thread may sit paused for days, an orchestration supervises runs for hours, and every repository keeps a store of checkpoints and logs ([DUR](durability-and-resume.spec.md), [LOS](local-observability-store.spec.md)). This spec owns what happens to that state when the engine changes ([UPD](engine-update.spec.md)) or when a workflow's content changes under a thread (a plugin update, a merged upgrade, [WUP](workflow-upgrade.spec.md)). The rule is move at the resume boundary, pin only on a break ([ADR `threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them`](../adr/threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md)): a running process is never touched; a paused, unfinished or stopped thread moves to the current engine at its next resume, because each resume is a new process at a checkpoint and every unit is a fresh session; only a release that cannot resume a thread's checkpoint format pins that thread to a kept engine that can. A workflow change is tested by the two things a checkpoint holds, unit names and state keys; edges may change freely ([research `updating-a-tool-with-long-lived-runs`](../research/updating-a-tool-with-long-lived-runs.rsrch.md) U13). People resuming threads, the update verb and the store's readers depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `contracts.spec.md`: persisted documents are versioned (CON-B14)
+- `durability-and-resume.spec.md`: old checkpoints resume (DUR-B6); status document (DUR-B11)
+- `engine-update.spec.md`: engine environments and the switch (UPD-B11); the update verb (UPD-B14); rollback (UPD-B17)
+- `local-observability-store.spec.md`: state root top level (LOS-B7); manifest versions (LOS-B12)
+- `orchestration.spec.md`: orchestration of runs
+- `run-control.spec.md`: run control
+- `run-events.spec.md`: run events for observers
+- `security.spec.md`: security posture
+- `self-improvement.spec.md`: self-improvement loop
+- `version-metadata.spec.md`: engine release record (VER-B8); compatibility changelog entries (VER-B9); digests and the workflow version id (VER-B15)
+
 ## Behaviours
 
 ### MIG-B8 What a thread records

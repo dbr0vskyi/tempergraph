@@ -4,6 +4,21 @@
 
 How run numbers from every repository and every machine end up in one place a person can read, without a tempergraph server: a machine index of state roots, so one machine's runs are listed together; sinks, opt-in destinations to which each machine pushes metadata-only rows; a fleet copy in each machine's home folder, `~/.tempergraph/fleet/`, into which every machine pulls the rows of all the others; and an aggregate reader, `stats`, that totals them. A folder every machine can write is enough for a small team, and one writer per file is what makes a synced folder safe ([ADR `cross-machine-stats-through-opt-in-sinks`](../adr/cross-machine-stats-through-opt-in-sinks.adr.md)). A sink carries numbers, names from fixed lists and hashes, never request text, outputs, commands or paths (OVR-B11); hashing by default means a shared sink shows "repo 3f2a…" until the operator opts into names. Pushing is best effort and never changes a run (OVR-B4). With no sink configured nothing leaves the machine ([OBS](observability-and-cost.spec.md)). A sink is the aggregate the improvement data names ([IMD](improvement-data.spec.md)); what crosses follows IMD and CST-B11, whichever is stricter. Operators, teams sharing a sink, the orchestration supervisor and the monitor depend on these rows; release 1 build notes are kept in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `contracts.spec.md`: exit codes (CON-B13)
+- `engine-cli.spec.md`: an unhandled error (CLI-B19)
+- `improvement-data.spec.md`: keyed request digests (IMD-B16)
+- `local-observability-store.spec.md`: home layout (LOS-B10)
+- `orchestration.spec.md`: orchestration of runs
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+- `run-events.spec.md`: councils, contests, workspaces, grants, rulings, stops and exits (EVT-B15)
+- `schedule-ticks-and-unattended-fires.spec.md`: schedule ticks and unattended fires
+- `security.spec.md`: canary (SEC-B2)
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+- `telemetry-export.spec.md`: telemetry export
+
 ## Behaviours
 
 ### CST-B8 Machine index

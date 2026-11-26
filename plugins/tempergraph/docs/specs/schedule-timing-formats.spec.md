@@ -4,6 +4,10 @@
 
 The exact formats a schedule's timing is given in, `--at`, `--rrule`, `--every` and `--cron` with `--tz`, `--starts`, `--until` and `--count`, how each becomes the stored rule of [SCH-B18](schedules.spec.md) with no model and no question, and which values are refused. Split from [SCH](schedules.spec.md) to keep it under the spec budget; the behaviours keep their SCH ids. The word grammar, the canonical form, the echo, zones and every `schedule` verb stay in SCH. The parser of `schedule parse`, `add` and `edit` depends on it; design notes and assumptions are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md) F50.
 
+## Depends on
+
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+
 ## Behaviours
 
 ### SCH-B15 Exact formats

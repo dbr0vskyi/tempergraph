@@ -4,6 +4,10 @@
 
 How the answers of the loop's friction judge decide whether a friction finding files, and what the loop writes about each decision: when the answers recorded for a fingerprint attribute it, the one reason that a finding which is not filed carries, the numbers and the reason that the loop's records hold, and what the judge is told about attribution. An answer is an entry of the loop's record of what its judge answered ([SIL-B36](self-improvement.spec.md)), and the exit is the final exit whose findings the loop is deciding on ([SIL-B9](self-improvement.spec.md)). When a finding files, the pattern rule and what the loop does without an answer are owned by [self-improvement](self-improvement.spec.md) ([SIL-B18](self-improvement.spec.md), [SIL-B3](self-improvement.spec.md), [SIL-B35](self-improvement.spec.md)), which is at its size budget; what a filed issue or comment holds is owned by [loop-issues](loop-issues.spec.md). Workflow owners and the engine's maintainers who read a thread's `loop.jsonl` to see why a finding did or did not file depend on it.
 
+## Depends on
+
+- `self-improvement.spec.md`: pattern rule (SIL-B3); the loop records what its friction judge answered (SIL-B36)
+
 ## Behaviours
 
 ### FFD-B1 A finding files by the count only on a majority of its recorded answers

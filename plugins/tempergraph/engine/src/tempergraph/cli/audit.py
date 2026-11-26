@@ -29,7 +29,8 @@ from tempergraph.executors.capabilities import DECLARED
 
 def add_parsers(sub: Any) -> None:
     p = sub.add_parser("audit", help="advisory, read-only audit of a workflow (no model call)")
-    p.add_argument("first", metavar="workflow", help="a workflow, or `prompts` / `tools` then a workflow")
+    p.add_argument("first", metavar="workflow",
+                   help="a workflow, or `prompts` / `tools` / `decisions` then a workflow")
     p.add_argument("second", nargs="?", default=None, help=argparse.SUPPRESS)
     p.add_argument("--layer", action="append", choices=("definition", "host", "history"), default=None)
     p.add_argument("--target", default=None)
@@ -53,10 +54,28 @@ def _probe(env: Any) -> Any:
     return probe
 
 
+def _issue_state(spec: Any) -> Any:
+    """DRV-B2: an issue of the workflow's issue repository, read through `gh` once per number."""
+    repo = getattr(spec, "issue_repository", None)
+    if not repo:
+        return None
+    seen: dict[int, str | None] = {}
+
+    def read(n: int) -> str | None:
+        if n not in seen:
+            from tempergraph.improve.codehost import GhCodeHost
+
+            seen[n] = GhCodeHost(timeout_s=20).issue_state(str(repo), n)
+        return seen[n]
+
+    return read
+
+
 def cmd_audit(env: Any, a: argparse.Namespace) -> int:
     view, name = ("findings", a.first) if a.second is None else (a.first, a.second)
-    if view not in ("findings", "prompts", "tools"):
-        env.err.write(f"tempergraph: audit takes a workflow, or prompts or tools then a workflow; got {view!r}\n")
+    if view not in ("findings", "prompts", "tools", "decisions"):
+        env.err.write(f"tempergraph: audit takes a workflow, or prompts, tools or decisions then a workflow; got "
+                      f"{view!r}\n")
         return int(ExitCode.USAGE)
     if view == "tools" and a.executor and a.executor not in DECLARED and a.executor not in env.registry.available():
         env.err.write(f"tempergraph: unknown executor {a.executor!r} for audit tools\n")
@@ -80,10 +99,18 @@ def cmd_audit(env: Any, a: argparse.Namespace) -> int:
     tools = view == "tools"
     ctx = AuditContext(target=target, caps=caps, probe=_probe(env), window_days=a.window, version=a.version,
                        executor=None if tools else a.executor, steps=tuple(a.step), show_all=a.show_all, history=facts,
-                       tool_executor=a.executor if tools else None, mcp_servers=_operator_mcp)
+                       tool_executor=a.executor if tools else None, mcp_servers=_operator_mcp,
+                       issue_state=_issue_state(spec))
     rep = audit(spec, layers, ctx, manifest=manifest, stamp=stamp)
     if tools:
         return _tools(env, a, spec, rep)
+    if view == "decisions":  # DRV-B4
+        from tempergraph.audit import readers
+        from tempergraph.audit.revisit import rows
+
+        env.out.write(json.dumps({"schema_version": 1, "workflow": spec.name, "stamped": stamp is not None,
+                                  "triggers": rows(spec, stamp, readers(ctx))}, indent=2) + "\n")
+        return 0
     if view == "prompts":
         env.out.write(json.dumps({"schema_version": 1, "workflow": spec.name, "files": prompt_rows(spec, rep, facts)},
                                  indent=2) + "\n")

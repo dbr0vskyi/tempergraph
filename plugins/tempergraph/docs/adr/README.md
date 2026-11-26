@@ -123,3 +123,4 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [`the-engine-names-no-workflow`](the-engine-names-no-workflow.adr.md) | The engine names no workflow, and takes a workflow's request as a general capability | accepted |
 | [`release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`](release-three-composes-runs-in-parallel-and-grades-in-the-pipeline.adr.md) | Release 3 is workflows that compose, run in parallel and are graded in the pipeline | accepted |
 | [`a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap`](a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) | A sub-workflow runs inside its parent's thread, workspace and cap | accepted |
+| [`a-step-loads-the-method-for-each-goal-the-run-state-names`](a-step-loads-the-method-for-each-goal-the-run-state-names.adr.md) | A step loads the method for each goal the run state names | proposed |

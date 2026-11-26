@@ -4,6 +4,26 @@
 
 Most runs are not started or resumed by a person typing `tempergraph`. A Claude session using the run driver, the orchestrator skill, the orchestration supervisor, a pipeline job or an application on the Agent SDK or the Messages API makes the call, and a person is somewhere behind it, or nowhere ([research `callers-supervision-and-babysitting-cost`](../research/callers-supervision-and-babysitting-cost.rsrch.md)). This spec owns how the engine tells these callers apart on every call that changes a thread, how much it trusts each signal, and how a person's decision relayed by an agent is told from the agent's own decision. It owns OVR-B19: every intervention on a run carries its caller and decider with the evidence for them, and a person is never inferred from a caller's word alone. Provenance is accounting, not a security boundary: every signal can be forged by a process of the same user; it is built so that an honest host and an honest agent produce a true record without effort, a careless agent cannot pass as a person, and a refusal that rests on provenance only ever fails toward the more careful side ([ADR `classify-callers-by-the-strongest-signal`](../adr/classify-callers-by-the-strongest-signal.adr.md), [ADR `a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence`](../adr/a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)). Supervision measures ([SUP](supervision-metrics.spec.md)), supervision cost ([SCO](supervision-cost.spec.md)), schedules ([TCK](schedule-ticks-and-unattended-fires.spec.md)) and judge labels ([FBK](feedback-and-judge-reliability.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `../../../tempergraph-monitor/docs/specs/actions-and-safety.spec.md`: ---
+- `central-run-stats.spec.md`: central run stats
+- `engine-cli.spec.md`: executors verb (CLI-B3)
+- `executor-interface.spec.md`: executor interface
+- `feedback-and-judge-reliability.spec.md`: agent answers do not grade judges (FBK-B2)
+- `gate-and-human.spec.md`: intervention row (HUM-B6)
+- `orchestration.spec.md`: answering a node (ORC-B6); the supervisor's mark (ORC-B17)
+- `overview.spec.md`: read-only verbs call no model (OVR-B15); the supervisor calls no model (OVR-B18); the schedule tick calls no model (OVR-B20)
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-control.spec.md`: run control
+- `run-events.spec.md`: run events for observers
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `schedule-ticks-and-unattended-fires.spec.md`: fire token and caller (TCK-B17); pipeline export (TCK-B20); who may create a schedule (TCK-B22)
+- `schedules.spec.md`: schedules
+- `security.spec.md`: canary (SEC-B2)
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+
 ## Behaviours
 
 ### PRV-B1 A person at a terminal

@@ -4,6 +4,26 @@
 
 A gate's deterministic check is the cheap half of every gate: a FAIL retries the step with no judge call, and the judge reads what the check established instead of the step's claim ([JDG](judge-and-verdict.spec.md)). This spec defines what a check receives, what it may do, how it runs a command and what it returns, so that a workflow's most valuable gate, one that runs a plan's own verification, can be written against the engine's public interface. It also owns the check preview: a step may run its own gate's check from inside its attempt, through one engine command, and repair what it finds before it ends ([ADR `a-step-previews-its-own-check-in-the-attempt`](../adr/a-step-previews-its-own-check-in-the-attempt.adr.md)). "Pure" in OVR-B7 means, for a check, no write to run state, no model or executor call, and the same answer for the same workspace, state and session record; command runs, in the workspace or at the run's base in a checkout the engine makes and removes (CHK-B18, CHK-B21), are its only side effect. The engine owns the mechanics (resolution rules, launch, limits, reuse, evidence); the workflow owns the policy (which commands, what exit means, what fails) ([ADR `checks-get-a-context-and-an-engine-command-runner`](../adr/checks-get-a-context-and-an-engine-command-runner.adr.md)). Workflow authors, the judge and the tool host depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: cause picks the counter (BUD-B1); trip back clears (BUD-B4)
+- `contracts.spec.md`: unit fields (CON-B5); input and routing declarations (CON-B9)
+- `finalizer-contract.spec.md`: finalizer contract
+- `judge-and-verdict.spec.md`: judge and verdict
+- `map-unit.spec.md`: map unit
+- `overview.spec.md`: paths inside the workspace (OVR-B12)
+- `run-events.spec.md`: hidden inputs (EVT-B6); journal cap (EVT-B7); tool input summaries (EVT-B21)
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `security.spec.md`: canary (SEC-B2); sanctioned launch sites (SEC-B7)
+- `self-improvement.spec.md`: self-improvement loop
+- `session-contract.spec.md`: judgement block (SSN-B8)
+- `step-values-and-template-keys.spec.md`: step values and template keys
+- `visit-session-record.spec.md`: a check is given the calls of every session of the visit (VSR-B1)
+- `workflow-model.spec.md`: workflow model and validation
+- `workflow-package.spec.md`: workflow package
+- `workspace-and-concurrency.spec.md`: the state root outside git (WSP-B15)
+- `worktree-mode.spec.md`: base (WTR-B21); records (WTR-B24)
+
 ## Behaviours
 
 ### CHK-B10 The context a check receives

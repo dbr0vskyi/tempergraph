@@ -4,6 +4,24 @@
 
 Every way a person can make a run do work again, and every way their words reach the work. The engine already retries by budget, re-runs infra failures, re-opens stopped runs and takes a person's `retry` or `back` with feedback at a pause ([BUD](budgets-and-failures.spec.md), [HUM](gate-and-human.spec.md), [DUR](durability-and-resume.spec.md)). This spec adds feedback everywhere a person resumes, given once or as a lasting ruling that every later attempt of the units it names, and their judges, are shown until it is revoked ([ADR `feedback-can-be-a-lasting-ruling`](../adr/feedback-can-be-a-lasting-ruling.adr.md)); rewind, a person's decision that sends a live thread back to any unit it has completed; and rerun, a new thread forked from any earlier thread at the checkpoint before a chosen unit, keeping every earlier verdict and linked to its source ([ADR `rewind-on-the-thread-rerun-as-a-linked-fork`](../adr/rewind-on-the-thread-rerun-as-a-linked-fork.adr.md), [research `config-overrides-and-reruns-gaps`](../research/config-overrides-and-reruns-gaps.rsrch.md)). Settings may change at every one of these points ([RST-B26](run-settings-and-overrides.spec.md)). Every retry, rewind and rerun starts a fresh session, spends nothing before the restarted unit's first session, and refuses before it writes ([CLI-B17](engine-cli.spec.md)). People answering runs, orchestration and the improvement loop depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: trip back clears (BUD-B4); automatic re-open (BUD-B6)
+- `contracts.spec.md`: thread states and decisions (CON-B12)
+- `durability-and-resume.spec.md`: resume by thread state (DUR-B9)
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `flow-extensions.spec.md`: operator breakpoints (FLX-B10)
+- `gate-and-human.spec.md`: several pending gates (HUM-B3); decisions (HUM-B12)
+- `judge-and-verdict.spec.md`: judge and verdict
+- `local-observability-store.spec.md`: state root top level (LOS-B7)
+- `orchestration.spec.md`: orchestration of runs
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+- `prompt-rendering.spec.md`: sections and their order (PRM-B6)
+- `run-settings-and-overrides.spec.md`: one resolver (RST-B16)
+- `security.spec.md`: canary (SEC-B2); scrubbing (SEC-B8)
+- `state-and-run-migration.spec.md`: a workflow changed under a thread (MIG-B15)
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### RRN-B12 Every way to run again

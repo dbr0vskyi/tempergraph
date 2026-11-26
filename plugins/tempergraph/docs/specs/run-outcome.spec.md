@@ -4,6 +4,30 @@
 
 Every workflow states what a good outcome of one run is, and everything that grades a run grades against it ([research `design-gap-review`](../research/design-gap-review.rsrch.md) G1). The good outcome is one data file in the package, `outcome.json` ([PKG](workflow-package.spec.md)), written first during authoring ([AUT](workflow-authoring.spec.md)) and revised after runs have been graded ([ADR `the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes`](../adr/the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md)). It holds the final outcome (a statement of the good end state, the deliverables and the final criteria), one intermediate outcome per unit (what that unit's result must be for the final outcome to be reachable, with its criteria), and for every criterion who verifies it: a script check, a judge, a person, or nobody yet, and for nobody, why. Step gates take their criteria from the intermediate outcomes; a final outcome gate grades the run against the final criteria before the finalizer ([ADR `a-run-is-measured-at-a-final-outcome-gate`](../adr/a-run-is-measured-at-a-final-outcome-gate.adr.md)); each run leaves an outcome record from which the workflow's measures are computed. A criterion nothing trustworthy verifies is shown on every report, never passed silently. Revisions follow the grader-side rules of [ADR `steps-and-their-graders-change-apart`](../adr/steps-and-their-graders-change-apart.adr.md): weakening is a person's act, and a verifier moves up the ladder from person to judge to check only on measured evidence ([ADR `outcome-revisions-are-grader-changes-and-verifiers-climb-a-ladder`](../adr/outcome-revisions-are-grader-changes-and-verifiers-climb-a-ladder.adr.md)). Step gates, the self-improvement outcome lens ([SIL](self-improvement.spec.md)), eval trials, reports and promotion depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `caller-provenance.spec.md`: decider (PRV-B14)
+- `check-contract-and-command-runs.spec.md`: check failures (CHK-B15)
+- `compiler-and-flow.spec.md`: order and routes (CMP-B10)
+- `contracts.spec.md`: workflow fields (CON-B4)
+- `eval-suites.spec.md`: check cases (EVS-B9); judge-graded rates carry the judge's error (EVS-B15)
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `gate-and-human.spec.md`: gate and human nodes
+- `improvement-proposals.spec.md`: change classes (PRP-B14)
+- `judge-and-verdict.spec.md`: judge and verdict
+- `judge-calibration.spec.md`: acceptance state (JCL-B17)
+- `lifecycle-and-evals.spec.md`: an escape is a harvest candidate (LIF-B17)
+- `observability-and-cost.spec.md`: observability and cost
+- `pull-request-read.spec.md`: pull request read
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `self-improvement.spec.md`: lenses (SIL-B10)
+- `supervision-metrics.spec.md`: touches (SUP-B9); workflow aggregates (SUP-B12); supervision criteria for promotion (SUP-B17)
+- `version-metadata.spec.md`: workflow version fields (VER-B14)
+- `workflow-audit.spec.md`: workflow audit
+- `workflow-authoring.spec.md`: verification search order (AUT-B18); decisions and assumptions (AUT-B22); revise mode (AUT-B25)
+- `workflow-package.spec.md`: callables and their views (PKG-B20)
+
 ## Behaviours
 
 ### OUT-B1 The minimal outcome

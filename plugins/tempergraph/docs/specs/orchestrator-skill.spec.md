@@ -4,6 +4,13 @@
 
 The orchestrator skill (`tempergraph:orchestrate`) is the conversation side of an [orchestration](orchestration.spec.md). It turns a request for many runs ("run discovery on these five tickets, then plan each one, then deliver them two at a time") into an orchestration file, shows the person the engine-drawn plan, its run count and projected cost, starts it after approval, sleeps until the engine says a person is needed, walks the person through each pause one at a time, and reports at the end. It sits beside the run driver ([SHL-B5](plugin-shell.spec.md)): the run driver drives one run; the orchestrator plans and supervises a graph of runs through the `orchestrate` verbs. Like every shell skill it drives the engine and never decides a gate; unlike orchestration by hand it keeps no queue in its context, launches no run itself and tails no log, because the supervisor does that without a model ([ADR `orchestration-is-data-run-by-a-model-free-supervisor`](../adr/orchestration-is-data-run-by-a-model-free-supervisor.adr.md)). It shares the pause walk-through and exit-code table with the run driver through one reference file, so the two never drift. People running many runs at once depend on it; design notes are kept in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `overview.spec.md`: one interrupt per gate (OVR-B8)
+- `plugin-shell.spec.md`: plugin shell
+- `supervision-cost.spec.md`: supervision cost
+
 ## Behaviours
 
 ### OSK-B8 When it is used

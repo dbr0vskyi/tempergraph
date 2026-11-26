@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from tempergraph.audit import revisit
 from tempergraph.audit.catalog import RULES, Layer
 from tempergraph.audit.definition import Definition
 from tempergraph.audit.history import HistoryFacts
@@ -53,6 +54,7 @@ class AuditContext:
     tool_executor: str | None = None  # show every session on this executor's tool map (`audit tools --executor`)
     mcp_servers: Callable[[], set[str] | None] | None = None  # the MCP servers of the operator's own configuration
     ambient_tools: Callable[[str], list[str] | None] | None = None  # plugin tools a probe lists for an executor
+    issue_state: Callable[[int], str | None] | None = None  # `open` or `closed` of an issue (DRV-B2)
 
 
 def _decl_file(spec: WorkflowSpec, manifest: Any) -> str:
@@ -139,6 +141,7 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
                                                                                    or {}), ctx.caps).run())
         if tools is not None:
             findings += _guarded(rep, "tools definition", tools.definition)
+        findings += _guarded(rep, "decision revisit", lambda: revisit.findings(spec, stamp, readers(ctx)))
     if "host" in run:
         inputs = HostInputs(target=ctx.target, probe=ctx.probe, timing=ctx.timing, plugin_cache=ctx.plugin_cache,
                             stamp=stamp)
@@ -168,6 +171,12 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
     rep.findings = order(findings, spec.order)
     rep.owned = _owned_counts(owned)
     return rep
+
+
+def readers(ctx: AuditContext) -> revisit.Readers:
+    """DRV-B2: where the audit reads a revisit trigger's state."""
+    return revisit.Readers(issue=ctx.issue_state or (lambda n: None),
+                           claude_version=lambda: ctx.probe("claude"), engine_version=ENGINE_VERSION)
 
 
 _NOT_BUILT = {  # definition rules whose unit kinds the engine does not build yet (ARC-B15)

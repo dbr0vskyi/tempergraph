@@ -4,6 +4,20 @@
 
 How the engine keeps operator input, model output and secrets away from process launches, file paths and published text: nothing a person typed reaches a process launch, every child dies with the engine, and anything published is metadata, scrubbed. Static scanners trace command-line values into argv, environment and file objects, so the controls change data flow rather than add checks. Operators, reviewers of published issues and pull requests, and every executor spec depend on these rules. The terminal sandbox of `agy` and Claude Code's permission rules are defence in depth, never the only control; the judge's independence rests on the guard ([ADR `judge-isolation-per-executor`](../adr/judge-isolation-per-executor.adr.md)).
 
+## Depends on
+
+- `central-run-stats.spec.md`: sinks configured (CST-B10); delivery through the outbox (CST-B12); sync to the home folder (CST-B13)
+- `check-contract-and-command-runs.spec.md`: command runs (CHK-B12); reuse of command runs (CHK-B13); the check worker and its limit (CHK-B16)
+- `engine-update.spec.md`: first-install launcher (UPD-B18); first install (UPD-B19)
+- `executor-interface.spec.md`: executor interface
+- `finalizer-contract.spec.md`: how its commands run (FIN-B7)
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `run-events.spec.md`: journal cap (EVT-B7); activity journal (EVT-B17); resource lines (EVT-B18); live progress file (EVT-B19)
+- `schedule-ticks-and-unattended-fires.spec.md`: triggers (TCK-B14); adapters and trigger status (TCK-B15); the tick (TCK-B16)
+- `self-improvement.spec.md`: the loop child (SIL-B17); filing by attribution or by count (SIL-B18)
+- `session-review.spec.md`: condensed view (SRV-B17); the reviewer (SRV-B18); category catalog (SRV-B19); citation check (SRV-B20); records and readers (SRV-B22)
+- `tool-host.spec.md`: command rules (THS-B10)
+
 ## Behaviours
 
 ### SEC-B5 Launch rules

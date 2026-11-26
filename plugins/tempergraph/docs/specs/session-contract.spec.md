@@ -4,6 +4,14 @@
 
 What the engine and every executor exchange for one session: the executor's surface, the session request and its options, the capabilities an executor declares, the session result and its usage, the normalized event stream ([ADR `normalized-session-event-stream`](../adr/normalized-session-event-stream.adr.md)), and the judgement and check result a gate reads. Executor implementations ([EXI](executor-interface.spec.md)), the gate funnel ([JDG](judge-and-verdict.spec.md), [CHK](check-contract-and-command-runs.spec.md)), the run log and observers depend on these exact names. Split from the shared contracts ([CON](contracts.spec.md)) when the specs moved to temperspec's format; the behaviour CON-B2 kept its id.
 
+## Depends on
+
+- `check-contract-and-command-runs.spec.md`: what a check returns (CHK-B14)
+- `contracts.spec.md`: shared contracts
+- `council-unit.spec.md`: council unit
+- `judge-and-verdict.spec.md`: judge and verdict
+- `run-events.spec.md`: tool input summaries (EVT-B21)
+
 ## Behaviours
 
 ### SSN-B1 The executor surface

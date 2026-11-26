@@ -4,6 +4,16 @@
 
 Every way a run can repeat has a counter with a default, and the cause of a failure decides which counter it spends: the model's failure costs a retry, the machine's an infra try, a person's direction the human cap. Budgets are decided in the gate node, which stays pure. Timeouts are engine-owned and resolved per step and per judge, so they behave the same on every executor. Every default is a run setting an operator may override per run, per unit or per machine within the catalog's ranges ([RST-B18](run-settings-and-overrides.spec.md)). The gate, pauses ([HUM](gate-and-human.spec.md)), executors ([EXI](executor-interface.spec.md)) and ladders ([LAD](effort-ladder-and-model-escalation.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `central-run-stats.spec.md`: central run stats
+- `contracts.spec.md`: model aliases and their resolution (CON-B3)
+- `effort-ladder-and-model-escalation.spec.md`: retiring the release 1 model list (LAD-B18)
+- `judge-and-verdict.spec.md`: no-change blocker escalates (JDG-B8)
+- `run-events.spec.md`: common record envelope (EVT-B8)
+- `run-settings-and-overrides.spec.md`: layers (RST-B22); snapshot and resume (RST-B26); tool grants (RST-B28)
+- `session-contract.spec.md`: a spent usage allowance (SSN-B11)
+
 ## Behaviours
 
 ### BUD-B1 Cause picks the counter

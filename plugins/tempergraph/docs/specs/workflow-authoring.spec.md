@@ -4,6 +4,17 @@
 
 Authoring turns what a person has, an existing solution, references and sources, or only an idea in a conversation, into a workflow package they can trust ([PKG](workflow-package.spec.md)). Its focus is the good outcome: what a good run leaves, and how each part of that, final and intermediate, is verified ([OUT](run-outcome.spec.md)). The interview works backwards from the final outcome to an intermediate outcome per step, then finds a verification for every criterion, preferring one the person already has, creating one where none exists, classifying each by who verifies it (script check, judge, person), and flagging, never hiding, a criterion with no trustworthy verification ([ADR `author-backwards-from-the-outcome-preferring-existing-verifications`](../adr/author-backwards-from-the-outcome-preferring-existing-verifications.adr.md)). The work splits between the authoring skill (`tempergraph:author`, a model in the person's own Claude Code session that leads the interview) and model-free engine verbs that inventory sources, check drafts, draw the blueprint, scaffold the package and check the result; the skill drafts, the engine checks and writes ([SHL](plugin-shell.spec.md)), and nothing is written to the package before the person approves the engine-drawn blueprint with the outcome and verification tables. How the result is checked is [SCF](blueprint-and-scaffold.spec.md). This spec owns the entry paths, the intake inventory, the interview and its phases, the verification search and classification, the authoring record and the revise mode; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `caller-provenance.spec.md`: classification (PRV-B13)
+- `lifecycle-skills.spec.md`: lifecycle skills for install, update and upgrade
+- `overview.spec.md`: secrets scrubbed (OVR-B11)
+- `plugin-shell.spec.md`: executor choice with consequences (SHL-B3)
+- `run-outcome.spec.md`: run-level good outcome
+- `security.spec.md`: security posture
+- `workflow-package.spec.md`: the docs half (PKG-B21)
+
 ## Behaviours
 
 ### AUT-B1 From a solution

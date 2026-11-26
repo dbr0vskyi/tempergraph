@@ -4,6 +4,15 @@
 
 Five additions to the flow primitives of [CMP](compiler-and-flow.spec.md) that give a workflow every graph shape LangGraph 1.2 can express ([research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md), [ADR `flow-extensions-for-langgraph-parity`](../adr/flow-extensions-for-langgraph-parity.adr.md)): a parallel block that picks its branches at run time, a map whose item is a sub-workflow, deadlines on waits and asks, a fallback target on a gate, and operator breakpoints. Each keeps static, validated targets, pure routing (OVR-B7) and one interrupt per gate (C6), so validation checks reachability and the diagram draws every edge ([ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)). Workflow authors, operators and the compiler depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: defaults at a deadline (ASK-B10); a list needs defaults for a defaults deadline (ASK-B13)
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `compiler-and-flow.spec.md`: state channels (CMP-B17)
+- `gate-and-human.spec.md`: approval is not friction (HUM-B5); intervention row (HUM-B6)
+- `observability-and-cost.spec.md`: observability and cost
+- `workspace-and-concurrency.spec.md`: shapes of parallel work (WSP-B11)
+
 ## Behaviours
 
 ### FLX-B6 Selective parallel
