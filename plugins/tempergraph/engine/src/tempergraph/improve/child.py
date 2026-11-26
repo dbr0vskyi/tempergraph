@@ -262,12 +262,27 @@ def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str,
             f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
             + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
             for f in findings]
-    sections = "".join(_segment_section(records[lo:hi]) for lo, hi in chosen)
+    sections = "".join(_segment_section(records[lo:hi], findings) for lo, hi in chosen)
     return BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {}) + sections
 
 
-def _segment_section(seg_records: Sequence[Mapping[str, Any]]) -> str:
-    """One segment's record kinds per unit with criterion ids, headed by its exit code and reason; never text (SIL-B45)."""
+def _pause_reason(seg_records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]]) -> str:
+    """The reason of the pause that ended a segment (SIL-B45): the pause at a listed finding's unit, else the segment's
+    last pause, read from the pause record's own `reason` (its kind when it has none), never the `run_exit` reason."""
+    pauses = [r for r in seg_records if r.get("kind") == "pause"]
+    if not pauses:
+        return "-"
+    starts = {str(seg_records[0].get("ts") or "")} if seg_records else set()
+    mine = [f for f in findings if str(f.get("segment_started") or "") in starts]
+    pick = next((p for f in mine for p in reversed(pauses)
+                 if str(p.get("unit") or "") == str(f.get("unit") or "")
+                 and str(p.get("child") or "") == str(f.get("child") or "")), pauses[-1])
+    return re.sub(r"[^A-Za-z0-9_.:-]", "", str(pick.get("reason") or pick.get("pause_kind") or "-")) or "-"
+
+
+def _segment_section(seg_records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]] = ()) -> str:
+    """One segment's record kinds per unit with criterion ids, headed by its exit code and the reason of its pause (the
+    run's own exit reason for a segment that did not pause); never text (SIL-B45)."""
     counts: dict[str, dict[str, int]] = {}
     blockers: dict[str, set[str]] = {}
     for r in seg_records:
@@ -279,7 +294,9 @@ def _segment_section(seg_records: Sequence[Mapping[str, Any]]) -> str:
     done = next((r for r in reversed(seg_records) if r.get("kind") == "run_exit"), None)
     head = ""
     if done is not None and isinstance(done.get("exit_code"), int):
-        head = f" (exit code {done['exit_code']}, reason {re.sub(r'[^A-Za-z0-9_.:-]', '', str(done.get('reason') or '-'))})"
+        why = _pause_reason(seg_records, findings) if done["exit_code"] == 3 else \
+            re.sub(r"[^A-Za-z0-9_.:-]", "", str(done.get("reason") or "-"))
+        head = f" (exit code {done['exit_code']}, reason {why})"
     seg = [f"- `{u}`: " + ", ".join(f"{k} {n}" for k, n in sorted(c.items()))
            + (f"; blocked on {', '.join(sorted(blockers[u]))}" if u in blockers else "") for u, c in counts.items()]
     return f"\n## The segment's records{head}\n" + "\n".join(seg) + "\n"

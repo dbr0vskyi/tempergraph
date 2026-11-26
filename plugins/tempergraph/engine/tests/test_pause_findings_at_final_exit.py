@@ -445,7 +445,13 @@ def test_each_paused_segment_with_a_listed_finding_has_a_section_of_its_own(
     assert len(heads) == 3, heads
     assert [("exit code 3" in h, "exit code 0" in h) for h in heads] == [(True, False), (True, False), (False, True)]
     assert all("reason " in h for h in heads), heads
-    assert "reason budget" in heads[0] and "reason escalation" in heads[1], heads  # the segment's own `run_exit` reason
+    pauses = [r for r in run_log(repo, "F-31") if r["kind"] == "pause"]  # the pause's own reason, not the exit's (SIL-B45)
+    exits = [r for r in run_log(repo, "F-31") if r["kind"] == "run_exit" and r["exit_code"] == 3]
+    assert len(pauses) == 2 and len(exits) == 2, (pauses, exits)
+    for head, pause, ended in zip(heads[:2], pauses, exits, strict=True):
+        assert pause["reason"], pause
+        assert f"reason {pause['reason']})" in head, (head, pause["reason"])
+        assert pause["reason"] != ended["reason"], (pause["reason"], ended["reason"])  # so the two cannot be mixed up
     parts = prompt.split("## The segment's records")[1:]
     assert any("`draft`" in p and "gate" in p for p in parts[:1])  # the first segment's own units and records
     assert all(CANARY[k] not in prompt for k in CANARY)
