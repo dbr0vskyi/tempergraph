@@ -1,5 +1,5 @@
 {
   "schema_version": 1,
-  "exit_code": 3,
-  "reason": "budget"
+  "exit_code": 4,
+  "reason": "person"
 }

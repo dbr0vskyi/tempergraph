@@ -71,3 +71,4 @@
 {"ts": "2026-11-26T06:48:33.297Z", "kind": "loop_result", "op": "queued", "fingerprint": "41328f575f55ec9a"}
 {"ts": "2026-11-26T06:48:33.297Z", "kind": "loop_result", "op": "queued", "fingerprint": "13e524f608734879"}
 {"ts": "2026-11-26T06:48:33.303Z", "kind": "loop_summary", "thread": "temperspec/i172", "recorded": 25, "filed": 0, "top": [{"category": "judge_shallow", "unit": "read_gap", "confidence": 0.85}, {"category": "tool_thrash", "unit": "discovery", "confidence": 0.8}, {"category": "instruction_ignored", "unit": "code", "confidence": 0.7}], "review_failed": {}}
+{"ts": "2026-11-26T08:35:01.810Z", "kind": "loop_started", "ticket": "af1f6f3138b24bfe", "lenses": {"friction": true, "outcome": false}, "findings": 6, "trigger": null, "fingerprints": ["41328f575f55ec9a", "572e5b5a616603e3", "578dc57a81d330f5", "8c4f1f9417986246", "b670437cbaa2d1d0", "f6ea12ccf81bdc98"]}
