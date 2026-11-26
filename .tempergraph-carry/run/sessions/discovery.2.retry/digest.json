@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.retry",
+  "kind": "retry",
+  "unit": "discovery",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 219,
+  "peak_context": 324197,
+  "turns_over_200k": 117,
+  "tokens_before_first_write": 251253,
+  "files_reread": 19,
+  "tools": {
+    "Glob": {
+      "capability": "list",
+      "calls": 5,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.193
+    },
+    "Read": {
+      "capability": "read",
+      "calls": 52,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.707
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 57,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 1.807
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 9,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.262
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.031
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 39,
+      "last_turn": 44
+    },
+    {
+      "tool": "Read",
+      "target": "ca0bb965dae5e5ae",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 85,
+      "last_turn": 87
+    },
+    {
+      "tool": "Edit",
+      "target": "d09892285fe729c5",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 143,
+      "last_turn": 146
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "7008f68d2069a394",
+    "82d55e6c42259bba",
+    "8b9c0a2efb05b617",
+    "9f6c68ab85ce78ba"
+  ],
+  "prior_overlap": 0.8
+}

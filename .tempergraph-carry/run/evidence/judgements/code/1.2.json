@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: The diff only adds table entries and derive branches. The usage_limit branch now suppresses infra, timeout and executor causes from a usage-limit session, and the pause with reason `usage_limit` adds nothing. Existing tests pass according to the check. I did not read the related specs one by one, so this rests on the passing suite.",
+      "fix": ""
+    }
+  ]
+}
