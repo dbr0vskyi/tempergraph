@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.step",
+  "view_chars": 5304,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        10
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The finding says the session searched the specs for regenerat, stamp and generated, but no such search appears in turns 1-9, and the one file it cites for that search (capability-list.spec.md) was never opened."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        2,
+        5,
+        6
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Three overlapping Greps for code_join and outcome terms could have been one search, and turn 3 is empty."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

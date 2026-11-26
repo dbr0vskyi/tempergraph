@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G6.1.judge",
+  "view_chars": 4416,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        5,
+        8,
+        10,
+        11
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded the spec claim MET from grep output and a count without opening gate-and-human.spec.md, although it had located the file, where the intent calls for PARTIAL."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        2,
+        3,
+        4
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Reads of engine/src/... failed because the files sit under plugins/tempergraph/engine/..., so the cited or guessed paths did not resolve from the worktree root and cost two turns."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

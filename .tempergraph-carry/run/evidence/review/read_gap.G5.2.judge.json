@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G5.2.judge",
+  "view_chars": 4133,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        9,
+        11,
+        15
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded ts-rdg-answers MET and said it checked every claim, but it never opened engine-update.spec.md, whose line 122 the findings rest on, so that evidence is only grep output and should have been PARTIAL."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

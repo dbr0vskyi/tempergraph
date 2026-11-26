@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G5.2.retry",
+  "view_chars": 9044,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        4,
+        5,
+        7
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The retry carried over claims about verify.py, SCF-B18 and the tests from the reviewer's feedback without re-reading them, although the step says to report what the session saw and to give the basis of each rule."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

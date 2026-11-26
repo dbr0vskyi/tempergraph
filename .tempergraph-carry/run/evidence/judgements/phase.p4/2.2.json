@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 2,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: Row 4.9 is met: prompts/code.md:17 'fix those findings and change nothing else. Touch no file that fixing them does not need, and edit no stamp, authoring record or diagram by hand'. Row 4.5 is partial: tests/test_regeneration_briefs.py:34-40 checks the prompt wording only. No test renders the brief or reads a stand-in prompt to check the numbered findings under the reason. The file has …",
+      "fix": "Add a test that renders the code brief of a visit after a failed regeneration, or reads the stand-in's prompt in a fixture run, and asserts the numbered findings sit under the reason."
+    }
+  ]
+}

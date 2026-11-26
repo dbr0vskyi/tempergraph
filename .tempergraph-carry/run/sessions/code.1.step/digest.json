@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.step",
+  "kind": "step",
+  "unit": "code",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 117,
+  "peak_context": 133006,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 65067,
+  "files_reread": 8,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 18,
+      "failures": 1,
+      "refused": 2,
+      "duration_s": 1.169
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 15,
+      "failures": 3,
+      "refused": 0,
+      "duration_s": 609.201
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 5,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.212
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 15,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.501
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.084
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.03
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [
+    {
+      "first_turn": 27,
+      "last_turn": 116,
+      "minutes": 62.4,
+      "tokens": 403
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 9,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "110822871e4e8d65",
+    "1fbb18968c668ca8",
+    "24a61ad9f96f040c",
+    "6e0f85fc731dd66d",
+    "71eb58a3119b7aa0",
+    "750a4a4f1510eece",
+    "833b1626eebd1447",
+    "ccdd227b734c256f",
+    "d062606cdf226318",
+    "eb238d854fa923ab",
+    "ed9b2588467baeb6",
+    "f82f45492f4635a3"
+  ],
+  "_wrote": [
+    "18766fda260d6e97",
+    "4226ac267f4b83a5"
+  ]
+}

@@ -3,12 +3,12 @@
   "session_key": "review.discovery.2.judge.1",
   "open_tool": null,
   "recent": [],
-  "last_text": "",
-  "tokens_so_far": null,
-  "turns_so_far": null,
+  "last_text": "```",
+  "tokens_so_far": 1453,
+  "turns_so_far": 1,
   "pgid": 4180729,
-  "last_event_at": "2026-11-26T14:57:56.463Z",
-  "updated_at": "2026-11-26T14:57:56.464Z",
+  "last_event_at": "2026-11-26T14:58:08.421Z",
+  "updated_at": "2026-11-26T14:58:08.422Z",
   "pid": 4169052,
   "ended": false
 }

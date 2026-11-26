@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 2,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: Row 5.3: test_judge_reading.py:80 `def test_a_declared_output_only_the_regeneration_changed_is_not_a_source_file ... # JRD-AC1`. Row 5.4: test_temperspec.py:1325 `# PNR-AC11 (PNR-B8)`. Row 5.5: checks.py:445 `def _regenerated(ctx)` and checks.py:522 `lines.append(\"Written by the regeneration (no step's change): \" ...)`. Row 5.6: prompts/plan.md:26 `A file the repository lists as an outpu…",
+      "fix": "Read the lines of rows 5.1, 5.2, 5.7 and 5.8 in full to confirm every part of each change."
+    }
+  ]
+}

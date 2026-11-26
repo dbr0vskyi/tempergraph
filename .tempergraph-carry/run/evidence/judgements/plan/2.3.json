@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "plan",
+  "visit": 2,
+  "attempt": 3,
+  "blockers": [
+    {
+      "criterion": "ts-plan-spec",
+      "evidence": "PARTIAL: R1 to R12 each follow a behaviour or acceptance criterion; I found no contradiction. Two parts go beyond the referenced behaviours. R13's fixture and test-pinning clauses cite SCF-B16 and EVS-B1, EVS-B2 and EVS-B9, which are not referenced specs (plan:37). R14's 'stamp never names an outcome revision above the record's' (plan:38) is a taken answer. It cites WUP-B13, which concerns the au…",
+      "fix": "Add the referenced spec (EVS, SCF-B16) or a behaviour for the stamp-revision rule, or drop the clause, or flag it as an owner decision"
+    }
+  ]
+}

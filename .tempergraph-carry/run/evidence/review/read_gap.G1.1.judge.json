@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.judge",
+  "view_chars": 3858,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        6,
+        8
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded ts-rdg-answers MET from a grep hit on capability-list.spec.md without ever opening that file, though the brief requires reading each named file and grading PARTIAL when the only evidence is search output."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        8
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.5,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The findings text handed to the judge was truncated mid-word, so the judge graded citations it could not fully see and still gave ts-rdg-cited a MET."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        7,
+        8
+      ],
+      "remedy_class": "criterion",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The judge spent five reads on specs and routing code and one grep, then issued two MET grades without checking the findings' line ranges against the files they cite."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

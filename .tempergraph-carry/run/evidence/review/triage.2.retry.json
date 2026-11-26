@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.2.retry",
+  "view_chars": 11061,
+  "observations": [
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        5,
+        7,
+        8
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "G8's row lists search terms ('registry', 'author verify') that the turn 5 grep never ran, and the grep also left out 'regenerat' and 'generated file' that G7 needs, so the rows the retry was asked to fix still do not accurately name the search that found nothing."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "Open task-notes.rule.md and documents.rule.md with the read tool",
+      "status": "followed",
+      "turns": [
+        2,
+        3
+      ]
+    },
+    {
+      "item": "Each gap row names the search that found nothing",
+      "status": "not_followed",
+      "turns": [
+        5,
+        7,
+        8
+      ]
+    },
+    {
+      "item": "Write only the triage note, no other file",
+      "status": "followed",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "item": "Do not run git or use a shell",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        5,
+        7
+      ]
+    },
+    {
+      "item": "Skills",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "Subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

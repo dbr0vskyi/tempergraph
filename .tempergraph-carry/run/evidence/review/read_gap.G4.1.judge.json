@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G4.1.judge",
+  "view_chars": 3593,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        3,
+        4,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.8,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded ts-rdg-answers MET although it opened only code-join.spec.md and never read review-findings.spec.md or budgets-and-failures.spec.md, seeing BUD-B3 and BUD-B4 only as grep output, which the brief says is PARTIAL."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        3,
+        6
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge accepted the findings' 'nothing found' claims on the step's own account and graded them MET without running a search of its own to show the search was real."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

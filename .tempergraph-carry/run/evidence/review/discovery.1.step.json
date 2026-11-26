@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "view_chars": 34888,
+  "observations": [
+    {
+      "category": "context_bloat",
+      "turns": [
+        3,
+        166
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.6,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The agent read 72 files and ran 59 searches (about 338k tokens, 19 files re-read) before its first write, and context peaked at 448k, though the reading-session findings already pointed at most of what it needed."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        81,
+        84,
+        85,
+        86,
+        88,
+        130,
+        137,
+        183,
+        184,
+        185,
+        229,
+        240,
+        270,
+        272,
+        274,
+        275,
+        277
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.65,
+      "check": "kept",
+      "corroborated": false,
+      "note": "With no file-size or line-length tool, the agent probed length through repeated Grep regexes such as `(?s-u:.){N}` and `^WHEN .{N,}$`, trying many thresholds."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        57,
+        58,
+        60,
+        61,
+        151,
+        152
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.45,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "`on_fail` was searched repeatedly with reworded patterns, several returning almost nothing, and then searched again later."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        178,
+        179,
+        180,
+        181,
+        197,
+        198,
+        199,
+        201,
+        202,
+        204,
+        222,
+        223,
+        224,
+        225,
+        226,
+        233,
+        234,
+        235,
+        236,
+        237,
+        253,
+        254,
+        255
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "Many small edits hit the same spec file in a row, mostly fix-ups after self-check searches, where one batched edit per file would have used fewer turns."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        2
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The task prompt contains an unfilled placeholder (⟨missing:settings.conversation⟩), and the findings left the unit's position after code_join undecided, so the agent had to decide it itself."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "write documents only",
+      "status": "followed",
+      "turns": [
+        168,
+        169,
+        172,
+        262
+      ]
+    },
+    {
+      "item": "close every gap and nothing more",
+      "status": "unclear",
+      "turns": [
+        284
+      ]
+    },
+    {
+      "item": "skills",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.judge",
+  "view_chars": 4165,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        7,
+        8,
+        9,
+        14
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded ts-rdg-answers and ts-rdg-cited MET on claims about checks.py 1215-1216, routing.py 472 and __init__.py 96 without ever reading those files, only grep output, which should have been PARTIAL."
+    },
+    {
+      "category": "judge_trusts_report",
+      "turns": [
+        14
+      ],
+      "remedy_class": "judge_model",
+      "confidence": 0.55,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Facing a truncated finding line, the judge graded the full version from the step's account instead of checking it against the files."
+    },
+    {
+      "category": "request_ambiguous",
+      "turns": [
+        14
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.45,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The gap_finding handed to the judge was cut off mid-sentence, so the brief did not give the judge the full findings line to grade."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

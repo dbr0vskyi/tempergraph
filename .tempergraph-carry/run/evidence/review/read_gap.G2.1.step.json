@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G2.1.step",
+  "view_chars": 5445,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        7,
+        10,
+        11
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Three searches used the same tempergraph.commands.json pattern with small variations, where one search plus a read of the matching lines would have covered it."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        10,
+        11,
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The final answer says commands.py was read, but the turns show only Grep calls that could reach it and no Read, which conflicts with the 'report what you saw' limit."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        1,
+        2,
+        3
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.25,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The procedure says to read the gap's row in the triage note first, but no Read of docs/tasks/i203a.triage.md appears; the row may only have come from the turn 1 grep output."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G4.1.step",
+  "view_chars": 6824,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        7,
+        9
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The first Read call used `path` instead of `file_path` and was rejected, costing one turn before the correct retry."
+    },
+    {
+      "category": "dead_end_repeated",
+      "turns": [
+        10,
+        13
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.25,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The same back_target/trip back grep ran twice with empty turns between, though the differing result sizes suggest the scope changed."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

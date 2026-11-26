@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.judge",
+  "view_chars": 4744,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        4,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.65,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge graded the gap list without opening any spec file, so its verdict on criterion 6 rests only on grep output."
+    },
+    {
+      "category": "judge_shallow",
+      "turns": [
+        4,
+        6
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.55,
+      "check": "kept",
+      "corroborated": false,
+      "note": "One grep for four terms was the whole independent search for gaps, short of the intent's instruction to search the spec folders and open what it finds."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}

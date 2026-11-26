@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G3.1.step",
+  "view_chars": 5558,
+  "observations": [
+    {
+      "category": "tool_thrash",
+      "turns": [
+        4,
+        5,
+        7
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.3,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "Three greps for overlapping terms (stamp, diagram, authoring record) could have been one combined search, though the cost was small."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "read-only limits (no write, no command)",
+      "status": "followed",
+      "turns": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        11,
+        12
+      ]
+    },
+    {
+      "item": "read the triage note row for G3 first",
+      "status": "followed",
+      "turns": [
+        1
+      ]
+    },
+    {
+      "item": "web tools only for a research-needed gap",
+      "status": "not_applicable",
+      "turns": []
+    },
+    {
+      "item": "end with ARTIFACT gap_finding line",
+      "status": "unclear",
+      "turns": [
+        13
+      ]
+    }
+  ],
+  "none_found": false
+}
