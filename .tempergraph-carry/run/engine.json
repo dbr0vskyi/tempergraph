@@ -6,7 +6,7 @@
   },
   "last_on": {
     "engine_version": "0.2.0",
-    "engine": "0.2.0-8f7e8a118a78"
+    "engine": "0.2.0-5603433fb5be"
   },
   "pinned": null,
   "history": [
@@ -39,6 +39,14 @@
       "engine": "0.2.0-8f7e8a118a78",
       "workflow_version": "0.1.0+bf47edf9a92a",
       "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T20:13:18.178Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-5603433fb5be",
+      "workflow_version": "0.1.0+6e7623aba41a",
+      "shape_digest": "8e1c8b6ebcc28166eeb1fbb22a45f48920523ad73575f2f7577784189f415216",
       "checkpoint_format": 1,
       "units": {
         "prepare": {
@@ -73,7 +81,7 @@
         },
         "triage": {
           "kind": "step",
-          "digest": "3fc728ce6a34a7ae",
+          "digest": "b8d6f17200d38a24",
           "produces": [
             "covered",
             "gaps",
@@ -89,21 +97,6 @@
             "settled"
           ]
         },
-        "owner_questions": {
-          "kind": "script",
-          "digest": "ce900925f54eecee",
-          "produces": []
-        },
-        "ask_route": {
-          "kind": "route",
-          "digest": "ccd5ed0ce0defcb0",
-          "produces": []
-        },
-        "ask_owner": {
-          "kind": "ask",
-          "digest": "4876e98fb506829b",
-          "produces": []
-        },
         "read_gap": {
           "kind": "map",
           "digest": "639d919654490def",
@@ -111,9 +104,24 @@
             "gap_finding"
           ]
         },
+        "owner_questions": {
+          "kind": "script",
+          "digest": "ce900925f54eecee",
+          "produces": []
+        },
+        "ask_route": {
+          "kind": "route",
+          "digest": "ab05003adcbeb3ce",
+          "produces": []
+        },
+        "ask_owner": {
+          "kind": "ask",
+          "digest": "4876e98fb506829b",
+          "produces": []
+        },
         "discovery": {
           "kind": "step",
-          "digest": "e69534f20405b1ce",
+          "digest": "a04cda446e00bb95",
           "produces": [
             "handoff"
           ]
@@ -167,11 +175,11 @@
         },
         "outcome": {
           "kind": "step",
-          "digest": "cae0f0846e928865",
+          "digest": "09a9ee434d89fb2e",
           "produces": []
         }
       },
-      "started_at": "2026-11-26T20:13:18.178Z"
+      "started_at": "2026-11-26T22:05:01.924Z"
     }
   ]
 }
