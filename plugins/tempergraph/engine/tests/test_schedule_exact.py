@@ -1,4 +1,4 @@
-"""Exact formats, cron, canonical form and echo (SCH-B15, SCH-B18, SCH-B29 to SCH-B32; SCH-AC1, SCH-AC9 to SCH-AC11)."""
+"""Exact formats, cron, canonical form and echo (SCH-B15, SCH-B18, SCH-B29 to SCH-B32, SCH-B34 to SCH-B36; SCH-AC1, SCH-AC9 to SCH-AC11)."""
 
 from __future__ import annotations
 
