@@ -4,6 +4,19 @@
 
 Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, how that exit is recorded once, and how the findings of the pauses that ended earlier segments of a thread reach the loop at the thread's final exit, what the friction judge is told about the pause that ended each of those segments and what its prompt shows of those segments. That no text of a run reaches the loop's judge or its log is owned by [self-improvement](self-improvement.spec.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller kinds (PRV-B11); decider (PRV-B14)
+- `durability-and-resume.spec.md`: cut-off attempt (DUR-B2)
+- `friction-filing-decisions.spec.md`: a finding files by the count only on a majority of its recorded answers (FFD-B1); the judge is told that attribution can file by the count (FFD-B6)
+- `improvement-data.spec.md`: parameters with provenance (IMD-B23)
+- `improvement-proposals.spec.md`: autonomy level (PRP-B11)
+- `run-control.spec.md`: not live (RCT-B3)
+- `run-detail-document.spec.md`: health (RDD-B14)
+- `session-review.spec.md`: review setting (SRV-B13); signals and what they read (SRV-B16)
+- `supervision-metrics.spec.md`: touches (SUP-B9)
+- `worktree-mode.spec.md`: what a resume compares (WTR-B28)
+
 ## Behaviours
 
 ### SIL-B27 A stop at a pause is an exit

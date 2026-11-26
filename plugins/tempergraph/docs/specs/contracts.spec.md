@@ -20,6 +20,7 @@ The workflow declaration every workflow package writes and the engine reads ([AD
 - `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
 - `finalizer-contract.spec.md`: what it returns (FIN-B8)
 - `flow-extensions.spec.md`: fallback target (FLX-B9)
+- `gate-and-human.spec.md`: a failed check goes back when the gate declares it (HUM-B15)
 - `improvement-proposals.spec.md`: improvement proposals and trials
 - `local-observability-store.spec.md`: local observability store
 - `map-unit.spec.md`: map unit

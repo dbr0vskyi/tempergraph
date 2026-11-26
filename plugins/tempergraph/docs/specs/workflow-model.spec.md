@@ -4,6 +4,30 @@
 
 A workflow is data: a `WorkflowSpec` ([CON-B4](contracts.spec.md)) in its own package, registered once and validated in full before anything is spent. The same validation guards the catalog, a start, a resume, the pre-start check and the upgrade check, so a bad workflow fails before a model call. This spec owns what a workflow may declare and what is refused, and OVR-B10: the engine core never names a workflow ([ADR `the-engine-names-no-workflow`](../adr/the-engine-names-no-workflow.adr.md)). What a package holds and how it is loaded is [PKG](workflow-package.spec.md). The compiler ([CMP](compiler-and-flow.spec.md)), the CLI, authoring ([SCF](blueprint-and-scaffold.spec.md)) and upgrade depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: placement (ASK-B7)
+- `check-contract-and-command-runs.spec.md`: check failures (CHK-B15)
+- `contest-unit.spec.md`: declaration (CTS-B6); what is refused (CTS-B10)
+- `contracts.spec.md`: template grammar (CON-B8)
+- `council-unit.spec.md`: declaration (CNL-B9); what is refused (CNL-B16)
+- `engine-update.spec.md`: workflow registry (UPD-B20)
+- `finalizer-contract.spec.md`: what is refused (FIN-B10)
+- `flow-extensions.spec.md`: what is refused (FLX-B11)
+- `gate-and-human.spec.md`: gate and human nodes
+- `judge-and-verdict.spec.md`: judge and verdict
+- `judge-read-share.spec.md`: a gate's patterns leave paths out of its judge's counts (SRV-B42)
+- `lifecycle-and-evals.spec.md`: lifecycle and evals
+- `map-unit.spec.md`: what is refused (MAP-B11)
+- `measured-switches.spec.md`: switch fields (SWM-B4)
+- `run-outcome.spec.md`: verifier classes (OUT-B10); outcome validation (OUT-B22)
+- `run-settings-and-overrides.spec.md`: refusals before spend (RST-B32)
+- `script-units-and-hybrid-steps.spec.md`: what is refused (SCR-B6)
+- `step-values-and-template-keys.spec.md`: template keys (VAL-B8)
+- `subworkflow-unit.spec.md`: refusals (SWF-B6); declaration (SWF-B7)
+- `workflow-package.spec.md`: layout (PKG-B11); loading manifests and levels (PKG-B15); callables and their views (PKG-B20); docs check (PKG-B22)
+- `workspace-and-concurrency.spec.md`: shapes of parallel work (WSP-B11)
+
 ## Behaviours
 
 ### WFM-B1 Refuse early

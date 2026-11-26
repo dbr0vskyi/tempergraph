@@ -14,6 +14,7 @@ The gate only routes. The human node is the single place a run pauses, and only 
 - `effort-ladder-and-model-escalation.spec.md`: escalation conditions (LAD-B12)
 - `flow-extensions.spec.md`: deadlines (FLX-B8); operator breakpoints (FLX-B10)
 - `judge-and-verdict.spec.md`: an upstream claim is judged on its own (JDG-B9)
+- `map-unit.spec.md`: what is refused (MAP-B11)
 - `reruns-and-feedback.spec.md`: feedback (RRN-B14); rulings (RRN-B15); rewind (RRN-B16); rerun (RRN-B17); rerun workspace (RRN-B18)
 - `run-outcome.spec.md`: verifier classes (OUT-B10); one class per criterion (OUT-B12)
 - `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30)

@@ -4,6 +4,16 @@
 
 Which records of a run make which friction cause, with its class, side and fixed remedy, for five causes: a trip back, a stop at the attempt cap, a last stage that delivered nothing, a session the usage limit refused and a pause at an ask unit; and which records give the finding of a pause that an agent decides its class ([the decision record](../adr/a-decision-by-the-caller-that-started-a-run-is-designed.adr.md) holds why the caller that started the run is told apart). Class and side are those of [SIL-B11](self-improvement.spec.md), and a cause is made with no model call from names and numbers of the run's records. How a finding is judged and filed, and the causes of [SIL-B12 to SIL-B15](self-improvement.spec.md), stay with [self-improvement](self-improvement.spec.md); the causes read from session digests stay with [session-review](session-review.spec.md). Workflow owners, the engine's maintainers and the friction judge depend on it.
 
+## Depends on
+
+- `caller-provenance.spec.md`: the caller block (PRV-B16); where the block is written (PRV-B17)
+- `compiler-and-flow.spec.md`: attempt cap in nodes (CMP-B5); back-edges (CMP-B12)
+- `finalizer-contract.spec.md`: what it returns (FIN-B8)
+- `gate-and-human.spec.md`: waits, asks and breakpoints (HUM-B10)
+- `self-improvement.spec.md`: agent rescues and supervision (SIL-B15)
+- `session-contract.spec.md`: a spent usage allowance (SSN-B11)
+- `supervision-metrics.spec.md`: touches (SUP-B9)
+
 ## Behaviours
 
 ### FRC-B1 A trip back is a finding of the gate that sent the run back

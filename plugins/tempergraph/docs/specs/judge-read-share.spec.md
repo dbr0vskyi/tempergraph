@@ -4,6 +4,14 @@
 
 Split from [session review](session-review.spec.md) by capability, keeping its ids: which change a judge's counts are taken over (the paths its digest counts as changed, SRV-B11), meaning the commit they are counted from, the paths left out, and what is recorded when no commit can be used; which judgements stand for the judge of a map's item; and the model-free finding for a judge that graded a change after reading too little of it. The digest that holds the counts and the cause `judge_unread_pass` stay in session review (SRV-B11, SRV-B12); the field a gate declares to leave paths out is stated in [workflow model](workflow-model.spec.md) (WFM-B14).
 
+## Depends on
+
+- `contracts.spec.md`: step fields (CON-B6)
+- `improvement-data.spec.md`: parameters with provenance (IMD-B23)
+- `judge-model-by-risk.spec.md`: what the rule reads (JRK-B7)
+- `run-events.spec.md`: units, sessions, checks and judgements (EVT-B12); keys added to existing records (EVT-B16); tool input summaries (EVT-B21)
+- `workflow-model.spec.md`: paths a gate's judge may skip (WFM-B14)
+
 ## Behaviours
 
 ### SRV-B34 A judge's changed paths are counted from where its visit began

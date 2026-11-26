@@ -42,6 +42,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 - `runs-without-a-final-exit.spec.md`: a lost runner is a final exit (SIL-B29)
 - `schedule-ticks-and-unattended-fires.spec.md`: scheduled-run ledger (TCK-B23); what a scheduled run adds elsewhere (TCK-B24)
 - `schedules.spec.md`: verbs (SCH-B27)
+- `self-improvement.spec.md`: code host unreachable (SIL-B19)
 - `session-review.spec.md`: review verbs (SRV-B23)
 - `supervision-cost.spec.md`: supervision verbs (SCO-B16)
 - `supervision-metrics.spec.md`: workflow aggregates (SUP-B12)

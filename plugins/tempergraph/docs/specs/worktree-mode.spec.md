@@ -4,6 +4,30 @@
 
 A run works either in place, in the person's checkout, or in its own git worktree on its own branch, which the engine creates, records, re-attaches and, only when asked, removes, using git directly on every executor. One setting chooses it, `run.workspace`, with a few `run.worktree.*` keys for where the worktree lives, which commit it starts from, how its branch is named and whether it is removed after a finished run; all are keys of the settings catalog ([RST-B20](run-settings-and-overrides.spec.md), [RST-B21](run-settings-and-overrides.spec.md)), so a flag, a profile, a project or user file and the workflow set them in the usual order and the thread snapshots them. This spec owns the person-facing parameter, the worktree's lifecycle, its names, how each executor is pointed at it, and how an executor's own worktree feature is kept from creating a second tree; [WSP](workspace-and-concurrency.spec.md) keeps the state root, the shapes of parallel work, batches and import roots ([research `native-worktrees-and-executor-worktree-features`](../research/native-worktrees-and-executor-worktree-features.rsrch.md)). The engine owns the run's worktree and never uses an executor's native one ([ADR `the-engine-owns-the-run-worktree-executor-worktrees-are-not-used`](../adr/the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)); worktrees are optional, and a workflow that only reads files or writes outside the repository runs in place under `auto` ([ADR `one-workspace-setting-with-an-auto-default`](../adr/one-workspace-setting-with-an-auto-default.adr.md)); worktrees sit beside the repository with derived names ([ADR `worktrees-beside-the-repository-with-derived-ref-safe-names`](../adr/worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md)), start from the main checkout's `HEAD` ([ADR `a-new-worktree-starts-from-the-main-checkouts-head`](../adr/a-new-worktree-starts-from-the-main-checkouts-head.adr.md)) and are removed only on request, clean, keeping the branch ([ADR `worktree-removal-is-opt-in-clean-only-and-keeps-the-branch`](../adr/worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md)). Operators, every executor and the finalizer depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `check-contract-and-command-runs.spec.md`: command runs (CHK-B12)
+- `contracts.spec.md`: workflow fields (CON-B4); persisted documents are versioned (CON-B14)
+- `durability-and-resume.spec.md`: fresh run never merges (DUR-B1)
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `executor-agent-sdk.spec.md`: step options (EAS-B8)
+- `executor-antigravity.spec.md`: launch (EAG-B12)
+- `executor-claude-code.spec.md`: claude Code executor
+- `executor-messages-api.spec.md`: worker request document (EMA-B8)
+- `finalizer-contract.spec.md`: what it receives (FIN-B6)
+- `independence-guard.spec.md`: workspace fingerprint (GRD-B3)
+- `orchestration.spec.md`: orchestration of runs
+- `reruns-and-feedback.spec.md`: rewind (RRN-B16); rerun workspace (RRN-B18)
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: run events for observers
+- `run-settings-and-overrides.spec.md`: layers (RST-B22)
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `security.spec.md`: security posture
+- `session-contract.spec.md`: session contract
+- `tool-host.spec.md`: path confinement (THS-B7)
+- `workspace-and-concurrency.spec.md`: resume after worktree deletion (WSP-B1); bootstrap of a worktree (WSP-B2); writes in place (WSP-B6); shapes of parallel work (WSP-B11); workspace outside git (WSP-B16); each pass of a writing unit has writers of its own (WSP-B20)
+
 ## Behaviours
 
 ### WTR-B17 Settings and flags

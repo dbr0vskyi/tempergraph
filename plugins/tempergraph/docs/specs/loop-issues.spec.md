@@ -4,6 +4,12 @@
 
 A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned or as a duplicate, and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md) and [the record on a close as a duplicate](../adr/a-close-as-a-duplicate-mutes-a-loop-issues-cause.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
 
+## Depends on
+
+- `improvement-data.spec.md`: parameters with provenance (IMD-B23)
+- `runs-without-a-final-exit.spec.md`: the friction judge is told what answered a pause (SIL-B37)
+- `self-improvement.spec.md`: de-duplication by cause (SIL-B2); pattern rule (SIL-B3); fault sides (SIL-B11); filing by attribution or by count (SIL-B18); code host unreachable (SIL-B19)
+
 ## Behaviours
 
 ### ISS-B1 Triage labels

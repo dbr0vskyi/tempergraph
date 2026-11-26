@@ -4,6 +4,27 @@
 
 How much a run needed someone, and who that was. A workflow you can trust is one that reaches a good result with few touches by anyone, not only with few touches by a person: a run babysat by an agent looks autonomous if only people are counted ([research `callers-supervision-and-babysitting-cost`](../research/callers-supervision-and-babysitting-cost.rsrch.md) D6, B3). This spec defines a touch, the per-run supervision record, a run's supervision level, the per-workflow aggregates, where each figure is written and read, and the supervision criteria for promoting a workflow ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md), [ADR `supervision-is-a-promotion-and-improvement-measure`](../adr/supervision-is-a-promotion-and-improvement-measure.adr.md)). Every figure is built from records written when the act happened: the `caller` blocks of [PRV](caller-provenance.spec.md) and, for the spend of supervising sessions, the supervision journal of [SCO](supervision-cost.spec.md); nothing is classified after the fact by a model. Building and writing them is best effort and never changes a run (OVR-B4); every reader is model-free (C13). Reports, the monitor, audit, eval suites, the improvement loop and the promotion check ([PRO](promotion-check.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `audit-rule-catalog.spec.md`: audit rule catalog
+- `caller-provenance.spec.md`: where the block is written (PRV-B17)
+- `central-run-stats.spec.md`: central run stats
+- `../../../tempergraph-monitor/docs/specs/cost-and-fleet.spec.md`: -
+- `engine-cli.spec.md`: engine CLI
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `friction-causes.spec.md`: a pause that the caller that started the run decides is designed (FRC-B6)
+- `improvement-data.spec.md`: improvement data requirements
+- `orchestration.spec.md`: orchestration of runs
+- `orchestrator-skill.spec.md`: orchestrator skill
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: run events for observers
+- `../../../tempergraph-monitor/docs/specs/run-view.spec.md`: -
+- `schedule-ticks-and-unattended-fires.spec.md`: what a scheduled run adds elsewhere (TCK-B24)
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-cost.spec.md`: supervision cost
+
 ## Behaviours
 
 ### SUP-B1 An agent-babysat run is not autonomous
