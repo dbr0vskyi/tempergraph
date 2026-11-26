@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from tempergraph.improve import params
+from tempergraph.model import flow
 
 Klass = Literal["fault", "infra", "designed"]
 
@@ -86,6 +87,14 @@ CAUSES: dict[str, Cause] = {
     "check_repeat": Cause(klass="fault", side="workflow",
                           remedy="The same check failure twice although the step changed files: "
                                  "a person decides whether the check, the environment or the prompt is wrong"),
+    "trip_back": Cause(klass="fault", side="workflow",
+                       remedy="Strengthen the gate criterion or the check of the unit that sent the run back, "
+                              "so the fault is caught before the run is sent back"),
+    "attempt_cap": Cause(klass="fault", side="workflow",
+                         remedy="Tighten the gate criterion or check that keeps sending the run back, "
+                                "or raise the run's attempt cap"),
+    "finalizer_undelivered": Cause(klass="fault", side="workflow",
+                                   remedy="Fix the finalizer or its environment so the last stage delivers"),
     "judge_unparsed": Cause(klass="fault", side="engine", remedy="The judge's answer could not be parsed twice"),
     "guard": Cause(klass="fault", side="engine", remedy="The independence guard discarded a judgement"),
     "engine_error": Cause(klass="fault", side="engine", remedy="The engine recorded an internal error"),
@@ -98,6 +107,9 @@ CAUSES: dict[str, Cause] = {
     "environmental": Cause(klass="infra", side="host", remedy="Recorded only: the environment failed a check"),
     "approval": Cause(klass="designed", side="workflow", remedy="Recorded only: a designed approval"),
     "upstream": Cause(klass="designed", side="workflow", remedy="Recorded only: an upstream dependency paused it"),
+    "usage_limit": Cause(klass="infra", side="host",
+                         remedy="Recorded only: the account's usage limit refused the session"),
+    "input": Cause(klass="designed", side="workflow", remedy="Recorded only: a designed pause for a person's input"),
     "person_stop": Cause(klass="designed", side="workflow", remedy="Recorded only: a person stopped the run"),
     "cost_cap": Cause(klass="designed", side="workflow", remedy="Recorded only: the run cost cap drained the run"),
 }
@@ -126,25 +138,42 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
     versions: dict[tuple[str, str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC4)
     child = ""  # the path of the child the record being read belongs to; empty for the run's own units
 
-    def add(unit: str, code: str, executor: str = "", version: str = "") -> None:
+    def add(unit: str, code: str, executor: str = "", version: str = "", n: int = 1) -> None:
         key = (child, unit, code, executor)
-        out[key] = out.get(key, 0) + 1
+        out[key] = out.get(key, 0) + n  # `n` may be 0: the finding stands with a count of none
         if version:
             versions[key] = version
 
     retries: dict[tuple[str, str], int] = {}
     checks: dict[tuple[str, str], Mapping[str, Any]] = {}
+    trips: list[dict[str, Any]] = []  # FRC-B1: one per gate verdict `BACK`; the last one is the open trip
+    finalized: Mapping[str, Any] = {}  # FRC-B3: the finalizer's recorded result
     for r in records:
         kind = r.get("kind")
         child = str(r.get("child") or "")
         unit = str(r.get("unit") or _unit(str(r.get("session_key") or "")))
         own = (child, unit)
+        if kind == "gate" and r.get("verdict") == "BACK" and r.get("token") == "BACK":
+            node = str(r.get("route_target") or "")
+            trips.append({"child": child, "unit": unit, "to": flow.entry_unit(node) or "", "visited": set(), "count": 0})
+        elif trips and kind == "unit_entered":
+            t = trips[-1]
+            if r.get("entered_from") == f"back:{t['unit']}":
+                t["to"] = unit
+            if int(r.get("visit") or 1) > 1:
+                t["visited"].add(own)  # a unit that ran before the trip back runs again
+        elif trips and kind == "agent_run" and own in trips[-1]["visited"]:
+            trips[-1]["count"] += 1
+        elif kind == "finalize":
+            finalized = r
         if kind == "unit_entered":
             retries[own] = 0
         elif kind == "attempt_start" and r.get("session_kind") == "retry":
             retries[own] = retries.get(own, 0) + 1
             if retries[own] == int(params.value("retry_burst.min_retries")):
                 add(unit, "retry_burst")
+        elif kind == "agent_run" and r.get("usage_limit"):  # FRC-B4: the host's, and nothing else from this session
+            add(unit, "usage_limit")
         elif kind == "agent_run":
             if r.get("infra_cause"):
                 code = "slow_host" if r["infra_cause"] == "slow_host" else f"infra:{r['infra_cause']}"
@@ -171,9 +200,13 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
             add(unit, "engine_error")
         elif kind == "pause":
             pk, reason = str(r.get("pause_kind") or ""), str(r.get("reason") or "")
-            if pk == "tool_access":
+            if reason == "usage_limit":  # FRC-B4: the refused session already made `usage_limit`
+                pass
+            elif reason == "tool_access":  # SIL-B14: the gate writes kind `escalation` with this reason
                 for t in r.get("tool_access") or [{"class": "unclassified"}]:
                     add(unit, f"tool_access:{t.get('class') or 'unclassified'}")
+            elif pk == "input":  # FRC-B5: an ask unit's designed pause
+                add(unit, "input")
             elif pk == "budget":
                 add(unit, "loop_budget_spent" if reason == "loop_budget" else "retries_spent")
             elif pk == "approval":
@@ -202,6 +235,15 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
                 add("", "person_stop")
             elif reason == "cost_cap":
                 add("", "cost_cap")
+            elif reason == "attempt_cap" and r.get("exit_code") == 4:  # FRC-B2
+                add("", "attempt_cap", n=len(trips))
+            if r.get("exit_code") == 0 and finalized:  # FRC-B3: names and numbers only, no text of a step or a reason
+                outcome = str(finalized.get("outcome") or "")
+                if finalized.get("manual_steps") or outcome in ("skipped", "error", "invalid"):
+                    add("", f"finalizer_undelivered:{outcome}")
+    for t in trips:  # FRC-B1: the finding of the gate's unit, with the sessions the trip back began
+        child = t["child"]
+        add(t["unit"], f"trip_back:{t['to']}", n=t["count"])
     child = ""  # an intervention or a grant belongs to the run's own unit of that name
     for iv in interventions:
         c = iv.get("caller") or {}

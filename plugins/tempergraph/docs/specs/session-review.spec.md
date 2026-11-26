@@ -20,15 +20,16 @@ WHEN recording runs at any run exit in either mode THE recorder SHALL give every
 
 ### SRV-B12 Digest causes
 
-WHEN findings are derived THE engine SHALL add from digest fields only: `tool_repeat` (a `repeats[]` entry in a step session; fault, workflow); `idle_burn` (an `idle_spans[]` entry; fault, workflow); `shell_for_files` (at least 3 on a step that declares file tools; fault, workflow); `context_bloat` (`turns_over_200k` at least 1, or `peak_context` above the version's p90 for the unit; fault, workflow); `declared_unused:<name>` (a declared skill or subagent type never called on any attempt of the unit in 5 runs of one version; designed, workflow, filed only by the proposer's pattern); `subagent_heavy` (subagents carry over half the session's tokens; designed, recorded); `timeout:<shape>` (fault, workflow, or infra on the host side for `slow_host`); `judge_unread_pass` (the unit's last judgement of the segment passed every blocker with `changed_read = 0` while `changed_total > 0`; fault, workflow); and `retry_same_path` (a retry with `prior_overlap` at least 0.8 after a judge send-back; fault, workflow), each filing through [SIL](self-improvement.spec.md) like any cause and carrying no text.
+WHEN findings are derived THE engine SHALL add from digest fields only: `tool_repeat` (a `repeats[]` entry of failed calls in a step session; fault, workflow); `idle_burn` (an `idle_spans[]` entry; fault, workflow); `shell_for_files` (at least 3 on a step that declares file tools; fault, workflow); `context_bloat` (`turns_over_200k` at least 1, or `peak_context` above the version's p90 for the unit; fault, workflow); `declared_unused:<name>` (a declared skill or subagent type never called on any attempt of the unit in 5 runs of one version; designed, workflow, filed only by the proposer's pattern); `subagent_heavy` (subagents carry over half the session's tokens; designed, recorded); `timeout:<shape>` (fault, workflow, or infra on the host side for `slow_host`); `judge_unread_pass` (the unit's last judgement of the segment passed every blocker with `changed_read = 0` while `changed_total > 0`; fault, workflow); and `retry_same_path` (a retry with `prior_overlap` at least 0.8 after a judge send-back; fault, workflow), each filing through [SIL](self-improvement.spec.md) like any cause and carrying no text.
 
 - GIVEN a judge that passed every blocker having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass`
 
 ### SRV-B2 Repeats become a cause
 
-WHEN the digest runs on a step session that called `Bash` with the same command digest four times, each failing with the same error class THE recorder SHALL write one `repeats[]` entry, and the unit's findings SHALL carry `tool_repeat`.
+WHEN the digest runs on a step session that called one tool on one target K or more times in a row (SRV-B11) THE recorder SHALL write one `repeats[]` entry, and the unit's findings SHALL carry `tool_repeat` only when those calls failed.
 
 - GIVEN four identical failing calls WHEN digested THEN `repeats[]` has one entry and the cause is `tool_repeat`
+- GIVEN four edits of one file, none failing WHEN digested THEN `repeats[]` has one entry and no finding carries `tool_repeat`
 
 ### SRV-B13 Review setting
 
@@ -190,7 +191,7 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 
 ## Acceptance criteria
 
-- SRV-AC1 (SRV-B11, SRV-B12, SRV-B1, SRV-B2): Fixture sessions reproduce every digest cause, and the digest of a canary session holds no canary string and no path in clear
+- SRV-AC1 (SRV-B11, SRV-B12, SRV-B1, SRV-B2): Fixture sessions reproduce every digest cause and give no `tool_repeat` for repeated calls that did not fail, and the digest of a canary session holds no canary string and no path in clear
 - SRV-AC2 (SRV-B3, SRV-B4, SRV-B5, SRV-B9, SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B21): Fixture runs reproduce the plans of SRV-B3, SRV-B4 and SRV-B5, the slices each signal of SRV-B16 reads and the stable-mode money caps of SRV-B21, including `skipped` reasons, with no model call
 - SRV-AC3 (SRV-B6, SRV-B19, SRV-B20): The citation check reproduces SRV-B6 and rejects a remedy class from the other side of the producer and grader split
 - SRV-AC4 (SRV-B22): A source test fails if any module other than the review writer, the review report and the proposer names the review evidence folder

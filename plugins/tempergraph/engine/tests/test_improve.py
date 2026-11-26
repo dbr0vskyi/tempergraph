@@ -12,7 +12,7 @@ import pytest
 
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import InfraCause, SessionResult, Usage
-from tempergraph.executors.standins import standin
+from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import causes, lenses, params
 from tempergraph.improve.record import evidence_path, findings_path, read_findings, record_exit
 
@@ -25,9 +25,31 @@ def found(repo: Path, task: str) -> list[dict[str, Any]]:
     return read_findings(repo / ".tempergraph", "demo", task)
 
 
+def tool_access_pause(repo: Path, task: str = "G-1") -> dict[str, Any]:
+    """The pause record of a fixture run whose step is refused a tool, as the gate writes it (SIL-AC7, AC 1)."""
+    blocked = answer("Could not read the tracker\nBLOCKED: tracker tool refused", denied=("mcp__tracker__get_issue",))
+    assert go(repo, standin("claude", steps=[blocked], judges=[]), task=task).exit_code is ExitCode.PAUSED
+    return [r for r in records(repo, task) if r["kind"] == "pause"][-1]
+
+
+def test_a_tool_access_pause_of_a_fixture_run_is_a_tool_access_finding(repo: Path, tmp_path: Path) -> None:
+    # SIL-AC7, AC 1 (SIL-B14, SIL-B10)
+    pause = tool_access_pause(repo)
+    assert pause["pause_kind"] == "escalation" and pause["reason"] == "tool_access"  # what the gate writes
+    assert "tool_access:undeclared_tool" in [f["cause"] for f in causes.derive([pause])]
+    (f,) = [x for x in found(repo, "G-1") if x["cause"].startswith("tool_access")]
+    assert (f["cause"], f["class"], f["side"], f["unit"]) == ("tool_access:undeclared_tool", "fault", "workflow", "draft")
+    stable = dataclasses.replace(with_outcome_spec(), improvement_mode="stable")
+    root, row = lens_root(tmp_path, stable, 6)
+    assert lenses.decide(stable, root, "demo/R-5", [f], row, [])["friction"] is True  # SIL-B10 at a final exit
+
+
+def test_a_tool_access_pause_that_lists_no_refusal_is_unclassified() -> None:  # SIL-AC7, AC 1
+    got = causes.derive([{"kind": "pause", "unit": "a", "pause_kind": "escalation", "reason": "tool_access"}])
+    assert [f["cause"] for f in got] == ["tool_access:unclassified"]
+
+
 @pytest.mark.parametrize(("recs", "want"), [
-    ([{"kind": "pause", "unit": "a", "pause_kind": "tool_access", "tool_access": [{"class": "undeclared_tool"}]}],
-     "tool_access:undeclared_tool"),
     ([{"kind": "pause", "unit": "a", "pause_kind": "budget", "reason": "retry_budget"}], "retries_spent"),
     ([{"kind": "pause", "unit": "a", "pause_kind": "budget", "reason": "loop_budget"}], "loop_budget_spent"),
     ([{"kind": "pause", "unit": "a", "pause_kind": "escalation", "reason": "blocked"}], "blocked_without_check"),
@@ -167,14 +189,14 @@ def test_each_lens_runs_on_the_exits_its_triggers_name_and_on_no_others(tmp_path
     assert [r for r in loop_kinds(quiet) if r["kind"] == "loop_lens"] == []
 
 
-def test_each_named_cause_is_produced_by_a_fixture_run(tmp_path: Path) -> None:  # SIL-AC7
+def test_each_named_cause_is_produced_by_a_fixture_run(repo: Path, tmp_path: Path) -> None:  # SIL-AC7, AC 1
     recs: list[dict[str, Any]] = [
         {"kind": "unit_entered", "unit": "a"},
         *({"kind": "attempt_start", "unit": "a", "session_key": f"a.{n}.retry", "session_kind": "retry"}
           for n in (2, 3, 4)),
         {"kind": "judgement", "unit": "a", "blockers": ["c-1", "c-2"]},
         {"kind": "pause", "unit": "b", "pause_kind": "escalation", "reason": "blocked"},
-        {"kind": "pause", "unit": "c", "pause_kind": "tool_access", "tool_access": [{"class": "undeclared_tool"}]}]
+        tool_access_pause(repo) | {"unit": "c"}]  # SIL-AC7, AC 1: the pause of a fixture run, on unit `c`
     ivs = [{"unit": "a", "pause_kind": "escalation", "caller": {"decided_by": "agent"},
             "touches": [{"class": "rescue"}]}]
     grants = [{"unit": "a", "capability": "shell", "used": True}, {"unit": "a", "capability": "web", "used": False}]

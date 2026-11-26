@@ -410,7 +410,7 @@ def causes(digests: Sequence[Mapping[str, Any]], *, root: Path | None = None, wo
     for d in digests:
         unit, kind = str(d.get("unit")), str(d.get("kind"))
         step = kind in STEP_KINDS
-        if step and d.get("repeats"):
+        if step and any(rp.get("error_class") for rp in d.get("repeats") or ()):  # SRV-B2: failed calls only
             add(unit, "tool_repeat")
         if d.get("idle_spans"):
             add(unit, "idle_burn")
