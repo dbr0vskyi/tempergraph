@@ -239,7 +239,8 @@ def test_a_count_filed_issue_shows_the_pattern_figures(tmp_path: Path) -> None: 
         return [finding(thread=f"demo/T-{n}", request_digest=f"r{n}") for n in ns]
 
     cases = {"outcome": Candidate(finding=finding(), lens="outcome", calibrated=True, request_digest="r1"),
-             "friction": Candidate(finding=finding(), confidence=0.5, attributed=True, request_digest="r1")}
+             "friction": Candidate(finding=finding(), confidence=0.5, attributed=True, request_digest="r1",
+                                   earlier_answers=(True, True))}  # FFD-B1: a majority of recorded answers
     for lens, cand in cases.items():
         host = MemoryCodeHost()
         d = decide(cand, hist(2, 3), REPO, now=NOW)
