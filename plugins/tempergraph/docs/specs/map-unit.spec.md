@@ -4,6 +4,15 @@
 
 A map runs one step once per item of a list that an earlier unit produced, gates each item on its own, and passes when every item has passed. Its sequential form runs one fresh session per item in the run's own worktree: an earlier unit writes the list, the map's step runs once per item, and a join follows. [CMP](compiler-and-flow.spec.md) names the primitive; this spec owns its declaration and its per-item rules. A map over a sub-workflow is [FLX-B7](flow-extensions.spec.md); a contest's slots reuse the item machinery ([CTS](contest-unit.spec.md)). Whether per-item work pays is a workflow's own measurement, which it can route on ([SWM](measured-switches.spec.md), [CXR](complexity-routing.spec.md)). Workflow authors and the compiler depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `flow-extensions.spec.md`: what is refused (FLX-B11)
+- `gate-and-human.spec.md`: several pending gates (HUM-B3)
+- `judge-and-verdict.spec.md`: check first (JDG-B1)
+- `step-values-and-template-keys.spec.md`: where values are read (VAL-B7); template keys (VAL-B8)
+- `workspace-and-concurrency.spec.md`: shapes of parallel work (WSP-B11)
+
 ## Behaviours
 
 ### MAP-B7 Declaration

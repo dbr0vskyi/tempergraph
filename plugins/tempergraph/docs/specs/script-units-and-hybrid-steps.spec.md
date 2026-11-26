@@ -4,6 +4,18 @@
 
 Model-free work in a workflow: a script unit runs a declared command or a workflow callable with no model session, and a hybrid step runs `before` and `after` scripts around its one model session in the same attempt ([ADR `take-script-steps-attention-and-composition-from-archon`](../adr/take-script-steps-attention-and-composition-from-archon.adr.md)). Both run through the engine, never through an executor, so they behave the same whichever executor a workflow's model steps use; executor capability flags do not apply to them, the command rules of [SEC](security.spec.md) do. A script unit is still a gated unit: its gate holds the engine's built-in check, an optional author check and an optional judge ([ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)). This spec also owns the per-thread result cache for scripts ([ADR `cache-only-model-free-script-results-per-thread`](../adr/cache-only-model-free-script-results-per-thread.adr.md)). It is LangGraph's function node in this engine's form ([research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md) L1, L16). Workflow authors and the compiler depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `audit-rule-catalog.spec.md`: audit rule catalog
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `contracts.spec.md`: shared contracts
+- `gate-and-human.spec.md`: gate and human nodes
+- `local-observability-store.spec.md`: local observability store
+- `overview.spec.md`: paths inside the workspace (OVR-B12)
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: run events for observers
+- `security.spec.md`: launch rules (SEC-B5)
+
 ## Behaviours
 
 ### SCR-B5 Script declaration

@@ -4,6 +4,13 @@
 
 An operator-registered command the engine runs on a run event, so a notifier can reach a person about an unattended run. The engine ships no hook; a tracker integration is a separate plugin that registers one. Operators and those plugins depend on the `hooks` verbs, the event names, the registry file and the environment a hook reads. Split from the engine CLI spec ([CLI](engine-cli.spec.md)) when the specs moved to temperspec's format.
 
+## Depends on
+
+- `orchestration.spec.md`: orchestration of runs
+- `run-events.spec.md`: the events verb (EVT-B22); in-process observers (EVT-B23); lifecycle hook events (EVT-B24)
+- `schedules.spec.md`: fire log (SCH-B28)
+- `security.spec.md`: launch rules (SEC-B5); detached children and workers re-validate (SEC-B6)
+
 ## Behaviours
 
 ### HOK-B1 Registering a hook

@@ -4,6 +4,11 @@
 
 Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: what the loop child does when a session review it ran failed on a usage limit (a retry once the limit has passed, and no wait for a limit that will not pass soon), and the one `loop_summary` record it writes when it ends, with the findings it left, the filings it made, the observations it kept and the reviews that ended failed. Operators who read `attention` and the run's detail document depend on it. How a review is planned, run and classed is not owned here: that is [session review](session-review.spec.md).
 
+## Depends on
+
+- `improvement-data.spec.md`: parameters with provenance (IMD-B23)
+- `session-review.spec.md`: budget (SRV-B21); targets in priority order (SRV-B24); each review is paid for from what was reported (SRV-B25); a failed review names its error class (SRV-B29)
+
 ## Behaviours
 
 ### SIL-B25 A review that hit a usage limit is run again once the limit has passed

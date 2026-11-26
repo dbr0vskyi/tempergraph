@@ -4,6 +4,15 @@
 
 One renderer builds every step prompt for every executor, so what a step is told and must emit is the same whether it runs on Claude Code or Antigravity. The step is shown its criteria as the target and is never asked to grade itself: its output is a claim, the judge assesses it and the engine decides. Workflow authors depend on the sections a prompt holds and on the output lines a step must end with; the judge, checks and routes read artifacts, and a step reads only what its template names, which keeps context small on every executor. Instruction files differ per executor (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) and the engine adds nothing to them; rules a step needs on several executors ship through the workflow's authoring surface ([ADR `portable-authoring-surface`](../adr/portable-authoring-surface.adr.md)).
 
+## Depends on
+
+- `check-contract-and-command-runs.spec.md`: the check preview (CHK-B17)
+- `contracts.spec.md`: template grammar (CON-B8)
+- `reruns-and-feedback.spec.md`: feedback (RRN-B14); rulings (RRN-B15)
+- `run-settings-and-overrides.spec.md`: tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30)
+- `step-values-and-template-keys.spec.md`: the value artifact kind (VAL-B5); storing a value (VAL-B6); template keys (VAL-B8)
+- `workflow-lessons.spec.md`: budget enforced (LSN-B2); rendering (LSN-B8)
+
 ## Behaviours
 
 ### PRM-B1 Same prompt on every executor

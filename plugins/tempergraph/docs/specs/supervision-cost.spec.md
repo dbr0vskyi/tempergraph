@@ -4,6 +4,20 @@
 
 What the sessions that babysit runs spend: the Claude session that starts a run and waits on it, reads its status and logs, diagnoses a failure, shows a pause to a person and resumes; the orchestrator skill's session; their helper subagents; an application that drives the engine. This spend happens in a host the engine does not run, so the engine cannot meter it the way it meters its own sessions ([OBS](observability-and-cost.spec.md)); it adds to run cost, most of it context re-read after a wake, and is lost unless it is recorded per run ([research `callers-supervision-and-babysitting-cost`](../research/callers-supervision-and-babysitting-cost.rsrch.md) B1, B2, B4). This spec owns the supervision journal that hosts and callers write, the sources of usage per host, the attribution of a supervising session's spend to threads and orchestrations, the closing of a thread's supervision cost, and the `supervision` verbs. Read-only verbs still write nothing (OVR-B15): the journal is written by the host's hooks and by one writing verb ([ADR `a-supervision-journal-written-by-the-host-not-by-read-only-verbs`](../adr/a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md)). Unmeasured is never zero. Supervision metrics ([SUP](supervision-metrics.spec.md)), reports, sinks ([CST](central-run-stats.spec.md)) and the orchestrator skill's share ([OSK](orchestrator-skill.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: classification (PRV-B13); person turns (PRV-B15); the caller block (PRV-B16)
+- `central-run-stats.spec.md`: central run stats
+- `engine-cli.spec.md`: engine cli
+- `executor-interface.spec.md`: executor interface
+- `local-observability-store.spec.md`: home layout (LOS-B10)
+- `observability-and-cost.spec.md`: observability and cost
+- `orchestrator-skill.spec.md`: orchestrator skill
+- `overview.spec.md`: the supervisor calls no model (OVR-B18); the schedule tick calls no model (OVR-B20)
+- `plugin-shell.spec.md`: plugin shell
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-metrics.spec.md`: supervision record of a run (SUP-B10); workflow aggregates (SUP-B12)
+
 ## Behaviours
 
 ### SCO-B1 A run driver session

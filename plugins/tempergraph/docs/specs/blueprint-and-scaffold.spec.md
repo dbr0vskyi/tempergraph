@@ -4,6 +4,25 @@
 
 The authoring interview ([AUT](workflow-authoring.spec.md)) ends in three drafts: the outcome ([OUT](run-outcome.spec.md)), the authoring record, and a blueprint, a small strict JSON document of what was decided about the workflow's shape. This spec owns the blueprint and its drawing, the scaffold that writes a package from the three drafts ([PKG](workflow-package.spec.md)), the blueprint comparison and the literal check, and `author verify`, the ladder of checks an authored workflow passes before anyone relies on it: model-free checks first, then one consented, capped trial run on a real case ([ADR `check-an-authored-workflow-model-free-then-by-one-consented-trial`](../adr/check-an-authored-workflow-model-free-then-by-one-consented-trial.adr.md)). Every verb here but the seed and trial rungs is model-free (OVR-B15), and no model draws or edits a diagram. The authoring skill and the person approving a workflow depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `audit-rule-catalog.spec.md`: audit rule catalog
+- `caller-provenance.spec.md`: caller provenance
+- `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
+- `engine-update.spec.md`: workflow registry (UPD-B20)
+- `eval-suites.spec.md`: check cases (EVS-B9)
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `judge-calibration.spec.md`: tune and holdout (JCL-B11)
+- `lifecycle-and-evals.spec.md`: lifecycle and evals
+- `run-outcome.spec.md`: the minimal outcome (OUT-B1); coverage (OUT-B14)
+- `session-contract.spec.md`: session contract
+- `version-metadata.spec.md`: range selection and compatibility states (VER-B2); stamp record (VER-B16)
+- `workflow-audit.spec.md`: the repository's commands entry is no program (AUD-B17)
+- `workflow-authoring.spec.md`: guidance ladder (AUT-B21); approvals (AUT-B24)
+- `workflow-model.spec.md`: workflow model and validation
+- `workflow-package.spec.md`: layout (PKG-B11); names (PKG-B14); loading manifests and levels (PKG-B15); the docs half (PKG-B21); docs check (PKG-B22); the minimal package (PKG-B25)
+- `workflow-upgrade.spec.md`: verification (WUP-B19)
+
 ## Behaviours
 
 ### SCF-B1 A misspelt field

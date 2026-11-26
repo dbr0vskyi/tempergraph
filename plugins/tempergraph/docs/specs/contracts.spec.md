@@ -4,6 +4,46 @@
 
 The workflow declaration every workflow package writes and the engine reads ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)), the template grammar, input and routing declarations, model aliases, tool capabilities, the run and thread values and exit codes every caller reads, and the rules every persisted document follows. Workflow authors, the builders of `tempergraph.api`, every component spec and every caller of the CLI depend on these exact names. What a session request, result and judgement hold is [25 Session contract](session-contract.spec.md). Neutral tool and model names keep a workflow portable across executors at the cost of one mapping table per executor ([ADR `executors-as-capability-adapters`](../adr/executors-as-capability-adapters.adr.md), [ADR `portable-model-aliases`](../adr/portable-model-aliases.adr.md)).
 
+## Depends on
+
+- `ask-unit.spec.md`: answering (ASK-B8)
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `central-run-stats.spec.md`: central run stats
+- `check-contract-and-command-runs.spec.md`: mechanical failure costs no judge (CHK-B1); the check preview (CHK-B17)
+- `compiler-and-flow.spec.md`: order and routes (CMP-B10); step-node forms (CMP-B16)
+- `contest-unit.spec.md`: contest unit
+- `council-unit.spec.md`: council unit
+- `durability-and-resume.spec.md`: durability and resume
+- `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
+- `engine-cli.spec.md`: engine cli
+- `engine-update.spec.md`: engine install and update
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `finalizer-contract.spec.md`: what it returns (FIN-B8)
+- `flow-extensions.spec.md`: fallback target (FLX-B9)
+- `improvement-proposals.spec.md`: improvement proposals and trials
+- `local-observability-store.spec.md`: local observability store
+- `map-unit.spec.md`: map unit
+- `observability-and-cost.spec.md`: observability and cost
+- `prompt-rendering.spec.md`: sections and their order (PRM-B6)
+- `reruns-and-feedback.spec.md`: rewind (RRN-B16)
+- `run-detail-document.spec.md`: run detail document
+- `run-outcome.spec.md`: trust (OUT-B13); coverage (OUT-B14)
+- `run-settings-and-overrides.spec.md`: session keys (RST-B18); gate and unit keys (RST-B19); run keys (RST-B20); worktree keys (RST-B21); layers (RST-B22); three rules that keep the guarantees (RST-B23); workflow-declared settings and profiles (RST-B25)
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `self-improvement.spec.md`: code host unreachable (SIL-B19); daily cap (SIL-B20)
+- `session-contract.spec.md`: session contract
+- `session-review.spec.md`: review setting (SRV-B13); probation and trials (SRV-B14); plan record (SRV-B15)
+- `state-and-run-migration.spec.md`: state and run migration across releases
+- `step-values-and-template-keys.spec.md`: the value artifact kind (VAL-B5); storing a value (VAL-B6); template keys (VAL-B8)
+- `subworkflow-unit.spec.md`: a child's key in a template (SWF-B12)
+- `version-metadata.spec.md`: range selection and compatibility states (VER-B2); never refuses on its own (VER-B5); workflow version fields (VER-B14); digests and the workflow version id (VER-B15)
+- `workflow-audit.spec.md`: workflow audit
+- `workflow-lessons.spec.md`: workflow lessons
+- `workflow-model.spec.md`: structure and flow refusals (WFM-B8); executor, judge, tool and prompt refusals (WFM-B9); settings, routing and release refusals (WFM-B10); refusals owned elsewhere (WFM-B11)
+- `workflow-package.spec.md`: layout (PKG-B11); refused plugin parts (PKG-B12)
+- `workflow-upgrade.spec.md`: workflow upgrade
+- `worktree-mode.spec.md`: resolving auto (WTR-B18); workflow declaration (WTR-B19)
+
 ## Behaviours
 
 ### CON-B4 Workflow fields

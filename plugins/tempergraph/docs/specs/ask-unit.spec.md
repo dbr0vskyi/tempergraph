@@ -4,6 +4,14 @@
 
 An ask unit pauses a run to take input from a person and stores the answers as an artifact later steps read ([ADR `ask-unit-takes-a-persons-input-as-an-artifact`](../adr/ask-unit-takes-a-persons-input-as-an-artifact.adr.md), [ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)). It is LangGraph's `interrupt` for human input, in this engine's form: the pause is in the unit's human node, the answers are validated by rule, and there is no model and no judge, since the person's input is the bar ([research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md) L11). Questions are declared, or taken from a list an earlier step wrote, such as a discovery step's open questions. An ask differs from an approval (a decision on work) and from a wait (a value from an outside system, checked): its answers are data for later steps. No executor is involved, so it behaves the same on every executor. Workflow authors and people answering runs depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `contracts.spec.md`: workflow fields (CON-B4); thread states and decisions (CON-B12)
+- `flow-extensions.spec.md`: deadlines (FLX-B8)
+- `gate-and-human.spec.md`: intervention row (HUM-B6)
+- `overview.spec.md`: paths inside the workspace (OVR-B12)
+- `run-detail-document.spec.md`: run detail document
+
 ## Behaviours
 
 ### ASK-B5 Declaration

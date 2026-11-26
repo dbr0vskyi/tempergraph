@@ -4,6 +4,10 @@
 
 The discovery and setup steps read before they write. When a step has two or more subjects to read (the gaps of the triage note, the component folders of a repository), it first starts one read-only reading session for each, a few at a time on the engine's concurrent map ([MAP-B7](../../../tempergraph/docs/specs/map-unit.spec.md), [MAP-B9](../../../tempergraph/docs/specs/map-unit.spec.md)), and its one writing session then closes the gaps or writes the specs from their findings, which reach it as [VAL-B9](../../../tempergraph/docs/specs/step-values-and-template-keys.spec.md) renders them. The reading sessions write no document, so every spec, the hand-off and every commit stay the writing session's, and the criteria of [discovery](discovery.spec.md) and [setup](setup.spec.md) judge its output. A reading session that fails runs again alone ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)), and the sessions in flight share the run's cost cap ([BUD-B12](../../../tempergraph/docs/specs/budgets-and-failures.spec.md)). The owner who waits for a run and the maintainers of the two steps depend on it. Part of the [overview](overview.spec.md).
 
+## Depends on
+
+- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1); one re-ask (JDG-B2)
+
 ## Behaviours
 
 ### PRL-B1 One reading session for each gap and each open question to read

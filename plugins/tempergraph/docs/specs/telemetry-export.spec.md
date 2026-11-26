@@ -4,6 +4,13 @@
 
 The `otlp` sink ([CST](central-run-stats.spec.md), [ADR `cross-machine-stats-through-opt-in-sinks`](../adr/cross-machine-stats-through-opt-in-sinks.adr.md)) exports runs as OpenTelemetry traces and metrics to any OTLP receiver, so a team that already runs a tracing backend, or an operator who wants a local trace browser, can read runs there. It uses the GenAI semantic conventions where they fit and `tempergraph.*` names where they do not, under one pinned version ([research `opentelemetry-genai-conventions`](../research/opentelemetry-genai-conventions.rsrch.md), [ADR `telemetry-export-as-otel-genai-without-content`](../adr/telemetry-export-as-otel-genai-without-content.adr.md)), and never exports content. What a backend itself sends to its vendor is that backend's setting, which the operator checks before use. The exporter is deferred ([ADR `own-observability-first-export-deferred`](../adr/own-observability-first-export-deferred.adr.md)): until it is built, nothing is sent to any third-party tool.
 
+## Depends on
+
+- `central-run-stats.spec.md`: central run stats
+- `observability-and-cost.spec.md`: observability and cost
+- `run-events.spec.md`: run events for observers
+- `security.spec.md`: canary (SEC-B2)
+
 ## Behaviours
 
 ### TEL-B1 One trace per segment

@@ -4,6 +4,43 @@
 
 What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it: the observer record kinds added to the run log, the per-session activity journal, and the ways to subscribe (the `events` verb, the in-process observer interface and the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (OVR-B4, owned by [OBS](observability-and-cost.spec.md)). The record kinds of [OBS](observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames. Observers read append-only files and read-only verbs, with no socket and no daemon ([ADR `observers-read-files-not-sockets`](../adr/observers-read-files-not-sockets.adr.md)); shell commands stay local and scrubbed ([ADR `local-activity-journal-with-tool-input-summaries`](../adr/local-activity-journal-with-tool-input-summaries.adr.md)); observers and hook events follow [ADR `in-process-observers-and-wider-hook-events`](../adr/in-process-observers-and-wider-hook-events.adr.md). The monitor, exporters, central stats, tracker plugins and the detail document depend on these records ([research `observer-needs-against-engine-documents`](../research/observer-needs-against-engine-documents.rsrch.md)).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `caller-provenance.spec.md`: caller provenance
+- `central-run-stats.spec.md`: central run stats
+- `contest-unit.spec.md`: contest unit
+- `contracts.spec.md`: persisted documents are versioned (CON-B14)
+- `council-unit.spec.md`: council unit
+- `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `gate-and-human.spec.md`: what pauses for a usage limit (HUM-B14)
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `judge-model-by-risk.spec.md`: judge model by risk
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `local-observability-store.spec.md`: local observability store
+- `observability-and-cost.spec.md`: logging fails safely (OBS-B3)
+- `orchestration.spec.md`: orchestration of runs
+- `overview.spec.md`: versioned schemas, tolerant readers (OVR-B14); read-only verbs call no model (OVR-B15)
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-control.spec.md`: run control
+- `run-detail-document.spec.md`: run detail document
+- `run-outcome.spec.md`: run-level good outcome
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `schedule-ticks-and-unattended-fires.spec.md`: schedule ticks and unattended fires
+- `schedules.spec.md`: schedules
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `security.spec.md`: canary (SEC-B2); scrubbing (SEC-B8)
+- `self-improvement.spec.md`: detached and best effort (SIL-B1)
+- `session-contract.spec.md`: normalized session events (SSN-B7); a spent usage allowance (SSN-B11)
+- `state-and-run-migration.spec.md`: state and run migration across releases
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+- `telemetry-export.spec.md`: telemetry export
+- `version-metadata.spec.md`: version metadata of the engine and of workflows
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### EVT-B8 Common record envelope

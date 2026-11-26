@@ -4,6 +4,26 @@
 
 The fixed list of rules the [workflow audit](workflow-audit.spec.md) applies, outside the tool surface rules of [TSA](tool-surface-audit.spec.md) and the prompt rules of [PRA](prompt-audit.spec.md). Each rule answers one cause ranked in [research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md), names the layer it needs, carries a cause code shared with the self-improvement loop, and has a default severity, confidence and remedy. Rules owned by another component are listed with their owner and run through it ([ADR `audit-joins-existing-checks-and-files-nothing`](../adr/audit-joins-existing-checks-and-files-nothing.adr.md)). The catalog is engine data, versioned with the engine; a workflow cannot add or change a rule, only ignore one with a reason ([AUD](workflow-audit.spec.md)). One rule answers one cause; a rule that would need prose judgement is a judge's work and stays out, because the audit calls no model (OVR-B15, [ADR `advisory-read-only-audit-verb-in-three-layers`](../adr/advisory-read-only-audit-verb-in-three-layers.adr.md)). Thresholds are defaults chosen to fire on clearly bad runs and stay quiet on healthy ones, not fitted ([ADR `history-findings-need-a-minimum-sample`](../adr/history-findings-need-a-minimum-sample.adr.md)), recorded as named parameters with the research `why-runs-fail-stall-repeat-or-overspend` finding (F) that motivated them and revisited after the first 20 runs of a real workflow. Workflow authors, the audit and the loop's backlog depend on these ids and cause codes; release notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: ask unit
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `caller-provenance.spec.md`: caller provenance
+- `contest-unit.spec.md`: contest unit
+- `council-unit.spec.md`: council unit
+- `flow-extensions.spec.md`: flow extensions
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `lifecycle-and-evals.spec.md`: executor compatibility (LIF-B10); prompt lint (LIF-B12); judge readiness report (LIF-B13)
+- `plugin-shell.spec.md`: prefer a check (SHL-B4)
+- `prompt-audit.spec.md`: structure rules (PRA-B13)
+- `run-outcome.spec.md`: run-level good outcome
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+- `workflow-audit.spec.md`: the repository's commands entry is no program (AUD-B17); the programs of the target's declared commands are looked up (AUD-B18); the target's declared commands cover its toolchain (AUD-B19)
+- `workflow-model.spec.md`: workflow model and validation
+
 ## Behaviours
 
 ### ARC-B6 Rule record

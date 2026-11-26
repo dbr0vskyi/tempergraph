@@ -4,6 +4,21 @@
 
 Every signal of the self-improvement loop rests on judges, and a judge is only as good as its agreement with what people and later facts say ([research `self-improving-agent-systems`](../research/self-improving-agent-systems.rsrch.md) F2). This spec turns the ground truth that already arrives after a run (an approval answer, a pull request merged or closed, a re-run, a person sending passed work back, an audit judge that disagreed) into one label record joined to the run, gate and criterion it speaks about. From labels it grades each judge binding `reliable`, `unmeasured` or `unreliable`, which licenses or blocks judge grades in filing ([SIL](self-improvement.spec.md)), the quality lens and trials ([PRP](improvement-proposals.spec.md)), and it watches for a quality shift when an executor, model or brief changes. A grade is per binding because a judge moved to another model is a different judge. Labels are facts the engine already sees; the only new human effort is the optional queue, ordered so the most informative judgements come first (research `self-improving-agent-systems` F6). Thresholds have no data behind them and are recorded as parameters with that provenance ([IMD](improvement-data.spec.md)). The loop, trials, harvest and the monitor depend on these labels and grades.
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `caller-provenance.spec.md`: caller provenance
+- `gate-and-human.spec.md`: gate and human nodes
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `lifecycle-and-evals.spec.md`: harvest (LIF-B14)
+- `pull-request-read.spec.md`: only a person's work is counted (OUT-B25)
+- `run-events.spec.md`: findings and outcome (EVT-B14)
+- `run-outcome.spec.md`: run-level good outcome
+- `run-state-on-a-branch.spec.md`: what is carried (CAR-B7)
+- `security.spec.md`: the publish boundary is a file boundary (SEC-B9)
+- `self-improvement.spec.md`: self-improvement loop
+- `session-contract.spec.md`: session contract
+
 ## Behaviours
 
 ### FBK-B8 Label record

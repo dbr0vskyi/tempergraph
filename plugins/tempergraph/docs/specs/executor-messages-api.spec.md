@@ -4,6 +4,13 @@
 
 The `messages-api` executor runs each step attempt and each judge run as one conversation on Anthropic's Messages API, driven by an engine-owned loop in an engine worker process ([ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md), [ADR `engine-owned-tool-loop-for-the-messages-api`](../adr/engine-owned-tool-loop-for-the-messages-api.adr.md)). The API runs no client tool, so every file and command tool is executed by the engine's [tool host](tool-host.spec.md). It implements the [executor interface](executor-interface.spec.md); facts about the API come from [research `anthropic-messages-api-executor`](../research/anthropic-messages-api-executor.rsrch.md). It is the lightest executor to run in CI: one client library and an API or cloud credential. A workflow that relies on CLAUDE.md, skills or subagents cannot move a step here without bringing that content into the prompt ([ADR `portable-authoring-surface`](../adr/portable-authoring-surface.adr.md)). No beta feature is used: no tool runner, no compaction, no context editing. Operators and workflow authors who choose it depend on what it declares and does.
 
+## Depends on
+
+- `executor-interface.spec.md`: conformance (EXI-B11)
+- `security.spec.md`: security posture
+- `session-contract.spec.md`: normalized session events (SSN-B7)
+- `tool-host.spec.md`: mCP client (THS-B11)
+
 ## Behaviours
 
 ### EMA-B6 Declared capabilities

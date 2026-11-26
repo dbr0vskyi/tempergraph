@@ -4,6 +4,20 @@
 
 A gate may raise its judge to a stronger model, or a higher effort, when model-free facts about the attempt say the work is riskier: the diff touches engine code, a migration or many files; the check counted many rows. A delivery workflow may want to judge code on a stronger model than the one that wrote it; this spec makes such a rule data, per attempt, while keeping every judge a calibrated binding ([research `judge-model-by-risk-and-evidence-for-escalation`](../research/judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [ADR `a-judge-is-raised-by-a-model-free-risk-rule`](../adr/a-judge-is-raised-by-a-model-free-risk-rule.adr.md)). A risk rule only ever raises the judge, never reads what the step says about itself, and a fault picks the strongest level. Gates, calibration ([JCL](judge-calibration.spec.md)), readiness, promotion ([PRO](promotion-check.spec.md)) and reports depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `check-contract-and-command-runs.spec.md`: the context a check receives (CHK-B10)
+- `contracts.spec.md`: model aliases and their resolution (CON-B3)
+- `effort-ladder-and-model-escalation.spec.md`: climbing evidence (LAD-B10); escalation conditions (LAD-B12); ladder records (LAD-B16)
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `judge-and-verdict.spec.md`: judge and verdict
+- `judge-calibration.spec.md`: gold case set (JCL-B9); acceptance state (JCL-B17)
+- `lifecycle-and-evals.spec.md`: stable mode needs ready gates (LIF-B6)
+- `overview.spec.md`: pure nodes run safely again (OVR-B7)
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `run-events.spec.md`: run events for observers
+- `run-settings-and-overrides.spec.md`: layers (RST-B22)
+
 ## Behaviours
 
 ### JRK-B1 Raise on engine code

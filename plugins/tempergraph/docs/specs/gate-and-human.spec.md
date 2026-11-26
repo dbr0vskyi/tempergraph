@@ -4,6 +4,21 @@
 
 The gate only routes. The human node is the single place a run pauses, and only a person answers it. Escalations, spent budgets that ask, approval pauses after a pass, event waits and asks for a person's input all pause in that node, so a resume replays only it under the graph runtime's replay-from-top rule ([ADR `four-nodes-per-unit`](../adr/four-nodes-per-unit.adr.md)); the one other pause is an operator's breakpoint before a step node ([FLX-B10](flow-extensions.spec.md)). People answering pauses, skills and CI depend on the pause kinds, the payload, the decision words and exit 3, which means "a person is needed", never failure ([ADR `exit-codes-as-caller-contract`](../adr/exit-codes-as-caller-contract.adr.md)). Callers are classified from host and CI markers, and a relayed decision counts as a person's only with a person turn in the host ([ADR `classify-callers-by-the-strongest-signal`](../adr/classify-callers-by-the-strongest-signal.adr.md), [ADR `a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence`](../adr/a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)).
 
+## Depends on
+
+- `ask-unit.spec.md`: answering (ASK-B8)
+- `budgets-and-failures.spec.md`: a usage limit spends no counter (BUD-B17)
+- `caller-provenance.spec.md`: the caller block (PRV-B16); where the block is written (PRV-B17)
+- `council-unit.spec.md`: no decision (CNL-B13)
+- `durability-and-resume.spec.md`: durability and resume
+- `effort-ladder-and-model-escalation.spec.md`: escalation conditions (LAD-B12)
+- `flow-extensions.spec.md`: deadlines (FLX-B8); operator breakpoints (FLX-B10)
+- `judge-and-verdict.spec.md`: an upstream claim is judged on its own (JDG-B9)
+- `reruns-and-feedback.spec.md`: feedback (RRN-B14); rulings (RRN-B15); rewind (RRN-B16); rerun (RRN-B17); rerun workspace (RRN-B18)
+- `run-outcome.spec.md`: verifier classes (OUT-B10); one class per criterion (OUT-B12)
+- `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30)
+- `supervision-metrics.spec.md`: touches (SUP-B9); supervision record of a run (SUP-B10)
+
 ## Behaviours
 
 ### HUM-B1 Interrupt first

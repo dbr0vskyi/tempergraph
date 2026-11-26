@@ -4,6 +4,35 @@
 
 A workflow package is one folder that is at the same time a Claude Code plugin and a tempergraph workflow ([ADR `a-workflow-package-is-one-claude-plugin`](../adr/a-workflow-package-is-one-claude-plugin.adr.md)), with three halves: the plugin half (the prompts, judge briefs, skills and agents specific to the workflow, in the layout Claude Code reads, [research `workflow-packages-authoring-and-good-outcomes`](../research/workflow-packages-authoring-and-good-outcomes.rsrch.md) A1, A2); the Python half (the declaration module the engine imports to build the `WorkflowSpec`, the checks, routes, resolver and finalizer it names, and the Python requirements the engine installs); and the docs half (the workflow's own design set in the engine's shape, provisional until temperspec owns the format, [ADR `the-workflow-docs-set-is-provisional-until-temperspec-owns-it`](../adr/the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md)). Its good outcome is a file of its own owned by [OUT](run-outcome.spec.md); authoring writes a package through the scaffold ([SCF](blueprint-and-scaffold.spec.md)), and a person may write one by hand. This spec owns the layout, the engine manifest, the declaration format and builders, the callable signatures [CHK](check-contract-and-command-runs.spec.md) and [FIN](finalizer-contract.spec.md) do not already own, how the engine loads a package, what of the plugin reaches each executor, and the minimal package; it gives `load()` of [WFM](workflow-model.spec.md) its body. Registration and dependency installation stay in [UPD](engine-update.spec.md); version fields, digests and the stamp in [VER](version-metadata.spec.md). Design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `check-contract-and-command-runs.spec.md`: the context a check receives (CHK-B10); command resolution (CHK-B11); the check worker and its limit (CHK-B16)
+- `contracts.spec.md`: workflow fields (CON-B4); template grammar (CON-B8); input and routing declarations (CON-B9)
+- `engine-cli.spec.md`: engine cli
+- `engine-update.spec.md`: workflow registry (UPD-B20)
+- `eval-suites.spec.md`: workflow cases and trials (EVS-B12)
+- `executor-claude-code.spec.md`: a step calls only the skills it declares (ECC-B25)
+- `executor-messages-api.spec.md`: messages api executor
+- `finalizer-contract.spec.md`: what it receives (FIN-B6)
+- `improvement-proposals.spec.md`: change classes (PRP-B14); case set (PRP-B17)
+- `independence-guard.spec.md`: independence guard and judge views
+- `judge-and-verdict.spec.md`: judge and verdict
+- `judge-calibration.spec.md`: gold case set (JCL-B9)
+- `lifecycle-and-evals.spec.md`: lifecycle and evals
+- `map-unit.spec.md`: map unit
+- `overview.spec.md`: the engine names no workflow (OVR-B10); read-only verbs call no model (OVR-B15); refusal before spend (OVR-B17)
+- `plugin-shell.spec.md`: executor choice with consequences (SHL-B3)
+- `prompt-audit.spec.md`: prompt audit
+- `prompt-rendering.spec.md`: prompt rendering and output contract
+- `run-outcome.spec.md`: run-level good outcome
+- `script-units-and-hybrid-steps.spec.md`: script declaration (SCR-B5)
+- `version-metadata.spec.md`: engine release record (VER-B8); workflow version fields (VER-B14); stamp record (VER-B16); workflow change notes (VER-B17)
+- `workflow-audit.spec.md`: workflow audit
+- `workflow-authoring.spec.md`: workflow authoring
+- `workflow-lessons.spec.md`: workflow lessons
+- `workflow-model.spec.md`: workflow model and validation
+
 ## Behaviours
 
 ### PKG-B1 One folder, two readers

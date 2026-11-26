@@ -4,6 +4,16 @@
 
 Tool access is the cause family most visible before a run ([research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) C4): most refused calls need no new permission, undeclared-tool calls are common, and one tool a user-level plugin puts into a judge session can void a complete verdict and pause a run. This spec defines how the [workflow audit](workflow-audit.spec.md) compares, for every step session and every judge session, three views of its tools ([ADR `tool-audit-compares-grant-need-and-use`](../adr/tool-audit-compares-grant-need-and-use.adr.md)): the grant (what the session can call), the need (what the work asks for) and the use (what sessions called and what was refused). A finding is a mismatch between two views; the rules join the catalog of [ARC](audit-rule-catalog.spec.md) under family C4. Judges matter most: a step's undeclared call costs a turn, a judge's voids a verdict, so judge rules use the session's own start tool list and fire before the first harmful call. Need is read by prompt lint's reader, so the audit and prompt lint never disagree on what a prompt asks for. The audit reads names only, sends nothing anywhere and writes nothing ([research `prior-art-for-workflow-audits`](../research/prior-art-for-workflow-audits.rsrch.md) P6). Workflow authors and the audit depend on it.
 
+## Depends on
+
+- `independence-guard.spec.md`: independence guard and judge views
+- `lifecycle-and-evals.spec.md`: prompt lint (LIF-B12)
+- `prompt-audit.spec.md`: prompt audit
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `self-improvement.spec.md`: executor drift is visible (SIL-B4)
+- `session-contract.spec.md`: session contract
+- `workflow-model.spec.md`: workflow model and validation
+
 ## Behaviours
 
 ### TSA-B6 Session surface

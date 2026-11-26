@@ -4,6 +4,17 @@
 
 Every model step is graded by a fresh, read-only judge session that reports a finding per criterion; the engine, never the judge, derives the verdict by rule. A deterministic check runs first and can end the attempt with no model call, and a judging failure never passes. This spec owns OVR-B6, which prompt rendering ([PRM](prompt-rendering.spec.md)) and the independence guard ([GRD](independence-guard.spec.md)) uphold ([ADR `independent-judge-engine-verdict`](../adr/independent-judge-engine-verdict.adr.md)). Gates, budgets ([BUD](budgets-and-failures.spec.md)), pauses ([HUM](gate-and-human.spec.md)), calibration ([JCL](judge-calibration.spec.md)) and the outcome gate ([OUT](run-outcome.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: a usage limit spends no counter (BUD-B17)
+- `check-contract-and-command-runs.spec.md`: what a check returns (CHK-B14)
+- `contracts.spec.md`: model aliases and their resolution (CON-B3)
+- `executor-interface.spec.md`: judge executor selection (EXI-B24)
+- `independence-guard.spec.md`: independence guard and judge views
+- `reruns-and-feedback.spec.md`: feedback (RRN-B14)
+- `run-outcome.spec.md`: the scoring scale (OUT-B11)
+- `session-contract.spec.md`: judgement block (SSN-B8)
+
 ## Behaviours
 
 ### JDG-B1 Check first

@@ -4,6 +4,10 @@
 
 What a gate's check is given of the sessions of its unit's current visit, besides the session of its own attempt: the calls of every attempt of the visit, so that a check can hold a step to what all its sessions did and not only to what the last one did. The attempt's own record, its shape and the cases in which there is none are [CHK-B24 and CHK-B25](check-contract-and-command-runs.spec.md); this spec owns only the record of the whole visit. A visit of a unit starts when the run reaches it, and a trip back to the unit starts a new one ([CMP-B12](compiler-and-flow.spec.md)). Workflow authors depend on it.
 
+## Depends on
+
+- `check-contract-and-command-runs.spec.md`: the session record a check receives (CHK-B24); no session record (CHK-B25)
+
 ## Behaviours
 
 ### VSR-B1 A check is given the calls of every session of the visit

@@ -4,6 +4,24 @@
 
 An orchestration is a graph of tempergraph runs: which workflow runs on what, in what order, how many at once, what a failure does to the runs after it, and where a person must sign off between waves. A workflow is a graph of steps inside one run; an orchestration is a graph of runs. Like a workflow it is data, validated before any spend and executed by the engine, not by a conversation ([ADR `orchestration-is-data-run-by-a-model-free-supervisor`](../adr/orchestration-is-data-run-by-a-model-free-supervisor.adr.md)): orchestration driven by hand from a conversation adds cost on top of run cost, most of it from being woken and re-reading context. A model-free engine process, the supervisor, starts each run through the engine's own `run` verb, watches it through the status document, keeps independent runs moving while one waits for a person, and stops starting new runs when a cap or a failure policy says so; it never calls a model and never answers a gate (OVR-B18). The file holds intent, each run's status holds truth, and the event log holds history ([ADR `orchestration-state-is-a-file-and-an-event-log`](../adr/orchestration-state-is-a-file-and-an-event-log.adr.md)); `wait` wakes the orchestrating session once per batch of attention ([ADR `attention-batched-waking-of-the-orchestrating-session`](../adr/attention-batched-waking-of-the-orchestrating-session.adr.md)); `batch` is a one-node orchestration ([ADR `batch-is-a-one-node-orchestration`](../adr/batch-is-a-one-node-orchestration.adr.md)); pauses stay with the person and failures follow node policy ([ADR `pauses-stay-with-the-person-failures-follow-node-policy`](../adr/pauses-stay-with-the-person-failures-follow-node-policy.adr.md)). The model is borrowed from Claude Code's dynamic workflows and departs from it where runs pause for people, cost real money per rerun and leave branches, so identity is by node id and nothing is replayed ([research `dynamic-workflows-as-orchestration-model`](../research/dynamic-workflows-as-orchestration-model.rsrch.md)). The [orchestrator skill](orchestrator-skill.spec.md) writes the file with the person, starts it and walks the person through each pause; the monitor shows it read-only; design notes and assumptions are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md). It ships in a later release ([ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`](../adr/release-three-composes-runs-in-parallel-and-grades-in-the-pipeline.adr.md)).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `caller-provenance.spec.md`: caller provenance
+- `central-run-stats.spec.md`: projection (CST-B15)
+- `contracts.spec.md`: tolerant read (CON-B1); template grammar (CON-B8); thread states and decisions (CON-B12)
+- `engine-cli.spec.md`: facts are read-only (CLI-B5)
+- `executor-interface.spec.md`: executor interface
+- `gate-and-human.spec.md`: gate and human nodes
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `overview.spec.md`: observability never changes a run (OVR-B4)
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-control.spec.md`: run control
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `security.spec.md`: security posture
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+
 ## Behaviours
 
 ### ORC-B18 Orchestration, nodes and threads

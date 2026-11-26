@@ -4,6 +4,19 @@
 
 `tempergraph audit` reads one workflow and reports what is likely to make its runs fail, pause, retry, hang or overspend, ranked, with evidence and a remedy for each finding. It is advisory: it never refuses a start, never changes a file and never calls a model, as the overview's contract on read-only verbs requires ([OVR](overview.spec.md)). Refusing a broken workflow stays [validation](workflow-model.spec.md)'s job; changing a workflow stays the improvement loop's ([SIL](self-improvement.spec.md)). It looks in three layers because the causes found in [research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) need different evidence: `definition` reads the workflow package only, `host` reads this machine and the target repository, `history` reads recorded runs. What it checks is a fixed catalog of rules ([ARC](audit-rule-catalog.spec.md)); the tool surface comparison has its own spec ([TSA](tool-surface-audit.spec.md)), and so does the audit of prompts and the other model-facing text ([PRA](prompt-audit.spec.md)). The engine code is `tempergraph.audit` and `tempergraph.cli.audit`; design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `audit-rule-catalog.spec.md`: c2 environment rules (ARC-B10)
+- `check-contract-and-command-runs.spec.md`: command resolution (CHK-B11)
+- `contracts.spec.md`: shared contracts
+- `decision-revisit.spec.md`: the decisions view (DRV-B4)
+- `plugin-shell.spec.md`: plugin shell
+- `prompt-audit.spec.md`: prompt audit
+- `tool-surface-audit.spec.md`: tool surface audit
+- `workflow-model.spec.md`: workflow model and validation
+- `workflow-package.spec.md`: workflow package
+- `workflow-upgrade.spec.md`: workflow upgrade
+
 ## Behaviours
 
 ### AUD-B1 Definition only before the first run

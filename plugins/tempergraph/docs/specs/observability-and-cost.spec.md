@@ -4,6 +4,26 @@
 
 What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. The record envelope and observer record kinds are owned by [EVT](run-events.spec.md), where session logs live by [LOS](local-observability-store.spec.md), and export by [CST](central-run-stats.spec.md) and [TEL](telemetry-export.spec.md); design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: reservations are in the run log (BUD-B13); a wait is in the run log (BUD-B14); a refused reservation is in the run log (BUD-B15)
+- `caller-provenance.spec.md`: caller provenance
+- `central-run-stats.spec.md`: central run stats
+- `check-contract-and-command-runs.spec.md`: check contract and command runs
+- `compiler-and-flow.spec.md`: compiler and flow
+- `complexity-routing.spec.md`: declaring a complexity switch (CXR-B7)
+- `engine-cli.spec.md`: engine cli
+- `finalizer-contract.spec.md`: finalizer contract
+- `judge-and-verdict.spec.md`: judge and verdict
+- `local-observability-store.spec.md`: local observability store
+- `map-unit.spec.md`: map unit
+- `measured-switches.spec.md`: measured switches
+- `run-events.spec.md`: run events for observers
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+- `workflow-lessons.spec.md`: workflow lessons
+
 ## Behaviours
 
 ### OBS-B1 Every call logged

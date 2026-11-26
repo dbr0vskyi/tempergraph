@@ -4,6 +4,22 @@
 
 The engine and its workflows are released apart, so they drift. This spec owns the metadata each side carries so that the engine update ([UPD](engine-update.spec.md)), the state migration ([MIG](state-and-run-migration.spec.md)) and the workflow upgrade ([WUP](workflow-upgrade.spec.md)) can decide by data what must move: the engine release record, the typed compatibility changelog, a workflow's version fields, its stamp record and its own change notes, and how the engine compares the two sides. Currency is decided by content, never by a version string alone ([LIF](lifecycle-and-evals.spec.md)), and the comparison never refuses a run by itself: a run refuses only when validation fails, which a release that tightens a rule causes by content ([WFM](workflow-model.spec.md)). Typed metadata on both sides is [ADR `typed-version-metadata-on-both-sides`](../adr/typed-version-metadata-on-both-sides.adr.md); `stamp.json` and `changes/` sit at the package root ([PKG](workflow-package.spec.md)). Release engineers, workflow owners, the update and upgrade verbs and the catalog depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `contracts.spec.md`: persisted documents are versioned (CON-B14)
+- `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
+- `engine-update.spec.md`: plugin and engine in step (UPD-B16)
+- `lifecycle-and-evals.spec.md`: same version, different code (LIF-B1); executor compatibility (LIF-B10); diagram model (LIF-B11)
+- `local-observability-store.spec.md`: local observability store
+- `prompt-audit.spec.md`: prompt audit
+- `state-and-run-migration.spec.md`: state and run migration across releases
+- `tool-host.spec.md`: tool host
+- `tool-surface-audit.spec.md`: tool surface audit
+- `upgrade-workflow.spec.md`: built-in upgrade workflow
+- `workflow-model.spec.md`: defaults keep old workflows working (WFM-B5)
+- `workflow-package.spec.md`: engine manifest (PKG-B13)
+- `workflow-upgrade.spec.md`: a sub-workflow's change reaches its parent (WUP-B6)
+
 ## Behaviours
 
 ### VER-B7 The version facts, kept apart

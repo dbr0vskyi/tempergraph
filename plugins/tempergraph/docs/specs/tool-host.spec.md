@@ -4,6 +4,10 @@
 
 The tool host executes the client tools of the [Messages API executor](executor-messages-api.spec.md) inside its worker process ([ADR `engine-owned-tool-loop-for-the-messages-api`](../adr/engine-owned-tool-loop-for-the-messages-api.adr.md)). It offers one tool per capability name ([CON-B11](contracts.spec.md)) except `subagent` and the two web capabilities, which are server tools. It is deliberately small: every path stays in the workspace, every command is a declared prefix run as a list, and every output is capped. Its scope is fixed; a step that needs more runs on another executor. Search and list are pure Python so the host needs no external binary and behaves the same on every platform; besides check functions it is the only place where a command runs on the operator's machine for a model, so its command rules are those of [SEC](security.spec.md). The Messages API worker and every step and judge on that executor depend on it.
 
+## Depends on
+
+- `security.spec.md`: commands see no executor credentials (SEC-B13)
+
 ## Behaviours
 
 ### THS-B5 Tools offered

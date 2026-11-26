@@ -4,6 +4,17 @@
 
 A contest runs the same step in 2 to 5 candidate slots, grades each candidate with the gate's own check and a fresh session of the gate's own judge, and keeps the best by a fixed engine rule ([ADR `contest-picks-a-candidate-by-the-gates-own-judge`](../adr/contest-picks-a-candidate-by-the-gates-own-judge.adr.md), [ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)). It is best of n: it trades cost for first-pass quality on one unit, for work where one good output beats a blend (a plan, a draft, a patch). A council combines answers; a contest keeps one ([research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md) H3). Any executor can host slots and judges, and slot overrides are how a contest compares executors on real work. Workflow authors and the compiler depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `central-run-stats.spec.md`: central run stats
+- `contracts.spec.md`: shared contracts
+- `executor-interface.spec.md`: executor interface
+- `judge-and-verdict.spec.md`: judge and verdict
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: run events for observers
+- `run-settings-and-overrides.spec.md`: gate and unit keys (RST-B19)
+- `workspace-and-concurrency.spec.md`: shapes of parallel work (WSP-B11)
+
 ## Behaviours
 
 ### CTS-B6 Declaration

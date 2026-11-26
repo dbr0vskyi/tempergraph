@@ -4,6 +4,17 @@
 
 Every gate rests on an LLM judge, and public work shows judges pass bad work far more often than they fail good work ([research `evaluating-llm-judges-public-practice`](../research/evaluating-llm-judges-public-practice.rsrch.md) F2). This spec defines how a judge is graded before anything relies on its grades: a gold case set per gate with reviewed labels per criterion, a score of one judge binding on that set (repeated, and on generated variants), the figures computed from it, an acceptance bar on their lower confidence bounds, and the acceptance state other specs read. Acceptance never changes a verdict, a route or a budget: a gate always runs its judge and the engine always derives the verdict ([JDG](judge-and-verdict.spec.md)). What acceptance licenses is trust in the judge's grades elsewhere: stable mode ([LIF-B6](lifecycle-and-evals.spec.md)), outcome filing ([SIL-B7](self-improvement.spec.md)), corrected rates in reports ([EVS](eval-suites.spec.md)), judge-graded trial targets and ladder evidence. This is the offline half of judge reliability; production labels are the other half ([FBK](feedback-and-judge-reliability.spec.md)), and they measure different errors. The recursion stops at people: a judge never writes a gold label. The gaps it closes are E1 to E8, E11, E15 and E16 of [research `eval-and-judge-gap-analysis`](../research/eval-and-judge-gap-analysis.rsrch.md); design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md). Workflow authors, operators moving a workflow to stable mode and the loop depend on it.
 
+## Depends on
+
+- `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `executor-interface.spec.md`: executor interface
+- `judge-model-by-risk.spec.md`: judge model by risk
+- `lifecycle-and-evals.spec.md`: live judge scoring (LIF-B15)
+- `security.spec.md`: security posture
+- `self-improvement.spec.md`: uncalibrated stays local (SIL-B7)
+- `session-contract.spec.md`: session contract
+
 ## Behaviours
 
 ### JCL-B9 Gold case set

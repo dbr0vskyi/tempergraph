@@ -4,6 +4,32 @@
 
 Everything a repository's runs leave on the machine lives in one folder, the state root `<main checkout>/.tempergraph/` ([WSP](workspace-and-concurrency.spec.md)), in a fixed layout: checkpoints, run logs, the full log of every agent session on every executor, the engine's own code log, deterministic check output, hook output, batch files, the ledger and scratch. A per-user home folder, `~/.tempergraph/`, holds what spans repositories on one machine. This spec owns both layouts, the manifest that versions them, the engine's code log, retention and the `logs` and `store` verbs. One known layout means the monitor, the troubleshooter skill and a person with a shell all find a session's full log by its `session_key`, whichever executor ran it ([ADR `one-local-store-layout-with-a-manifest`](../adr/one-local-store-layout-with-a-manifest.adr.md)). Writing any of it is best effort (OVR-B4) and nothing here is published (OVR-B11). Retention is never automatic: a person decides what history to drop. Every observer, the troubleshooter and the self-improvement loop depend on this layout; release 1 deviations are kept in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: ask unit
+- `central-run-stats.spec.md`: central run stats
+- `durability-and-resume.spec.md`: wait (DUR-B5)
+- `engine-update.spec.md`: engine install and update
+- `improvement-data.spec.md`: retention (IMD-B14)
+- `observability-and-cost.spec.md`: logging fails safely (OBS-B3)
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+- `plugin-shell.spec.md`: the ignore rule (SHL-B8)
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-control.spec.md`: run control
+- `run-events.spec.md`: common record envelope (EVT-B8); activity journal (EVT-B17)
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `schedule-ticks-and-unattended-fires.spec.md`: schedule ticks and unattended fires
+- `schedules.spec.md`: schedules
+- `security.spec.md`: the publish boundary is a file boundary (SEC-B9)
+- `self-improvement.spec.md`: self-improvement loop
+- `session-review.spec.md`: session digest and session review
+- `state-and-run-migration.spec.md`: state and run migration across releases
+- `supervision-cost.spec.md`: supervision cost
+- `tool-host.spec.md`: tool host
+- `workflow-authoring.spec.md`: workflow authoring
+- `workflow-upgrade.spec.md`: workflow upgrade
+- `workspace-and-concurrency.spec.md`: executor scratch stays in the state root (WSP-B5)
+
 ## Behaviours
 
 ### LOS-B7 State root top level

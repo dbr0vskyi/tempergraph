@@ -4,6 +4,10 @@
 
 The one pause a run makes for the owner. When the conversation value is `blocking` or `always` ([conversation](conversation.spec.md)), the run asks the owner every question it has for them in a single pause, after the reading sessions of discovery and before its writing session: each owner decision of the triage note is a typed choice question with its options and its default, each question that blocks the change and that a reading session could not answer is a question the owner answers in words, and `always` adds a question on the reading of each findable gap that no spec already answers. The owner is asked last, so that nothing is asked that the code or the documents answer. The owner, a script, or the agent that started the run answers by terminal, by file or by decision words; what the agent cannot answer stays open for a person; once the deadline has passed each open question takes its default. A run with nothing to ask makes no pause. Discovery closes each owner decision on its answer, or on its default when it has none, and says in its hand-off which it did. How an ask takes, checks and keeps answers and applies a deadline is the engine's ([ASK-B5](../../../tempergraph/docs/specs/ask-unit.spec.md), [FLX-B8](../../../tempergraph/docs/specs/flow-extensions.spec.md)) and is not restated here. Whoever starts a run and whoever answers its questions depend on it. Part of the [overview](overview.spec.md); the units are `owner_questions`, a script with no model session and no gate that lists the questions of the pause after the reading sessions and says whether there are any, which this spec describes, the route that pauses or skips ([ask_route](ask-route.spec.md)) and the pause itself ([ask_owner](ask-owner.spec.md)).
 
+## Depends on
+
+- `../../../tempergraph/docs/specs/ask-unit.spec.md`: answering (ASK-B8); defaults at a deadline (ASK-B10)
+
 ## Behaviours
 
 ### OWQ-B1 The run pauses once for its questions

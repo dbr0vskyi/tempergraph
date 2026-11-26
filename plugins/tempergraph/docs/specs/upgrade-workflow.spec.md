@@ -4,6 +4,22 @@
 
 The model-assisted part of a workflow upgrade ([WUP-B18](workflow-upgrade.spec.md)) is itself a tempergraph workflow, shipped with the engine like the self-improvement workflow ([SIL](self-improvement.spec.md)). It takes the items of one upgrade plan that no transform can do, edits the workflow package on the upgrade branch, and is held to the engine's own rails: every edit is a step session followed by a deterministic check and an independent judge, the engine derives the verdict, budgets bound retries, and every question only the owner can answer is a pause for the owner ([ADR `upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest`](../adr/upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md), [ADR `independent-judge-engine-verdict`](../adr/independent-judge-engine-verdict.adr.md)). It never verifies the whole upgrade, never stamps and never opens a pull request; those stay with the model-free verb ([WUP-B19](workflow-upgrade.spec.md)). Steps and their gates change apart ([ADR `steps-and-their-graders-change-apart`](../adr/steps-and-their-graders-change-apart.adr.md)): the model may touch a gate's text only through an owner item. Workflow owners upgrading a package and the `upgrade` verb depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `compiler-and-flow.spec.md`: compiler and flow
+- `durability-and-resume.spec.md`: status document (DUR-B11)
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `executor-interface.spec.md`: executor interface
+- `improvement-proposals.spec.md`: change classes (PRP-B14)
+- `independence-guard.spec.md`: independence guard and judge views
+- `judge-and-verdict.spec.md`: judge and verdict
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `version-metadata.spec.md`: compatibility changelog entries (VER-B9); migrate actions (VER-B12); workflow version fields (VER-B14)
+- `workflow-model.spec.md`: workflow model and validation
+- `workflow-upgrade.spec.md`: where it works (WUP-B14); the plan (WUP-B16)
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### UWF-B6 Registration
