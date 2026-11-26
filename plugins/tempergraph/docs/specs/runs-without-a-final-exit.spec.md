@@ -15,7 +15,7 @@ WHEN a person stops a paused thread, at a gate or before a unit named by `--paus
 
 ### SIL-B28 A final exit covers the thread's earlier pauses
 
-WHEN a thread reaches a final exit (SIL-B9) THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread dealt with (SIL-B47) and no ticket of the thread holds (SIL-B48), as findings of that exit, so that its friction lens judges their faults (SIL-B10) and, at a person's stop (SIL-B27), its session review is planned from their signals ([SRV-B13, SRV-B16](session-review.spec.md)).
+WHEN a thread reaches a final exit (SIL-B9) THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread dealt with (SIL-B47) and no ticket of the thread holds (SIL-B48), as findings of that exit, so that its friction lens judges their faults (SIL-B10, SIL-B49) and, at a person's stop (SIL-B27), its session review is planned from their signals ([SRV-B13, SRV-B16](session-review.spec.md)).
 
 - GIVEN a thread whose first segment paused on `retries_spent` at unit `code` WHEN a person stops it at that pause THEN the ticket's friction lens is on and the loop child's friction judge is asked about the `retries_spent` finding of `code`; in stable mode the session review plan has depth `partial` with the last attempt and the judge of `code` as its targets
 - GIVEN a thread whose first segment paused on `gap_escalation` at unit `review`, was resumed with `proceed` and then ended with exit 0, with exit 4 and reason `stopped_by_request`, with exit 4 and reason `attempt_cap` or with exit 5 WHEN its loop child runs THEN the ticket holds the fingerprint of the `gap_escalation` finding of `review` and the friction judge is asked about it
@@ -107,7 +107,7 @@ WHEN the loop child asks the friction judge about findings THE loop child SHALL 
 WHEN the loop child asks the friction judge about findings THE loop child SHALL show in the prompt, for the last segment and for each earlier segment that ended in a pause and holds a finding the prompt lists, a section headed by the segment's exit code and its reason, with the counts of the record kinds of the segment's units and the ids of the criteria that blocked them, and no text of a record.
 
 - GIVEN a thread whose first and second segments each ended in a pause and held a finding, and whose third segment ended with exit 0 WHEN the judge is asked about the findings THEN the prompt holds three sections, headed by exit code 3 and the first pause's reason, exit code 3 and the second pause's reason, and exit code 0 and its reason, each with the counts of the record kinds of its own units and the ids of the criteria that blocked them
-- GIVEN a paused segment whose findings an earlier loop was handed WHEN the judge is asked about the last segment's findings THEN the prompt holds the last segment's section and none for that paused segment
+- GIVEN a paused segment whose findings an earlier loop of the thread dealt with (SIL-B47) WHEN the judge is asked about the last segment's findings THEN the prompt holds the last segment's section and none for that paused segment
 - GIVEN a paused segment whose records hold a distinct word in a check's notes and another in a judge's gap WHEN the judge is asked THEN neither word is in any section
 
 ### SIL-B51 A finding is bound to the segment it was made in

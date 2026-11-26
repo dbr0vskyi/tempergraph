@@ -146,10 +146,10 @@ WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B2
 
 ### CLI-B21 The filing outbox is listed
 
-WHEN `improve outbox list` is given THE engine CLI SHALL print one JSON document with `schema_version` and `entries`, one for each payload in the state root's filing outbox ([SIL-B19](self-improvement.spec.md)), oldest first, holding `op`, `repo`, `title` (a payload that opens an issue) or `number` (any other), `fingerprint` and `age_days` (days since it was first queued, to one decimal place), never the body, and write nothing.
+WHEN `improve outbox list` is given THE engine CLI SHALL print one JSON document with `schema_version` and `entries`, one for each payload in the state root's filing outbox ([SIL-B19](self-improvement.spec.md)), oldest first and those with no queue time last, holding `op`, `repo`, `title` (a payload that opens an issue) or `number` (any other), `fingerprint` and `age_days` (days since it was first queued, to one decimal place), never the body, and write nothing.
 
 - GIVEN an outbox of a payload that opens an issue, queued two days ago, and a comment on issue 7 WHEN `improve outbox list` runs THEN `entries` holds the first with its title, its fingerprint and `age_days` 2.0, then the comment with `number` 7, and no entry holds a body
-- GIVEN a payload first queued 3 days ago that a refused delivery put back, and one that holds no queue time and no fingerprint WHEN `improve outbox list` runs THEN the first has `age_days` 3.0 and the second has `age_days` and `fingerprint` `null`
+- GIVEN a payload first queued 3 days ago that a refused delivery put back, and one that holds no queue time and no fingerprint WHEN `improve outbox list` runs THEN the first is listed first with `age_days` 3.0 and the second last with `age_days` and `fingerprint` `null`
 - GIVEN no filing outbox WHEN `improve outbox list` runs THEN `entries` is empty, it exits 0 and the state root is unchanged
 
 ### CLI-B22 The filing outbox is cleared whole or by fingerprint
@@ -201,7 +201,7 @@ WHEN `improve outbox --help` or `resume --help` is given THE engine CLI SHALL sh
 - CLI-AC9 (CLI-B16): A mutating verb's first record carries a caller block, and a read-only verb writes none
 - CLI-AC10 (CLI-B20): After a fixture loop child has ended, `attention` shows the summary of the newest loop child of each workflow with its counts and at most three observations and no note text, carries it as `loop[]` and not as an item in `--json`, and leaves the state root unchanged
 - CLI-AC11 (CLI-B20): After a fixture loop child that recorded no finding and no observation and whose reviews all failed as `usage_limit` has ended, `attention` shows its thread with the failed reviews counted by error class and `--json` carries `review_failed` in its `loop[]` entry, and a fixture summary with no finding, no observation and no failed review shows nothing
-- CLI-AC12 (CLI-B21): `improve outbox list` on a fixture outbox of a payload that opens an issue, a comment and a reopen prints one entry for each, oldest first, with its op, repository, title or issue number, fingerprint and age in days and no body, leaves the state root's hash unchanged, and prints no entry for an absent outbox
+- CLI-AC12 (CLI-B21): `improve outbox list` on a fixture outbox of a payload that opens an issue, a comment and a reopen prints one entry for each, oldest first and any entry with no queue time last, with its op, repository, title or issue number, fingerprint and age in days and no body, leaves the state root's hash unchanged, and prints no entry for an absent outbox
 - CLI-AC13 (CLI-B22, CLI-B23): `improve outbox clear --fingerprint <fp>` on a fixture outbox removes the entries of that fingerprint and keeps the others, `improve outbox clear --all` removes every entry, and `improve outbox clear` with neither option or with both exits 2 and leaves the outbox as it was
 - CLI-AC14 (CLI-B24, CLI-B25): `resume --reason` with each of the six words leaves that word on the ledger row of the resume, a resume with no `--reason` leaves none, and any other value, a sentence among them, exits 2 naming the six words and leaves the ledger and the run log as they were
 - CLI-AC15 (CLI-B26): `improve outbox --help` names `list` and `clear`, and `resume --help` names `--reason` and its six words
