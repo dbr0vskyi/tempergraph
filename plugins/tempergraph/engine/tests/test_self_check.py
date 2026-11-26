@@ -72,7 +72,8 @@ class Previewing:
                 (Path(req.workdir) / "plan.md").write_text("done\n")
         after = {k: v for k, v in hash_tree(root).items() if "tickets/" not in k and "checks/" not in k
                  and "command_runs" not in k}
-        self.state_during = {"same": str(before == after)}
+        changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+        self.state_during = {"same": str(before == after), "changed": ", ".join(changed)}
         return answer("Expanded.", session_id="s")
 
     def run_judge(self, req: SessionRequest, views: Any, sink: Any) -> SessionResult:
@@ -106,7 +107,7 @@ def test_two_previews_then_the_gates_own_check(repo: Path) -> None:  # CHK-B7
 def test_a_preview_writes_no_state_and_spends_no_budget(repo: Path) -> None:  # CHK-AC6
     ex = Previewing(repo, calls=2)
     go(repo, ex)
-    assert ex.state_during == {"same": "True"}
+    assert ex.state_during == {"same": "True", "changed": ""}  # a failure names the state files that changed
     assert recs(repo, "budget") == [] and len(recs(repo, "gate")) == 1
     assert not list((state_root_path(repo) / "tickets").glob("*.json"))  # the ticket ended with the attempt
 
