@@ -136,6 +136,7 @@ export type RunSummary = {
   cost: string
   question: string | null
   resume: string | null
+  asks: string | null // an ask's questions: `<n> of <m> questions open`
   life: string | null // sign of life of the session in flight: its open tool, or how long it has been quiet
 }
 
@@ -167,8 +168,16 @@ export function summarise(row: StatusRow, detail: DetailDoc | undefined, now: nu
     cost: money(detail ? sumCost(detail) : row.cost),
     question: pause?.question ?? null,
     resume: pause?.resume?.[0] ?? row.pending_gates?.[0]?.resume ?? null,
+    asks: askText(row.pending_gates),
     life: current?.state === 'running' && row.alive ? lifeText(att, detail?.health) : null,
   }
+}
+
+/** The question counts of the first waiting ask (an `input` gate), else null (MRV §2.3, engine ASK-AC4). */
+export function askText(gates: StatusRow['pending_gates']): string | null {
+  const g = (gates ?? []).find(x => x.kind === 'input' && typeof x.questions === 'number')
+  if (!g) return null
+  return `${g.unanswered ?? 0} of ${g.questions} question${g.questions === 1 ? '' : 's'} open`
 }
 
 /** The open session of an attempt: the last step or judge session that carries a live block. */
@@ -348,7 +357,7 @@ export function listRow(r: RunSummary): string {
   const where = r.unit ? `${r.unit}${r.node ? `·${r.node}` : ''}` : ''
   const att = r.attempt ? `a${r.attempt}${r.attempt > 1 ? ' ↻' : ''}` : ''
   const time = r.mark === '⏸' ? `waits ${duration(r.waiting)}` : duration(r.elapsed)
-  return [`${r.mark} ${r.label}`, r.workflow, `${r.passed}/${r.planned}`, where, att, time, r.life, r.cost]
+  return [`${r.mark} ${r.label}`, r.workflow, `${r.passed}/${r.planned}`, where, att, time, r.asks, r.life, r.cost]
     .filter(Boolean).join('  ')
 }
 

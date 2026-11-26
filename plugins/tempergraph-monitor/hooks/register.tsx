@@ -597,6 +597,7 @@ export const register: Register = (on, options) => {
 
     if (v.level === 'pause') {
       const p = d.pause
+      const asks = list.find(r => r.threadId === v.thread)?.asks
       if (!p) return <Box flexDirection="column">{header}<Text dimColor>The run is not waiting for a person.</Text>{footer}</Box>
       const driver = driverFill(d)
       return (
@@ -604,6 +605,7 @@ export const register: Register = (on, options) => {
           {header}
           <Text>{`${p.unit} · ${p.kind ?? 'pause'} · waiting ${duration(p.waiting_s)}`}</Text>
           {p.question && <Text>{p.question}</Text>}
+          {asks && <Text>{asks}</Text>}
           {(p.artifacts ?? []).map(a => a.path
             ? <Button key={`art:${a.key}`} plain label={`${a.key}: ${a.path}`} onPress={() => copy($, a.path!)} />
             : <Text dimColor>{`${a.key}: a value, no file`}</Text>)}

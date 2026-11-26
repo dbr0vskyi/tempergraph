@@ -18,6 +18,7 @@ export type MonitorRun = {
   cost: string
   question: string | null
   resume: string | null
+  asks: string | null
   life: string | null
 }
 

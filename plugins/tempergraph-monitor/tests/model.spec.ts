@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test'
 import type { DetailDoc, RunRecord, StatusDoc, StatusRow } from '../hooks/lib/engine'
 import { isReadable } from '../hooks/lib/engine'
 import {
-  alertsFrom, attemptRows, bandRow, healthAlerts, levelText, lifeText, listRow, money, narrator, runLabel, runList, sessionNow,
+  alertsFrom, attemptRows, bandRow, healthAlerts, askText, levelText, lifeText, listRow, money, narrator, runLabel, runList, sessionNow,
   statusLine, summarise, touchStrip, unitRowText, unitRows,
 } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
@@ -81,6 +81,13 @@ describe('labels and money (MBA §2.1, contract M4)', () => {
     expect(lifeText(quiet, { suspect_stall: true })).toBe('stall? quiet 1m')
     expect(lifeText(undefined, { silent_s: 40 })).toBe('quiet 40s')
     expect(lifeText(undefined, {})).toBeNull()
+  })
+  test('ASK-AC4: an ask waiting on a person shows its open and total question counts', () => {
+    expect(askText([{ unit: 'clarify', kind: 'input', resume: 'r', questions: 3, unanswered: 2 }])).toBe('2 of 3 questions open')
+    expect(askText([{ unit: 'clarify', kind: 'input', resume: 'r', questions: 1, unanswered: 0 }])).toBe('0 of 1 question open')
+    expect(askText([{ unit: 'review', kind: 'review', resume: 'r' }])).toBeNull()
+    const row = { ...status.threads[0]!, pending_gates: [{ unit: 'clarify', kind: 'input', resume: 'r', questions: 3, unanswered: 2 }] }
+    expect(listRow(summarise(row, undefined, 0))).toContain('2 of 3 questions open')
   })
   test('estimates and gaps are never shown as reported', () => {
     expect(money({ reported: 0.1, completeness: 'complete' })).toBe('$0.10')

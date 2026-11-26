@@ -54,6 +54,7 @@ Rows grouped by origin: this repository first, then other repositories on this m
 | Attempt | `attempt n` of the unit in flight, `↻` if n > 1 |
 | Last verdict | status |
 | Elapsed, or waiting time | status, health |
+| Questions | for a run waiting at an ask: `<open> of <total> questions open`, from the status document's `input` gate ([ASK-B4](../../../tempergraph/docs/specs/ask-unit.spec.md)); the pause view shows the same line |
 | Sign of life | for a live run's unit in flight: the open tool and how long it has run, else `quiet <time>` since the session's last event (the run's `silent_s` without a live block), led by `stall?` when the engine suspects a stall; from the detail document's live block and `health` ([RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md)) |
 | Cost | estimated (and reported where every session reported), flag |
 | Executors | first letters of executors used (`c` claude, `s` agent-sdk, `m` messages-api, `a` antigravity) |
