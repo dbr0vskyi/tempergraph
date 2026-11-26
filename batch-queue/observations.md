@@ -125,6 +125,49 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **After a pull, `status` shows the other machine's worktree path as `active`** (`/Users/.../tempergraph.worktrees/temperspec--i123`) until the resume attaches a local one.
 - **This machine had no `gh`**; it was installed and signed in before any run reached its last stage.
 
+### The second session's runs (2026-11-25 evening to 2026-11-26, three side by side on a Raspberry Pi 5)
+
+Nine runs merged, about 138 USD reported (i123 28.85, i123b 18.11, i153 18.23, i148 16.5, i170 14.40, i21b 13.35, i169 10.11, i150 9.49, i171 9.08). Filed from this section: #185 to #202 (see `QUEUE.md`). Every merged run got an independent reader after the merge; **every review found something the gates had passed**, one of them blocking (i123).
+
+**What paused a run, by cause (about 25 touches of the operator):**
+
+| Cause | Runs | Issue | Could a model-free rule have decided it? |
+|---|---|---|---|
+| The phase judge cannot tell the phase's changes from earlier steps' | i21b, i123b | #148 (merged as i148), #192 | Yes: the operator ran `git log` each time |
+| A false `ts-code-ruleread`: the session record dropped the calls made before a session's last wake-up | i21b, i148, i123b | #191 (fixed) | An engine defect; the retry could never pass |
+| The suite fails for the machine or the operator's environment (a cached Claude sign-in; `TEMPERGRAPH_AUTONOMY`; `TMPDIR` under the home folder; a full `/tmp`) | i123 twice, i21b, i148, i170, i153 | #185 (fixed), #189 | The gate classed each as environmental by the base run, and still paused |
+| A plan row a session cannot do: a command it may not run (`upgrade-check --stamp`, `author verify`), or a clause that needs a later phase's code, or one that contradicts an existing criterion | i153 twice, i150, i148 | #156, #166, to file: the workflow runs restamps as a script step | The session named the conflict and the fix in its first note; the retries in between were waste |
+| A judge that says it did not read (seen "only as search output") | i123b outcome, i153 phase `p3` | #201, to file | Yes: re-ask the judge with its own fix line before a person |
+| The outcome gate sends the run back for a fact no step can change (`ts-spec-fresh` after a merge into the batch branch, `ts-verify` on an environmental failure), then `expand` burns its budget | i21b, i153 (i123 paused on the loop budget) | #197 | Yes |
+| The attempt cap of 15 in a healthy run (eight reading items count) | i123b | to file | Yes |
+| An owner question (well formed: two options, a default, what goes wrong either way) | i171 | | No, and it should not |
+
+**The engine and the workflow:**
+
+- **A session that waits on a long command is woken several times** (the shell tool returns at about 600 s). One code session ran 7,203 s against a limit of 5,400 s and the run log counts 2 turns for 6 results. This is the root of #191 and part of #189.
+- **Merging into the batch branch while runs are live costs each of them a trip back**: `ts-spec-fresh` fails at their outcome gate when the merge changed a spec they edit (i21b, i153). The owner's rule (merge straight away) and the gate's rule collide; #197 item 1.
+- **Two runs added the same spec ids** (i123 and i21b both wrote LIF-B17 and LIF-AC12); the merge renumbered one side. Parallel runs need ids that cannot collide, as file names already do.
+- **Four runs edited `run/nodes.py`** (i123b, i148, i169, i153); every merge was textually clean, and the reviews still found two interactions (`visit_keys` doubled after a refused retry; the entry commit known to the engine and derived again by the package from commit subjects).
+- **A stop request outlives the stop it caused**: i173 stopped at its boundary (exit 4, `stopped_by_request`), and the next plain `resume` ended at once as `stopped`, which only `--decision retry` re-opens.
+- **A stop is an exit, and the loop runs at every exit**: the loop filed #198 to #200 at the stop of i170, minutes before the hold meant for its final exit.
+- **Restamping a package cannot be done in a worktree** while the workflow's name is registered from the main checkout (the register rung refuses); it needs a throwaway `TEMPERGRAPH_HOME`.
+- **A package's test child imported another checkout's engine** (`tests/test_workflow_packages.py` replaced `PYTHONPATH`); fixed inside run i153.
+- **Step sessions edit outside their plan to get green**: i21b's retry patched three schedule tests to work around #185, i170's added `TEMPERGRAPH_AUTONOMY` to the suite's isolation. Both were right about the cause and outside their task; neither gate objected.
+- Notes land in two places: runs in the engine's area write to `plugins/tempergraph/docs/{plans,tasks}`, i150 (the package's area) wrote to the repository root (#159).
+- `carry pull` prints the wrong work branch; `resume --decision retry` is refused on an unfinished thread (both in the section on the second machine above).
+- The cleanest runs came last: i171 (9.08 USD, 35 minutes, one owner question) and i169 (10.11 USD, 44 minutes, **no touch**), the first run started after the fixes of #148 and #191 were on the branch.
+
+**The improvement loop:**
+
+- Until #171 was merged the loop filed nothing all night (every decision `below_floor`), as on the day before.
+- The review of #171 replayed the pattern rule on this machine's records before any run could use it: 9 to 11 issues, about four of them noise and three duplicates of issues a person had filed, and 3 to 9 comments at every exit with no cap. The filing gate is one draw of an unstable flag: for 6 of 19 count-met clusters the friction judge gave both answers across runs. Request `tasks/i171b.md`.
+- What it did file (#198 `tool_repeat`, #199 `idle_burn`, #200 `context_bloat`) is what the replay named first. `context_bloat` is true and was already #134 and #157.
+- After #169, replayed over 144 recorded judge sessions: `judge_unread_pass` 0 times (the step's notes file is always among the changed paths and always opened), `judge_partial_read` 3 times, all true (#201). The loop still has no lens that would have caught i123's blocker; that is #124 and #173.
+- The loop saw none of the operator's work above as such: a pause answered by the operator becomes `agent_decided:escalation` on the workflow's side (#172).
+- **"Review, then a follow-up run with the review as its task" converges**: i123b fixed all eight findings it was given for 63 percent of the first run's cost, and its own review found two new moderate defects, both in claims of its own spec that no test exercised. The reviews' value was in reading real run logs and replaying orders and failures, which no gate does.
+
+**Operating three runs on a small machine:** the full suite takes 16 minutes alone and 26 beside two others; load reached 10 to 12 on four cores with two code steps at once; `/tmp` (8 GB in memory) filled with pytest folders and failed every suite for an hour until old folders were removed. With sessions waiting on suites the machine, not the model, sets the pace (#189).
+
 ## What the loop did with the day (sub-agent analysis of the nine threads' records, 2026-11-25)
 
 The loop ran 11 times on 9 threads, started 280 session reviews (252 done, 28 failed on the usage limit) and spent 9.63 USD, about 8 percent of the runs' 117 USD. It recorded 187 findings in 62 clusters and 405 observations (194 kept). Of 68 decisions, 64 were `below_floor`, 2 `not_judged`, 2 `uncalibrated`: it filed no issue and added no comment. The loop-labelled issues of the day (#114 to #117) are from earlier runs.
