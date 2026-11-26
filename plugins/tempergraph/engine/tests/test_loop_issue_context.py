@@ -146,19 +146,25 @@ def test_the_log_shows_at_most_forty_lines_and_says_how_many_it_left_out() -> No
 
 
 def test_the_context_of_a_paused_segment_is_built_from_that_segment() -> None:  # ISS-AC13, AC 7
-    def seg(t: str, code: int, reason: str, attempt: int) -> list[dict[str, Any]]:
+    def seg(t: str, code: int, reason: str, attempt: int, pause: str | None = None) -> list[dict[str, Any]]:
+        paused = [{"kind": "pause", "ts": f"2026-11-25T{t}:00:02+00:00", "unit": "plan", "reason": pause}] if pause else []
         return [{"kind": "run_started", "ts": f"2026-11-25T{t}:00:00+00:00"},
                 {"kind": "attempt_start", "ts": f"2026-11-25T{t}:00:01+00:00", "unit": "plan", "attempt": attempt},
                 {"kind": "attempt_start", "ts": f"2026-11-25T{t}:00:02+00:00", "unit": "other", "attempt": attempt},
+                *paused,
                 {"kind": "run_exit", "ts": f"2026-11-25T{t}:00:03+00:00", "exit_code": code, "reason": reason}]
 
-    records = seg("01", 3, "budget", 1) + seg("02", 3, "escalation", 2) + seg("03", 0, "finished", 3)
+    # ISS-AC13, AC 8: a paused segment shows the pause's own reason, not the exit record's
+    records = seg("01", 3, "budget", 1, "unresolved_gap") + seg("02", 3, "escalation", 2, "retries_spent") \
+        + seg("03", 0, "finished", 3)
     facts = {"reason": "unresolved_gap", "unit": "plan", "item": "-", "decision": "proceed", "caller": "agent",
              "ruling": "given", "feedback": "not given", "touch": "rescue,steer", "workspace": "unchanged",
              "next_gate": "none"}
     ctx = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00", facts=facts)
     assert ctx["run"]["started"] == "2026-11-25T01:00:00"
-    assert ctx["run"]["exit_code"] == 3 and ctx["run"]["exit_reason"] == "budget"
+    assert ctx["run"]["exit_code"] == 3 and ctx["run"]["exit_reason"] == "unresolved_gap"
+    bare = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T02:00:00+00:00")
+    assert "facts" not in bare["run"] and bare["run"]["exit_reason"] == "retries_spent"  # also with no facts row
     # every fact of SIL-B37, a touch of two classes included (SIL-B43), as ids and enums
     assert ctx["run"]["facts"] == ("pause=unresolved_gap unit=plan item=- decision=proceed caller=agent "
                                    "ruling=given feedback=not_given touch=rescue,steer workspace=unchanged "

@@ -388,15 +388,22 @@ def test_an_issue_and_a_comment_are_built_from_the_paused_segment(
     ex = paused_on_gap(repo, "F-40", monkeypatch)
     finish(repo, "F-40", ex)
     f = finding_of(repo, "F-40", "gap_escalation")
-    log = run_log(repo, "F-40")
-    exit_row = next(r for r in log if r["kind"] == "run_exit" and r["exit_code"] == 3)
     host = MemoryCodeHost()
     child.drain(registry=registry(standin("claude", judges=[gap_only])), host=lambda: host)
     (issue,) = host.issues
-    check_paused_context(issue["body"], f, str(exit_row["reason"]))
+    check_paused_context(issue["body"], f, *pause_and_exit_reasons(repo, "F-40"))
 
 
-def check_paused_context(text: str, f: dict[str, Any], reason: str) -> None:
+def pause_and_exit_reasons(repo: Path, task: str) -> tuple[str, str]:
+    """The reason of the pause that ended the paused segment and the reason of that segment's `run_exit` record."""
+    log = run_log(repo, task)
+    ended = next(i for i, r in enumerate(log) if r["kind"] == "run_exit" and r["exit_code"] == 3)
+    pause = next(r for r in reversed(log[:ended]) if r["kind"] == "pause")
+    return str(pause["reason"]), str(log[ended]["reason"])
+
+
+def check_paused_context(text: str, f: dict[str, Any], reason: str, exit_reason: str) -> None:
+    assert reason != exit_reason, (reason, exit_reason)  # so the two cannot be mixed up
     run = text.split("## Run\n")[1].split("\n## ")[0]
     assert f"Segment started (UTC): `{f['segment_started'][:19]}`" in run
     assert "Exit code: `3`" in run and f"Exit reason: `{reason}`" in run
@@ -412,8 +419,25 @@ def test_a_seen_again_comment_is_built_from_the_paused_segment(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC14, AC 7
     host, _ = drain_with_issue(repo, "F-41", "cause", monkeypatch)
     f = finding_of(repo, "F-41", "gap_escalation")
-    reason = next(r for r in run_log(repo, "F-41") if r["kind"] == "run_exit" and r["exit_code"] == 3)["reason"]
-    check_paused_context(host.comments[0]["body"], f, str(reason))
+    check_paused_context(host.comments[0]["body"], f, *pause_and_exit_reasons(repo, "F-41"))
+
+
+def test_an_issue_shows_the_pauses_reason_when_no_facts_row_was_made(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC13, AC 8
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+
+    def broken(*a: Any, **k: Any) -> Any:
+        raise OSError("facts unreadable")
+
+    monkeypatch.setattr(pause_facts, "of", broken)
+    ex = paused_on_gap(repo, "F-42", monkeypatch)
+    finish(repo, "F-42", ex)
+    host = MemoryCodeHost()
+    child.drain(registry=registry(standin("claude", judges=[gap_only])), host=lambda: host)
+    (issue,) = host.issues
+    reason, exit_reason = pause_and_exit_reasons(repo, "F-42")
+    run = issue["body"].split("## Run\n")[1].split("\n## ")[0]
+    assert reason != exit_reason and f"Exit reason: `{reason}`" in run and "pause=" not in run
 
 
 def test_the_brief_tells_what_the_pauses_section_is_and_how_an_answer_bears_on_attribution(

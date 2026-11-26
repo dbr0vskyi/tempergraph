@@ -1,6 +1,7 @@
 """What answered a pause, for the friction judge (SIL-B37): facts read from ids and enums, never from text.
 
-Each finding is told the pause that ended its own segment (found from `segment_started`): the paused unit and item,
+Each finding is told the pause that ended its own segment (`segment_of`: from `segment_started`, else the segment of the latest `run_exit` at
+or before the finding's time): the paused unit and item,
 the pause's reason, the decision word that answered it, the kind of caller, whether a ruling and whether feedback was
 given (never their words), the classes of the decision's touches, whether the workspace changed and the verdict of the
 next gate of the paused unit, child and item. They come from the run log (`pause`, `workspace` and `gate` records)
@@ -10,6 +11,7 @@ returned (SIL-B38). A fact that cannot be read is `not recorded`, never a guess;
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -34,9 +36,10 @@ def _word(value: Any) -> str:
     return value if isinstance(value, str) and value and len(value) <= 80 and "\n" not in value else UNKNOWN
 
 
-def _own_segment(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]]) -> tuple[int, int] | None:
-    """The index range of the finding's own segment: from the `run_started` at `segment_started` to the next one; for a
-    line without it, the segment whose `run_exit` falls in the second the finding was made."""
+def segment_of(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]]) -> tuple[int, int] | None:
+    """SIL-B51: the index range of the finding's own segment: from the `run_started` at `segment_started` to the next
+    one; for a line without it, the segment whose `run_exit` is the latest at or before the finding's time, both read
+    to the whole second. None when no such segment is found or the finding's time cannot be read."""
     starts = [i for i, r in enumerate(records) if r.get("kind") == "run_started"]
     bounds = list(zip(starts, [*starts[1:], len(records)], strict=False))
     marked = str(finding.get("segment_started") or "")
@@ -45,8 +48,29 @@ def _own_segment(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]
     made = _second(finding.get("at"))
     if made is None:
         return None
-    return next((b for b in bounds if any(r.get("kind") == "run_exit" and _second(r.get("ts")) == made
-                                          for r in records[b[0]:b[1]])), None)
+    found: tuple[int, int] | None = None
+    latest: datetime | None = None
+    for b in bounds:
+        for r in records[b[0]:b[1]]:
+            if r.get("kind") != "run_exit":
+                continue
+            ended = _second(r.get("ts"))
+            if ended is not None and ended <= made and (latest is None or ended >= latest):
+                found, latest = b, ended
+    return found
+
+
+def pause_reason(seg_records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]]) -> str:
+    """The reason of the pause that ended a segment (SIL-B45): the pause at a listed finding's unit, else the segment's
+    last pause, read from the pause record's own `reason` (its kind when it has none), never the `run_exit` reason.
+    `findings` are those already bound to the segment; `-` when the segment has no pause."""
+    pauses = [r for r in seg_records if r.get("kind") == "pause"]
+    if not pauses:
+        return "-"
+    pick = next((p for f in findings for p in reversed(pauses)
+                 if str(p.get("unit") or "") == str(f.get("unit") or "")
+                 and str(p.get("child") or "") == str(f.get("child") or "")), pauses[-1])
+    return re.sub(r"[^A-Za-z0-9_.:-]", "", str(pick.get("reason") or pick.get("pause_kind") or "-")) or "-"
 
 
 def _touch(row: Mapping[str, Any]) -> str:
@@ -59,7 +83,7 @@ def _facts(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]],
            ledger: Sequence[Mapping[str, Any]], thread: str) -> dict[str, str] | None:
     """The row of one finding, or None when no pause, no decision and no gate is recorded for it."""
     unit, kid = str(finding.get("unit") or ""), str(finding.get("child") or "")
-    own = _own_segment(finding, records)
+    own = segment_of(finding, records)
     if own is None:
         return None
     pauses = [(i, r) for i, r in enumerate(records[own[0]:own[1]], own[0]) if r.get("kind") == "pause"]

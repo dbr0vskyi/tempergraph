@@ -255,29 +255,16 @@ def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str,
     unit with criterion ids."""
     starts = [i for i, r in enumerate(records) if r.get("kind") == "run_started"] or [0]
     bounds = list(zip(starts, [*starts[1:], len(records)], strict=False))
-    listed = {str(f.get("segment_started")) for f in findings if f.get("segment_started")}
-    # SIL-B45: every earlier segment that holds a listed finding, then the last segment
-    chosen = [b for b in bounds[:-1] if str(records[b[0]].get("ts") or "") in listed] + [bounds[-1]]
+    bound = {id(f): pause_facts.segment_of(f, records) for f in findings}  # SIL-B51: the same binding as the facts row
+    # SIL-B45: every earlier segment that holds a bound listed finding, then the last segment
+    chosen = [b for b in bounds[:-1] if any(v == b for v in bound.values())] + [bounds[-1]]
     rows = [f"- `{f.get('fingerprint')}` cause `{f.get('cause')}` class {f.get('class')} side `{f.get('side')}` "
             f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
             + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
             for f in findings]
-    sections = "".join(_segment_section(records[lo:hi], findings) for lo, hi in chosen)
+    sections = "".join(_segment_section(records[lo:hi], [f for f in findings if bound[id(f)] == (lo, hi)])
+                       for lo, hi in chosen)
     return BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {}) + sections
-
-
-def _pause_reason(seg_records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]]) -> str:
-    """The reason of the pause that ended a segment (SIL-B45): the pause at a listed finding's unit, else the segment's
-    last pause, read from the pause record's own `reason` (its kind when it has none), never the `run_exit` reason."""
-    pauses = [r for r in seg_records if r.get("kind") == "pause"]
-    if not pauses:
-        return "-"
-    starts = {str(seg_records[0].get("ts") or "")} if seg_records else set()
-    mine = [f for f in findings if str(f.get("segment_started") or "") in starts]
-    pick = next((p for f in mine for p in reversed(pauses)
-                 if str(p.get("unit") or "") == str(f.get("unit") or "")
-                 and str(p.get("child") or "") == str(f.get("child") or "")), pauses[-1])
-    return re.sub(r"[^A-Za-z0-9_.:-]", "", str(pick.get("reason") or pick.get("pause_kind") or "-")) or "-"
 
 
 def _segment_section(seg_records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]] = ()) -> str:
@@ -294,7 +281,7 @@ def _segment_section(seg_records: Sequence[Mapping[str, Any]], findings: Sequenc
     done = next((r for r in reversed(seg_records) if r.get("kind") == "run_exit"), None)
     head = ""
     if done is not None and isinstance(done.get("exit_code"), int):
-        why = _pause_reason(seg_records, findings) if done["exit_code"] == 3 else \
+        why = pause_facts.pause_reason(seg_records, findings) if done["exit_code"] == 3 else \
             re.sub(r"[^A-Za-z0-9_.:-]", "", str(done.get("reason") or "-"))
         head = f" (exit code {done['exit_code']}, reason {why})"
     seg = [f"- `{u}`: " + ", ".join(f"{k} {n}" for k, n in sorted(c.items()))
