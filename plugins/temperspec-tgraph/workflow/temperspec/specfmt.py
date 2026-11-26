@@ -1,4 +1,4 @@
-"""The formats the checks read: specs, the triage note, the hand-off and the plan.
+"""The formats the checks read: specs, decision records, the triage note, the hand-off and the plan.
 
 One home per format: the rule files under `rules/` say the same in words, and `tests/test_rules_match.py`
 fails when a rule and this module disagree on a heading or a pattern."""
@@ -47,7 +47,18 @@ ROUTES = ("discovery", "plan", "discovery-only", "quick")
 # What the quick lane may hold at most (the task-notes rule lists the same); over any of these the task is planned.
 QUICK_MAX = {"criteria": 3, "code_files": 2, "lines": 200}
 PROOF_HEADER = ("criterion", "test", "command")
-DECISION_HEADINGS = ("Context", "Decision", "Options considered", "Consequences")
+# The decision rule's sections, in reasoning order; the check reads that each is present, not their order.
+DECISION_HEADINGS = ("Context", "Current state", "Forces", "Options considered", "Decision", "Decision rationale",
+                     "Consequences", "Risks", "Assumptions", "Revisit when")
+DECISION_CAP_BYTES = 10 * 1024  # "at most about 10 KB": over it the record reaches the judge as a lead
+FORCE_ROW = re.compile(r"^\s*[-*]\s+\**([CF])(\d+)\b\**")
+ASSUMPTION_ROW = re.compile(r"^\s*[-*]\s+\**(A\d+)\b")
+# A sentence of `Current state` cites when it holds a code span, a link or a behaviour or criterion id.
+CITES = re.compile(r"`[^`]+`|\]\([^)]+\)|\b[A-Z][A-Z0-9]{1,7}-(?:B|AC)\d+\b")
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z`\[(])")
+VAGUE_REVISIT = re.compile(r"\b(if|when|as) (needs?|requirements?|circumstances|things) change|\bas needed\b|"
+                           r"\bif necessary\b|\bwhen appropriate\b|\bif (it|this) (no longer works|stops working)\b",
+                           re.I)
 RESEARCH_HEADINGS = ("Problem statement", "Sources consulted", "Key findings", "Conclusions", "Open questions")
 TEMPLATE_DIR = "docs/templates"
 EXAMPLE = re.compile(r"^```markdown\n(.*?)^```$", re.M | re.S)
@@ -811,3 +822,115 @@ def inventory(specs: Sequence[tuple[str, str]]) -> str:
         heads = [f"- {m.group(1)}{m.group(2).rstrip()}" for m in map(BEHAVIOUR_HEAD.match, text.splitlines()) if m]
         out += (heads or ["- (no behaviours)"]) + [""]
     return "\n".join(out)
+
+
+def _section_lines(text: str) -> dict[str, list[tuple[int, str]]]:
+    """Level-2 heading (lower case) -> its (line number, line) pairs, outside fenced code."""
+    out: dict[str, list[tuple[int, str]]] = {}
+    current: list[tuple[int, str]] | None = None
+    fenced = False
+    for n, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        m = None if fenced else HEADING.match(line)
+        if m and len(m.group(1)) <= 2:
+            current = out.setdefault(m.group(2).strip().lower(), []) if len(m.group(1)) == 2 else None
+            continue
+        if current is not None:
+            current.append((n, line))
+    return out
+
+
+def _filled(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    return [(n, ln) for n, ln in lines if ln.strip() and not ln.strip().startswith("<!--")]
+
+
+def decision_problems(text: str) -> tuple[list[tuple[int, str, str]], list[tuple[int, str, str]]]:
+    """The decision rule's form, read from a decision record: (failures, leads), each (line, message, fix).
+    Failures: a section missing or empty; a `Current state` sentence that cites nothing; a constraint with no
+    source; fewer than two options, or an option with no `How it works:` line; a force id the rationale never
+    names; a risk without `Limited by:` and `Noticed by:`; an assumption without `If wrong:`. Leads: a record over
+    about 10 KB, a `Revisit when` that names nothing observable."""
+    fails: list[tuple[int, str, str]] = []
+    leads: list[tuple[int, str, str]] = []
+    secs = _section_lines(text)
+    for h in DECISION_HEADINGS:
+        if h.lower() not in secs:
+            fails.append((1, f"section `## {h}` is missing", f"add `## {h}` as the decision rule says"))
+        elif not _filled(secs[h.lower()]) and h != "Options considered":
+            fails.append((1, f"section `## {h}` is empty", "fill it, with one line for a small decision"))
+    current = _filled(secs.get("current state", []))
+    if not (len(current) == 1 and current[0][1].strip().lower().rstrip(".") == "nothing exists yet"):
+        for n, line in current:
+            body = line.strip().lstrip("-*|").strip()
+            for sentence in SENTENCE_END.split(body):
+                if sentence.strip() and not CITES.search(sentence):
+                    fails.append((n, f"a sentence of `Current state` cites no path, link or id: "
+                                     f"`{sentence.strip()[:80]}`", "cite the file, document or id it was read in"))
+                    break
+    forces: list[str] = []
+    for n, line in _filled(secs.get("forces", [])):
+        row = FORCE_ROW.match(line)
+        if row is None:
+            continue
+        forces.append(row.group(1) + row.group(2))
+        if row.group(1) == "C" and not re.search(r"\bSource\s*:", line, re.I):
+            fails.append((n, f"constraint {forces[-1]} names no source", "add `Source:` with the spec id, document, "
+                          "file or person it comes from, or move it under `Assumptions`"))
+    if "forces" in secs and not forces:
+        fails.append((1, "`Forces` lists no force with an id", "list each force as `- C1 (constraint): …` or `- F1: …`"))
+    options = _option_blocks(text)
+    if "options considered" in secs and len(options) < 2:
+        fails.append((1, f"`Options considered` describes {len(options)} option(s) under `###` headings",
+                      "compare at least two real options, each under its own `###` heading"))
+    for n, title, body in options:
+        if not re.search(r"^\s*\**How it works\**\s*:", body, re.I | re.M):
+            fails.append((n, f"option `{title}` has no `How it works:` line",
+                          "say in one to three sentences what would be built or changed"))
+    rationale = " ".join(ln for _, ln in secs.get("decision rationale", []))
+    for fid in forces:
+        if not re.search(rf"(?<![\w-]){fid}(?![\w-])", rationale):
+            fails.append((1, f"`Decision rationale` does not answer force {fid}",
+                          f"say whether the chosen option meets {fid} or gives it up, and why"))
+    risks = _filled(secs.get("risks", []))
+    if not (len(risks) == 1 and risks[0][1].strip().lower().rstrip(".") == "none known"):
+        for n, line in risks:
+            if re.match(r"^\s*[-*]\s+", line) and not (re.search(r"\bLimited by\s*:", line, re.I)
+                                                       and re.search(r"\bNoticed by\s*:", line, re.I)):
+                fails.append((n, "a risk does not say what limits it and how it would be noticed",
+                              "add `Limited by:` and `Noticed by:`, or write `None known.`"))
+    assumptions = _filled(secs.get("assumptions", []))
+    if not (len(assumptions) == 1 and assumptions[0][1].strip().lower().rstrip(".") == "none"):
+        for n, line in assumptions:
+            row = ASSUMPTION_ROW.match(line)
+            if row and not re.search(r"\bIf wrong\s*:", line, re.I):
+                fails.append((n, f"assumption {row.group(1)} does not say what it costs if wrong",
+                              "add `If wrong:` with what it would cost"))
+    size = len(text.encode("utf-8"))
+    if size > DECISION_CAP_BYTES:
+        leads.append((1, f"the record has {size:,} bytes, over about 10 KB", "a longer record holds two decisions: "
+                      "split it"))
+    for n, line in _filled(secs.get("revisit when", [])):
+        vague = VAGUE_REVISIT.search(line)
+        if vague:
+            leads.append((n, f"`{vague.group(0)}` names nothing observable",
+                          "name an event or a measurement that reopens the decision"))
+    return fails, leads
+
+
+def _option_blocks(text: str) -> list[tuple[int, str, str]]:
+    """(line, title, body) of each `###` option under `## Options considered`."""
+    out: list[tuple[int, str, list[str]]] = []
+    inside = False
+    for n, line in enumerate(text.splitlines(), 1):
+        m = HEADING.match(line)
+        if m and len(m.group(1)) == 2:
+            inside = m.group(2).strip().lower() == "options considered"
+            continue
+        if not inside:
+            continue
+        if m and len(m.group(1)) == 3:
+            out.append((n, m.group(2).strip(), []))
+        elif out:
+            out[-1][2].append(line)
+    return [(n, t, "\n".join(b)) for n, t, b in out]

@@ -860,7 +860,8 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def discovery_check(ctx: Any) -> Any:
     """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-named, ts-dis-literal,
-    ts-dis-wording, ts-dis-specname, ts-dis-depends, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
+    ts-dis-wording, ts-dis-specname, ts-dis-depends, ts-dis-adrform, ts-dis-adrlead, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread,
+    ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -874,11 +875,33 @@ def discovery_check(ctx: Any) -> Any:
     found = _passes_after_failures(found + _ownership(ctx, specs, "ts-dis-form", "ts-dis-depends"), "ts-dis-form")
     found += _general(ctx, specs, "ts-dis-named", "ts-dis-literal", "ts-dis-wording")
     found += _spec_names(ctx, specs, "ts-dis-specname")
+    found += _decisions(ctx, "ts-dis-adrform", "ts-dis-adrlead")
     found += _reading(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
     found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
+
+
+def _decisions(ctx: Any, form_id: str, lead_id: str) -> list[CheckFinding]:
+    """The decision rule's form on every decision record the run created or changed (`form_id`, failures) and its
+    leads for the judge (`lead_id`): a record over about 10 KB, a `Revisit when` that names nothing observable.
+    Records the run did not touch are not read."""
+    records = [p for p in _changed_docs(ctx) if p.endswith(".adr.md")]
+    texts: list[tuple[str, str]] = []
+    for p in records:
+        t = _read_path(ctx, p)
+        if t is not None:
+            texts.append((p, t))
+    if not texts:
+        return [_find("n_a", c, message="the step created or changed no decision record") for c in (form_id, lead_id)]
+    form: list[CheckFinding] = []
+    leads: list[CheckFinding] = []
+    for path, text in texts:
+        fails, said = fmt.decision_problems(text)
+        form += [_find("fail", form_id, f"{path}:{n}", msg, fix) for n, msg, fix in fails[:LITERAL_MAX]]
+        leads += [_find("maybe", lead_id, f"{path}:{n}", msg, fix) for n, msg, fix in said[:LITERAL_MAX]]
+    return (form or [_ok(form_id)]) + (leads or [_ok(lead_id)])
 
 
 # The spec rule's `General rules, not cases`: words that narrate a change, and an issue reference. Leads for the
