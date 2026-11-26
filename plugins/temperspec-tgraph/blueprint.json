@@ -326,6 +326,22 @@
       }
     },
     {
+      "name": "regeneration",
+      "kind": "script",
+      "summary": "Regenerate declared files that changed",
+      "produces": [
+        "regeneration_report"
+      ],
+      "gate": {
+        "check": true,
+        "judge": false
+      },
+      "on_fail": "back",
+      "back_targets": [
+        "code"
+      ]
+    },
+    {
       "name": "code_join",
       "kind": "route"
     },

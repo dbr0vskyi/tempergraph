@@ -14,7 +14,7 @@ from typing import Any
 
 from tempergraph.api import CheckFinding, checks
 
-from . import review, routing
+from . import regeneration, review, routing
 from . import specfmt as fmt
 
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "__pycache__", "evals", "fixtures", "dist",
@@ -507,12 +507,27 @@ def _source_lines(ctx: Any, sources: list[str]) -> dict[str, int] | None:
     return counts
 
 
+def _regenerated(ctx: Any) -> list[str]:
+    """RGN-B13: the changed paths the repository declares as outputs of a regeneration that only the regeneration
+    unit's commits changed. A path a later step edited stays a changed path; with no readable history there is none."""
+    if not ctx.git.base or not ctx.git.changed_paths:
+        return []
+    declared = [p for p in regeneration.declared_outputs(Path(ctx.workdir)) if p in ctx.git.changed_paths]
+    history = _history(ctx) if declared else None
+    if not history:
+        return []
+    return [p for p in dict.fromkeys(declared)
+            if all(_step_of(subject) == "regeneration" for _, subject, paths in history if p in paths)]
+
+
 def _reading_lines(ctx: Any) -> list[str]:
     """The evidence lines the code judge reads from: the changed source lines, the reading budget and the changed
     source files, the file with the most changed lines first (JRD-B1, JRD-B2)."""
     sources = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/") and not p.endswith(".md")]
     if _prepared_commands(ctx):
         sources = [p for p in sources if p != routing.COMMANDS_FILE]
+    written = _regenerated(ctx)
+    sources = [p for p in sources if p not in written]
     counts = _source_lines(ctx, sources)
     rule = f"one per {LINES_PER_FILE} lines, floor {READING_FLOOR}, ceiling {READING_CEILING}"
     if counts is None:
@@ -551,7 +566,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     commands_file = [routing.COMMANDS_FILE] if _prepared_commands(ctx) else []
-    changed = [p for p in changed if p not in prepared and p not in commands_file]
+    regenerated = _regenerated(ctx)
+    changed = [p for p in changed if p not in prepared and p not in commands_file and p not in regenerated]
     sorted_lists = step == "phase"
     if step is not None and not sorted_lists:
         sorted_lists = any(_step_of(s) == "phase" for _, s, _ in _history(ctx) or [])
@@ -567,6 +583,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     if commands_file:
         lines.append("Written by prepare (the repository's commands file, as prepare wrote it, no step's change): "
                      + routing.COMMANDS_FILE)
+    if regenerated:
+        lines.append("Written by the regeneration (no step's change): " + ", ".join(regenerated[:120]))
     if specs:
         lines.append("Edited specs: " + ", ".join(specs))
         related = _related(ctx, specs, _spec_index(ctx, _walk(ctx)), plan)
@@ -1559,7 +1577,7 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
         return [_find("n_a", criterion, message="the run is not in the quick lane")]
     fix = ("end the step with `UPSTREAM triage: the task is larger than the quick lane`, so triage plans it")
     described = set(_setup_specs(ctx))
-    prepared = {routing.COMMANDS_FILE} if _prepared_commands(ctx) else set()
+    prepared = ({routing.COMMANDS_FILE} if _prepared_commands(ctx) else set()) | set(_regenerated(ctx))
     changed = [p for p in ctx.git.changed_paths if not p.startswith(IGNORED_BY_LANE)
                and p not in ("CLAUDE.md", "AGENTS.md") and p not in described and p not in prepared]
     found = [_find("fail", criterion, p, "the quick lane changed a spec or a decision record", fix)

@@ -1,0 +1,1 @@
+{"proves": "EVS-AC7", "declaration_error": "", "runs": [{"name": "gen", "command": "python3 tools/gen.py && make docs", "state": "refused", "exit_code": null, "tail": "the shell word && is refused: a command is a program and its arguments"}]}

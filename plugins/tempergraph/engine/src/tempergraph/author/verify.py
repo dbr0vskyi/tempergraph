@@ -183,11 +183,23 @@ def _audit(spec: WorkflowSpec, lp: Any, caps: Mapping[str, Capabilities], target
     rung.note = f"{len(rep.warnings)} warnings shown, to fix or ignore with a reason"
 
 
+def _name_of(root: Path, caps: Mapping[str, Capabilities]) -> str:
+    doc = _json(root / "tempergraph.json")
+    return str(doc.get("name") or "") if isinstance(doc, dict) else ""
+
+
 def _register(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> None:
     from tempergraph.package import registry as reg
 
     try:
-        reg.register(root, caps, check_only=True)
+        try:
+            reg.register(root, caps, check_only=True)
+        except reg.RegistryRefusal as exc:
+            same = reg.other_checkout(root, _name_of(root, caps)) if exc.code == "name-taken" else None
+            if same is None:
+                raise
+            rung.note = f"registered from {same}; the entry is unchanged"
+            return
         got = reg.register(root, caps)
     except reg.RegistryRefusal as exc:
         rung.findings.append(_row(exc.code, None, str(exc), "see `tempergraph workflows register --check`"))

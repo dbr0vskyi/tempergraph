@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import io
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from tempergraph.author.scaffold import read_session, scaffold
 from tempergraph.catalog import from_registry
 from tempergraph.cli.main import main
 from tempergraph.constants import ExitCode
@@ -19,6 +21,7 @@ from tempergraph.store.layout import home_path, lock_path, state_root_path
 
 from .conftest import hash_tree
 from .fixtures.packages import minimal_package, write
+from .test_scaffold import session
 
 
 def caps() -> dict[str, Any]:
@@ -82,6 +85,68 @@ def test_name_taken_by_another_path(pkg: Path, repo: Path, tmp_path: Path) -> No
     code, _, err = cli(repo, "workflows", "register", str(other))
     assert code == ExitCode.USAGE and "name-taken" in err
     assert cli(repo, "workflows", "register", str(pkg))[0] == 0  # same path again: refreshed in place
+
+
+def _git_in(cwd: Path, *args: str) -> None:
+    subprocess.run(["git", "-c", "user.email=t@example.invalid", "-c", "user.name=T", *args], cwd=cwd, check=True,
+                   capture_output=True)
+
+
+def _rungs(doc: Any) -> dict[str, Any]:
+    return {r["name"]: r for r in doc["rungs"]}
+
+
+def _scaffolded(tmp_path: Path, where: Path) -> Path:
+    """A package that passes rungs 1 to 6 of `author verify` (the scaffold of the authoring session)."""
+    scaffold(read_session(session(tmp_path / f"session-{abs(hash(str(where)))}")), where)
+    return where
+
+
+def _checkout_pair(tmp_path: Path) -> tuple[Path, Path]:
+    """A git repository holding the package at `pkgs/release-notes`, and a linked worktree of it."""
+    main_repo = tmp_path / "checkout"
+    main_repo.mkdir()
+    _scaffolded(tmp_path, main_repo / "pkgs" / "release-notes")
+    _git_in(main_repo, "init", "-q", "-b", "main")
+    _git_in(main_repo, "add", "-A")
+    _git_in(main_repo, "commit", "-q", "-m", "init")
+    linked = tmp_path / "linked"
+    _git_in(main_repo, "worktree", "add", "-q", "-b", "wt", str(linked))
+    return main_repo / "pkgs" / "release-notes", linked / "pkgs" / "release-notes"
+
+
+def test_verify_accepts_another_checkout_of_the_registered_package(tmp_path: Path, repo: Path) -> None:
+    """SCF-AC9: rung 7 passes for a linked worktree's copy and leaves the registry as it was."""
+    main_pkg, linked_pkg = _checkout_pair(tmp_path)
+    assert cli(repo, "workflows", "register", str(main_pkg))[0] == 0
+    before = reg.registry_path().read_bytes()
+    code, doc, err = cli(repo, "author", "verify", str(linked_pkg), "--json")
+    rung = _rungs(doc)["register"]
+    assert rung["state"] == "passed" and str(main_pkg.resolve()) in rung["note"], (
+        err, [r for r in doc["rungs"] if r["findings"]])
+    assert code == 0, doc
+    assert reg.registry_path().read_bytes() == before
+    code, _, err = cli(repo, "workflows", "register", str(linked_pkg))
+    assert code == ExitCode.USAGE and "name-taken" in err
+    assert reg.registry_path().read_bytes() == before
+    code, doc, _ = cli(repo, "author", "verify", str(main_pkg), "--json")
+    assert code == 0 and _rungs(doc)["register"]["state"] == "passed"
+    assert [e["path"] for e in reg.read_entries()] == [str(main_pkg.resolve())]
+
+
+def test_verify_still_refuses_a_different_package_claiming_the_name(tmp_path: Path, repo: Path) -> None:
+    """SCF-AC10: another repository, or another folder of the same repository, fails rung 7 with `name-taken`."""
+    main_pkg, _ = _checkout_pair(tmp_path)
+    assert cli(repo, "workflows", "register", str(main_pkg))[0] == 0
+    stranger = _scaffolded(tmp_path, tmp_path / "elsewhere" / "release-notes")
+    sibling = _scaffolded(tmp_path, main_pkg.parent / "other" / "release-notes")
+    before = reg.registry_path().read_bytes()
+    for claimant in (stranger, sibling):
+        code, doc, _ = cli(repo, "author", "verify", str(claimant), "--json")
+        rung = _rungs(doc)["register"]
+        assert code == ExitCode.USAGE and rung["state"] == "failed", doc
+        assert "name-taken" in {f["code"] for f in rung["findings"]}
+        assert reg.registry_path().read_bytes() == before
 
 
 def test_unregister_keeps_files_and_refuses_live_threads(pkg: Path, repo: Path) -> None:

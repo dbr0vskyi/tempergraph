@@ -4,6 +4,10 @@
 
 What reads a run's change before the outcome gate, in a session that knows nothing of the run's own reasoning, so that a defect that every gate of the run passed is found while the run can still go back and fix it. After the code step ([code join](code-join.spec.md)) a reader is given the change and the task's acceptance criteria and reads the repository; it changes no file but its findings document. It numbers what it finds and marks each finding blocking or not blocking ([review findings](review-findings.spec.md)). A blocking finding sends the run back once, to the plan step or to the code step; a finding that is not blocking blocks nothing and is listed in the draft pull request's description ([pull request description](pull-request-description.spec.md)). The *change* is what the run's commits changed since the run's base commit, leaving out the hand-over documents and the files that the prepare step wrote or changed ([project note](project-note.spec.md), [RCM-B9](repository-commands.spec.md)). A *hand-over document* is a document that a step of the run writes for a later step or for the owner to read about the run: the triage note, the setup note, the hand-off, the plan, the code report and the findings document. The change *touches* a file when it adds, changes or deletes it. This spec does not own what the judges of the other gates read ([judge reading](judge-reading.spec.md)), the final criteria ([outcome gate](outcome-gate.spec.md)), or the engine's trip back and the pause of a spent budget ([BUD-B4](../../../tempergraph/docs/specs/budgets-and-failures.spec.md), [HUM-B8](../../../tempergraph/docs/specs/gate-and-human.spec.md)). The reasons are in [the decision on independence](../adr/review-independence-is-held-by-inputs-and-the-session-record.adr.md) and [the decision on the quick lane](../adr/a-quick-lane-run-takes-no-review.adr.md). The owner who reads a run's pull request and the maintainers of the workflow depend on it. Part of the [overview](overview.spec.md).
 
+## Depends on
+
+- `regeneration.spec.md`: the regeneration unit that runs between the code step and the join
+
 ## Behaviours
 
 ### IRV-B1 The review follows the code step
@@ -18,7 +22,7 @@ WHEN a run outside the quick lane passes the code step THE workflow SHALL run th
 
 WHEN a run in the quick lane passes the code step THE workflow SHALL go on to the outcome gate with no review.
 
-- GIVEN a run that went from triage straight to the code step and passed it WHEN it goes on THEN no reader session starts and the outcome gate runs next
+- GIVEN a run that went from triage straight to the code step and passed it WHEN it goes on THEN no reader session starts and the outcome gate runs after the regeneration unit ([RGN-B1](regeneration.spec.md))
 - GIVEN a run that the code gate sent back to triage, which then routed it to the plan step WHEN it passes the code step THEN the review runs
 
 ### IRV-B3 The reader is given the change
@@ -109,7 +113,7 @@ WHEN a review lists no blocking finding THE workflow SHALL go on to the outcome 
 ## Acceptance criteria
 
 - IRV-AC1 (IRV-B1): A fixture run outside the quick lane that passes the code step enters the review and then the outcome gate, on the arm that builds the plan at once and on the arm that builds it one phase at a time, and a documents-only run enters no review
-- IRV-AC2 (IRV-B2): A fixture run in the quick lane that passes the code step starts no reader session and enters the outcome gate next, and a fixture run that the code gate sent back to triage and the triage step routed to the plan step enters the review
+- IRV-AC2 (IRV-B2): A fixture run in the quick lane that passes the code step starts no reader session and enters the outcome gate after the regeneration unit, and a fixture run that the code gate sent back to triage and the triage step routed to the plan step enters the review
 - IRV-AC3 (IRV-B3): The change handed to the reader in a fixture run holds the source and test files the run's commits changed, the edit of a spec and a deletion, and holds none of the hand-over documents and none of the files the prepare step wrote or changed; in a review after a trip back it holds the commits of both visits
 - IRV-AC4 (IRV-B4): The criteria handed to the reader hold the numbered criteria of the triage note and nothing of its gaps or its owner decisions
 - IRV-AC5 (IRV-B5): On the loaded workflow, the reader's rendered prompt and each value it reads hold no text of the plan, the hand-off, the code report, an earlier judgement or a step's session, no path of a hand-over document and nothing of an earlier review's findings, for a state that holds all of them

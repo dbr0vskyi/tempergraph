@@ -77,6 +77,20 @@ def test_the_evidence_lists_the_source_files_most_changed_lines_first(tmp_path: 
     assert listed.count(";") == 2  # exactly the three source files
 
 
+def test_a_declared_output_only_the_regeneration_changed_is_not_a_source_file(tmp_path: Path) -> None:  # JRD-AC1
+    _git(tmp_path, "init", "-q", "-b", "main")  # the declaration is in the history before the run's base
+    (tmp_path / "tempergraph.regenerations.json").write_text(json.dumps({"schema_version": 1, "regenerations": [
+        {"name": "s", "command": "make s", "inputs": ["src"], "outputs": ["stamp.json"]}]}))
+    repo, base = _scratch(tmp_path, {"src/small.py": 30, "src/big.py": 120, "src/mid.py": 80})
+    (repo / "stamp.json").write_text("".join(f"line {i}\n" for i in range(500)))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "docs(temperspec): regeneration for T")
+    evidence = _evidence(repo, git_facts(repo, base))
+    listed = _line(evidence, SOURCE_LINE)
+    assert "stamp.json" not in listed, listed
+    assert "Changed source lines: 230." in evidence, evidence
+
+
 def test_a_change_of_markdown_documents_alone_has_no_source_file(tmp_path: Path) -> None:  # JRD-AC1, AC 2
     repo, base = _scratch(tmp_path, {"docs/note.md": 40, "docs/more.md": 10})
     evidence = _evidence(repo, git_facts(repo, base))

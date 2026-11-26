@@ -64,6 +64,13 @@ WHEN the project-context file, leaving out any temperspec block, names by its wh
 - GIVEN a `CLAUDE.md` that says only how to run the tests WHEN prepare runs THEN the block is added after its text
 - GIVEN a `CLAUDE.md` whose only mention of a specs folder is inside an earlier temperspec block WHEN prepare runs THEN that block is replaced in place
 
+### PNR-B8 The block prepare wrote is not a change of the run
+
+WHEN prepare wrote the temperspec block into the project-context file and the file differs from the run's base commit only in that block THE code gate SHALL list the file as written by prepare and not among the changed paths.
+
+- GIVEN a `CLAUDE.md` to which prepare added the block and that holds no other change WHEN the code gate runs THEN its evidence lists `CLAUDE.md` as written by prepare, with no step's change, and not among the changed paths
+- GIVEN the same file and a step that then added a line of its own to it WHEN the code gate runs THEN `CLAUDE.md` is among the changed paths
+
 ## Acceptance criteria
 
 - PNR-AC1 (PNR-B1): For a repository whose overview specs are in `plugins/a/docs/specs/` and `plugins/b/docs/specs/`, with a third overview spec inside an `evals/` folder, the block names the first two folders and neither the third nor a root `docs/specs/`
@@ -76,3 +83,4 @@ WHEN the project-context file, leaving out any temperspec block, names by its wh
 - PNR-AC7 (PNR-B5): The block names `docs/templates/` after prepare has written the templates there, and names no folder of fill-in templates when prepare wrote none and the repository has none
 - PNR-AC8 (PNR-B6): For an overview spec in `plugins/a/docs/specs/` and a `CLAUDE.md` that names `plugins/a/docs/{specs,adr,research}/`, prepare leaves `CLAUDE.md` byte for byte as it was and the run's branch holds no commit of a change to it
 - PNR-AC9 (PNR-B6): For a `CLAUDE.md` that names no specs folder, and for one that names `docs/` only inside `plugins/b/docs/guides/`, prepare adds the block after its text; for one that names a specs folder only inside an earlier temperspec block, prepare replaces that block in place
+- PNR-AC11 (PNR-B8): For a `CLAUDE.md` to which prepare added the block and nothing else, the code gate's evidence lists it as written by prepare and not among the changed paths, and lists it among them after a step added a line of its own

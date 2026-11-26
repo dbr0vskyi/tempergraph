@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 27,
+  "revision": 28,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -1941,6 +1941,53 @@
           ]
         }
       ]
+    },
+    "regeneration": {
+      "statement": "The files the repository declares as generated are regenerated when an input changed in the run, and no regeneration failed",
+      "criteria": [
+        {
+          "id": "ts-rgn-declaration",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The repository's declaration of regenerations is absent or usable",
+          "check_method": "Read tempergraph.regenerations.json: schema_version 1 and, for each regeneration, a command",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.regeneration:regeneration_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rgn-ran",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every regeneration whose input the run changed ran to an end",
+          "check_method": "Read the unit's report: each due command started, was not refused and ended by an exit code within its limit",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.regeneration:regeneration_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rgn-passed",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "No regeneration failed",
+          "check_method": "Read the unit's report: each due command exited 0",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.regeneration:regeneration_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
     }
   },
   "assumptions": [
@@ -2123,6 +2170,12 @@
       "origin": "authored",
       "at": "2026-11-26T22:00:00.000Z",
       "note": "discovery of intent: the triage note states the task's intent and lists its open questions as uncertainty rows with a category, an impact and a route (ts-tri-form reads both sections and ts-tri-route the rows; ts-tri-uncertain is a warning until it is measured), the reading sessions also read the rows routed to the code, the documents or a source, the one pause moves after them and asks each blocking question the reading could not answer, and the hand-off says how each row ended (ts-dis-uncertain); specs triage, read-gap, owner-questions, ask-route, discovery, conversation, parallel-reading; decision record the-owner-is-asked-once-after-the-reading-sessions"
+    },
+    {
+      "revision": 28,
+      "origin": "authored",
+      "at": "2026-11-26T23:00:00.000Z",
+      "note": "issue 203: the unit regeneration after code, a script unit with no session that runs the regenerations the repository declares when an input changed and sends a failure back once to the code step as numbered findings (ts-rgn-declaration, ts-rgn-ran, ts-rgn-passed; specs regeneration, regeneration-failures)"
     }
   ]
 }

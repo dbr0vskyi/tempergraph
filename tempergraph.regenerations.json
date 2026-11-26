@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "regenerations": [
+    {
+      "name": "doc-refresh-tgraph",
+      "command": "tempergraph author verify plugins/doc-refresh-tgraph --json",
+      "inputs": ["plugins/doc-refresh-tgraph", "plugins/tempergraph/engine/src"],
+      "outputs": [
+        "plugins/doc-refresh-tgraph/stamp.json",
+        "plugins/doc-refresh-tgraph/authoring.json",
+        "plugins/doc-refresh-tgraph/diagram/model.json",
+        "plugins/doc-refresh-tgraph/diagram/workflow.md"
+      ]
+    },
+    {
+      "name": "release-notes-tgraph",
+      "command": "tempergraph author verify plugins/release-notes-tgraph --json",
+      "inputs": ["plugins/release-notes-tgraph", "plugins/tempergraph/engine/src"],
+      "outputs": [
+        "plugins/release-notes-tgraph/stamp.json",
+        "plugins/release-notes-tgraph/authoring.json",
+        "plugins/release-notes-tgraph/diagram/model.json",
+        "plugins/release-notes-tgraph/diagram/workflow.md"
+      ]
+    },
+    {
+      "name": "temperspec-tgraph",
+      "command": "tempergraph author verify plugins/temperspec-tgraph --json",
+      "inputs": ["plugins/temperspec-tgraph", "plugins/tempergraph/engine/src"],
+      "outputs": [
+        "plugins/temperspec-tgraph/stamp.json",
+        "plugins/temperspec-tgraph/authoring.json",
+        "plugins/temperspec-tgraph/diagram/model.json",
+        "plugins/temperspec-tgraph/diagram/workflow.md"
+      ]
+    }
+  ]
+}

@@ -22,6 +22,7 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 | expand | The task rows of a plan that took the `phases` arm of `code_mode` | |
 | phase | Only on the `phases` arm, after expand: the code and tests of one phase of the plan, tests first, one fresh session for each phase, one after another in plan order; each is checked on its own rows and committed before the next starts, and a phase that fails runs again alone | The code step, once the last phase has passed |
 | code | Tests first, then code, and the code report: on the arm `single` the whole plan in one session; on `phases` it runs once after the last phase as the join, on the whole change, builds only a row no phase marked, and holds the lines back to the plan, discovery and triage steps | |
+| regeneration | Nothing by a model: after the code step, runs the commands the repository declares in `tempergraph.regenerations.json` for files whose inputs the run changed, commits what they wrote, and sends a failure back once to the code step | The unit `independent_review`, or the outcome gate in the quick lane |
 | independent_review | After the code step, a read-only reader that is given the change since the run's base, the task's numbered acceptance criteria and the repository, and never the plan, the hand-off, the code report, an earlier judgement or any step's session. It writes numbered findings, each with a file, a line and the mark blocking or not blocking, to `<task id>.review.md` beside the triage note. The quick lane takes no review | A blocking finding on a file the change touches sends the run back once to the code step, one on any other file to the plan step; a second review with a blocking finding pauses the run showing the findings left. Otherwise the outcome gate |
 | last stage | Pushes the branch and opens a draft pull request, or reuses the open one, with a description of what to read | |
 
@@ -31,9 +32,9 @@ Each step is followed by a gate: a model-free check first, then a read-only judg
 
 | Lane | Path | For |
 |---|---|---|
-| quick | triage → code (no review) | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
-| standard | triage → (discovery or its short visit) → plan → code → independent_review | A change of ordinary size |
-| full | triage → discovery → plan → expand → phase → code → independent_review | A plan over a limit of the plan rule's Complexity table |
+| quick | triage → code (no review) → regeneration | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
+| standard | triage → (discovery or its short visit) → plan → code → regeneration → independent_review | A change of ordinary size |
+| full | triage → discovery → plan → expand → phase → code → regeneration → independent_review | A plan over a limit of the plan rule's Complexity table |
 
 Triage proposes the quick lane and writes a short Change section that stands in for the plan. The code gate stays whole, and it measures the change afterwards: a spec or decision record edited, a file the note does not name, more than 2 code files or more than 200 changed lines sends the run back to triage, which then plans the task. A run never moves to a lighter lane.
 

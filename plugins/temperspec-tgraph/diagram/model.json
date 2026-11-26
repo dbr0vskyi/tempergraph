@@ -105,6 +105,12 @@
       "approval": false
     },
     {
+      "name": "regeneration",
+      "kind": "script",
+      "summary": "",
+      "approval": false
+    },
+    {
       "name": "code_join",
       "kind": "route",
       "summary": "",
@@ -192,6 +198,10 @@
     "code.judge",
     "code.gate",
     "code.human",
+    "regeneration.step",
+    "regeneration.judge",
+    "regeneration.gate",
+    "regeneration.human",
     "code_join.step",
     "code_join.judge",
     "code_join.gate",
@@ -1719,7 +1729,7 @@
     ],
     [
       "code.gate",
-      "code_join.step",
+      "regeneration.step",
       "PROCEED"
     ],
     [
@@ -1754,7 +1764,7 @@
     ],
     [
       "code.human",
-      "code_join.step",
+      "regeneration.step",
       "decision"
     ],
     [
@@ -1853,6 +1863,146 @@
       "decision"
     ],
     [
+      "regeneration.step",
+      "regeneration.judge",
+      "next"
+    ],
+    [
+      "regeneration.judge",
+      "regeneration.gate",
+      "next"
+    ],
+    [
+      "regeneration.gate",
+      "code_join.step",
+      "PROCEED"
+    ],
+    [
+      "regeneration.gate",
+      "regeneration.step",
+      "RETRY"
+    ],
+    [
+      "regeneration.gate",
+      "code.step",
+      "BACK"
+    ],
+    [
+      "regeneration.gate",
+      "regeneration.human",
+      "ESCALATE"
+    ],
+    [
+      "regeneration.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "regeneration.human",
+      "code_join.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "regeneration.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "code.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "expand.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "regeneration.human",
+      "regeneration.judge",
+      "decision"
+    ],
+    [
       "code_join.step",
       "code_join.judge",
       "next"
@@ -1989,6 +2139,11 @@
     ],
     [
       "code_join.human",
+      "regeneration.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
       "__end__",
       "decision"
     ],
@@ -2134,6 +2289,11 @@
     ],
     [
       "independent_review.human",
+      "regeneration.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
       "code_join.step",
       "decision"
     ],
@@ -2219,6 +2379,11 @@
     ],
     [
       "outcome.gate",
+      "regeneration.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
       "independent_review.step",
       "BACK"
     ],
@@ -2290,6 +2455,11 @@
     [
       "outcome.human",
       "code.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "regeneration.step",
       "decision"
     ],
     [
@@ -2358,5 +2528,5 @@
       "next"
     ]
   ],
-  "digest": "8e1c8b6ebcc28166eeb1fbb22a45f48920523ad73575f2f7577784189f415216"
+  "digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d"
 }
