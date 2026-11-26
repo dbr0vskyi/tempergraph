@@ -18,7 +18,7 @@ from tempergraph.executors.standins import ScriptedExecutor, standin
 from tempergraph.run.runner import RunSettings
 
 from .conftest import hash_tree
-from .fixtures.packages import package_parts
+from .fixtures.packages import minimal_package, package_parts
 from .fixtures.workflows import two_step
 from .test_run import DRAFT, REVIEW, judge, records, verdict_block
 
@@ -225,3 +225,50 @@ def test_pause_before_and_dry_run(repo: Path) -> None:  # ROP-B1 to ROP-B13, FLX
     log = (repo / ".tempergraph" / "runs" / "demo" / "D-2" / "run.jsonl").read_text().splitlines()
     started = [json.loads(x) for x in log if '"run_started"' in x][0]
     assert started["dry_run"] is True and "run.auto_reopen" in started["overridden_keys"]
+
+
+# CLI-AC12
+_OVERLAP_OUTCOME: dict[str, Any] = {
+    "schema_version": 1, "revision": 1,
+    "statement": "Notes covering every requested change in the notes file.",
+    "deliverables": [{"key": "notes", "kind": "file", "where": "the run's branch"}],
+    "final": [
+        {"id": "f1", "severity": "blocker", "verified_by": "judge",
+         "text": "The notes cover every requested change accurately",
+         "check_method": "Read notes and compare with request",
+         "verifier": {"references": ["notes"], "scale": {
+             "met": "every change covered", "partial": "most covered",
+             "unmet": "a change missing", "evidence": "comparison"}}},
+        {"id": "f2", "severity": "blocker", "verified_by": "judge",
+         "text": "The notes include every requested change with accuracy",
+         "check_method": "Read notes and compare with request",
+         "verifier": {"references": ["notes"], "scale": {
+             "met": "all changes included", "partial": "most included",
+             "unmet": "a change missing", "evidence": "comparison"}}},
+    ],
+    "intermediate": {"draft": {"statement": "A draft of the notes", "criteria": [
+        {"id": "d1", "severity": "blocker", "verified_by": "judge", "serves": ["f1"],
+         "text": "The notes cover requested change",
+         "check_method": "Read draft and request",
+         "verifier": {"references": ["notes"], "scale": {
+             "met": "covered", "partial": "partial",
+             "unmet": "missing", "evidence": "diff"}}}
+    ]}},
+}
+
+
+def test_authoring_warnings_aggregated_on_check_ok(repo: Path, tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:  # CLI-AC12
+    home = tmp_path / "home"
+    home.mkdir()
+    pkg = minimal_package(tmp_path / "pkgs")
+    (pkg / "outcome.json").write_text(json.dumps(_OVERLAP_OUTCOME))
+    (home / "registry.json").write_text(json.dumps({"schema_version": 1, "workflows": [
+        {"name": "release-notes", "kind": "local", "path": str(pkg)}]}))
+    cat = from_registry(home)
+    code, doc, _ = cli(repo, standin("claude"), "run", "release-notes", "v1.2", "--check", catalog=cat)
+    assert code == 0 and doc["status"] == "ok"
+    assert not any(w.get("code") == "criterion-overlap" for w in doc.get("warnings", []))
+    aw = doc["authoring_warnings"]
+    assert aw["counts"].get("criterion-overlap") == 2
+    assert aw["command"] == "tempergraph validate release-notes"

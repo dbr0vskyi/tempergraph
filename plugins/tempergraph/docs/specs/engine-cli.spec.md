@@ -14,6 +14,7 @@ WHEN `run --check <workflow> <request…>` is given THE engine CLI SHALL resolve
 - GIVEN an empty request WHEN `run --check` runs THEN it prints `needs` with the question `request` and exits 2
 - GIVEN a workflow whose resolver does not load WHEN `run --check` runs THEN it prints `broken` and exits 1
 - GIVEN a request the check refuses with `error` WHEN `run` is given the same request THEN `run` refuses it with the same reason and exits 2
+- GIVEN a workflow package with authoring findings and a valid request WHEN `run --check` returns `ok` THEN the JSON carries `authoring_warnings` with counts by code and the `validate` command to view them, and `warnings` holds only run-dependent findings
 
 ### CLI-B2 Reserved verbs
 
@@ -157,6 +158,7 @@ WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B2
 - CLI-AC9 (CLI-B16): A mutating verb's first record carries a caller block, and a read-only verb writes none
 - CLI-AC10 (CLI-B20): After a fixture loop child has ended, `attention` shows the summary of the newest loop child of each workflow with its counts and at most three observations and no note text, carries it as `loop[]` and not as an item in `--json`, and leaves the state root unchanged
 - CLI-AC11 (CLI-B20): After a fixture loop child that recorded no finding and no observation and whose reviews all failed as `usage_limit` has ended, `attention` shows its thread with the failed reviews counted by error class and `--json` carries `review_failed` in its `loop[]` entry, and a fixture summary with no finding, no observation and no failed review shows nothing
+- CLI-AC12 (CLI-B1): A `run --check` with status `ok` on a workflow package that has N findings of an authoring-warning code carries that code's count as N in `authoring_warnings.counts` and no full text for that code in `warnings`
 
 ## Open questions
 

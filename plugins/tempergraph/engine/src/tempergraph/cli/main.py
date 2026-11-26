@@ -488,8 +488,13 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
             rv = settled.run
             rep = preflight(settled.spec, env.registry, enforce_tools=bool(rv["enforce_tools"]),
                             strict_permissions=bool(rv["strict_permissions"]))
+            counts: dict[str, int] = {}
+            for f in rep.authoring_warnings:
+                counts[f.code] = counts.get(f.code, 0) + 1
             doc.update(refusals=[{"code": f.code, "unit": f.unit, "message": f.message} for f in rep.refusals],
                        warnings=[{"code": f.code, "unit": f.unit, "message": f.message} for f in rep.warnings],
+                       authoring_warnings={"counts": counts, "total": sum(counts.values()),
+                                           "command": f"tempergraph validate {spec.name}"},
                        judges=rep.judges, settings_digest=settled.resolved.digest)
             if rep.refusals:
                 doc["status"] = "error"
@@ -760,7 +765,8 @@ def cmd_validate(env: Env, a: argparse.Namespace) -> int:
     doc = {"schema_version": 1, "workflow": spec.name, "ok": rep.ok,
            "findings": [{"severity": "error", "code": f.code, "unit": f.unit, "message": f.message}
                         for f in rep.refusals]
-           + [{"severity": "warning", "code": f.code, "unit": f.unit, "message": f.message} for f in rep.warnings],
+           + [{"severity": "warning", "code": f.code, "unit": f.unit, "message": f.message}
+              for f in rep.authoring_warnings + rep.warnings],
            "deferred_views": {u: [dataclasses.asdict(d) for d in ds] for u, ds in rep.deferred.items()}}
     _emit(env, doc)
     return 0 if rep.ok else int(ExitCode.USAGE)
