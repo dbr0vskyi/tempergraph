@@ -27,7 +27,7 @@ WHEN a failed regeneration command printed the JSON report of `tempergraph autho
 
 - GIVEN an `author verify` report whose failed rung `compare` holds one finding with the code `blueprint-difference`, the unit `plan`, a message and a remedy WHEN the regeneration fails THEN one finding holds `compare`, `blueprint-difference`, `plan`, that message and that remedy
 - GIVEN an `author verify` report whose failed rung `compare` holds two findings WHEN the regeneration fails THEN two findings come in the order the report lists them
-- GIVEN an `upgrade-check` report whose check `V4 audit` failed with the evidence `new findings: outcome-unverified-blocker` WHEN the regeneration fails THEN one finding holds `V4 audit` and that evidence
+- GIVEN an `upgrade-check` report with one failed check that gives evidence for the failure WHEN the regeneration fails THEN one finding holds that check and that evidence
 
 ### RGF-B4 Any other failed command makes one finding
 
@@ -72,7 +72,7 @@ WHEN a due regeneration's command is refused, does not start, is ended by a sign
 
 - RGF-AC1 (RGF-B1): A fixture run whose regeneration fails once with three findings enters the code step a second time with a reason that lists three numbered findings in the order reported, the regeneration passes on the second visit, and the run goes on with no pause
 - RGF-AC2 (RGF-B2): A fixture run with two due regenerations that both fail makes one trip back whose reason lists the findings of the first, then those of the second, numbered from 1 in one run, and one whose only second regeneration fails makes one trip back with its findings alone
-- RGF-AC3 (RGF-B3): Fixture reports of `author verify` (a failed rung with a summary over 60 characters, the failed rung `compare` with a blueprint difference) and of `upgrade-check` (the failed check `V4 audit` naming a check with no pass case, one with no fail case and a blocker no case verifies) each give one finding for each failure listed, with the rung or check, code, unit, message and remedy the report gives, so that a file the report names is named
+- RGF-AC3 (RGF-B3): Fixture reports of `author verify` (one whose failed rung lists one finding, one whose failed rung lists two findings) and of `upgrade-check` (one with one failed check and its evidence, one with two failed checks) each give one finding for each failure listed, with the rung or check, code, unit, message and remedy the report gives, so that a file the report names is named
 - RGF-AC4 (RGF-B4): A fixture command that exits 2 with errors printed, one that prints JSON of another form and exits 1, and one that prints an `upgrade-check` report that lists no failure and exits 2, each come back as one finding holding the command, its exit code and the last lines of its output
 - RGF-AC5 (RGF-B5): The code prompt says that a visit whose reason lists the findings of a failed regeneration fixes those findings and changes nothing else, and the brief of such a visit holds the numbered findings under its reason
 - RGF-AC6 (RGF-B6): In a fixture run on each arm the trip back starts one code session and no expand step, no phase item, no plan step and no discovery step, and the unit runs a second time, before the review, after the code step passes
