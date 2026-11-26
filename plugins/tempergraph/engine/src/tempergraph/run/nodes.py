@@ -1459,6 +1459,9 @@ class EngineNodes:
             write["judgements"][unit].update(judge_state=state_of, trusted=laddermod.trusted(state_of, self.ctx.stage))
             if u.step.escalation is not None or gatemod.arm_overrides(spec, unit, state)[0].get("escalation"):
                 write["judgements"][unit]["escalation"] = self._escalation_facts(unit, state, att, write)
+        if write["judgements"][unit].get("reason") == "usage_limit":  # JDG-B14: the attempt keeps the cause and the instant
+            att.update(escalate="usage_limit", usage_limit_stage="judge",
+                       usage_limit_resets_at=write["judgements"][unit].get("usage_limit_resets_at"))
         if write["judgements"][unit].get("infra_spent"):
             att["infra_spent"] = True
             att["infra_cause"] = "judge_infra"
@@ -1663,6 +1666,8 @@ class EngineNodes:
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
         if risk is not None:
             out["risk"] = risk
+        if not res.ok and res.usage_limit:  # JDG-B14: a refusal derives no verdict and spends nothing
+            return self._judge_limited(out, res, state, all_results)
         if res.infra_cause is not None:
             out.update(verdict=str(Verdict.ESCALATE), infra_spent=True, reason="judge_infra")
             out["_cost"] = self._cost(state, all_results)
@@ -1679,6 +1684,8 @@ class EngineNodes:
                                       session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, rkey))
                 res2, r2 = self._session(ex, rreq, views, hold=hold)
                 all_results += r2
+                if not res2.ok and res2.usage_limit:
+                    return self._judge_limited(out, res2, state, all_results)
                 try:
                     judgement = parse_judgement(res2.text, g)
                 except Unparsed:
@@ -1716,6 +1723,14 @@ class EngineNodes:
         out["_cost"] = self._cost(state, all_results)  # the audit judge's cost is in no counter (JDG-B7)
         if claim is None and judgement is not None and self._audit_drawn(unit, iid, attempt):
             self._audit_judgement(unit, iid, attempt, ex, req, views, g, cres, state, att, workdir)
+        return out
+
+    def _judge_limited(self, out: dict[str, Any], res: SessionResult, state: Mapping[str, Any],
+                       results: list[SessionResult]) -> dict[str, Any]:
+        """JDG-B14: the usage limit ended a judge session; the gate gets the ESCALATE placeholder, no `judgement` record."""
+        out.update(verdict=str(Verdict.ESCALATE), reason="usage_limit", confidence=1.0,
+                   confidence_source="engine_placeholder", usage_limit_resets_at=res.usage_limit_resets_at)
+        out["_cost"] = self._cost(state, results)
         return out
 
     # -- the sampled audit judge (JDG-B7) ---------------------------------------------------------------

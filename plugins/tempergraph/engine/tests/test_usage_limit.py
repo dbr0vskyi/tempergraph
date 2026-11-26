@@ -93,6 +93,54 @@ def test_bud_ac15_a_refused_council_member_is_not_a_missing_answer(repo: Path) -
     assert att["ok"] is False and not ex.of("chair")  # no tally and no chair on a refused round
 
 
+def _judge_refused_checks(repo: Path, ex: Any, at: float) -> None:
+    out = go(repo, ex)
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    assert not [r for r in records(repo) if r["kind"] == "judgement"]  # no verdict is derived
+    vals = values(repo, two_step(), "T-1")
+    j = vals["judgements"]["draft"]
+    assert j["verdict"] == "ESCALATE" and j["reason"] == "usage_limit"
+    assert j["confidence"] == 1.0 and j["confidence_source"] == "engine_placeholder"
+    assert spent(vals) == (0, 0)
+    att = vals["attempts"]["draft"]
+    assert att["escalate"] == "usage_limit" and att["usage_limit_resets_at"] == at
+    assert att["usage_limit_stage"] == "judge" and not att.get("infra_spent")
+
+
+def test_jdg_ac9_a_refused_judge_session_derives_no_verdict(repo: Path) -> None:
+    # JDG-AC9, BUD-AC15 (task AC 1, AC 6)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT], judges=[refused(at, error_kind="model")] * 3)
+    _judge_refused_checks(repo, ex, at)
+    assert [c.request.kind for c in ex.calls] == ["step", "judge"]  # no re-ask, no backoff rerun
+
+
+def test_jdg_ac9_a_refused_judge_throttled_is_not_rerun(repo: Path) -> None:  # JDG-AC9 (task AC 6)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT], judges=[refused(at, infra_cause=InfraCause.THROTTLED)] * 3)
+    _judge_refused_checks(repo, ex, at)
+    assert [c.request.kind for c in ex.calls] == ["step", "judge"]
+
+
+def test_jdg_ac9_a_refused_reask_derives_no_verdict(repo: Path) -> None:  # JDG-AC9, BUD-AC15 (task AC 6)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT], judges=[judge("no block"), refused(at)])
+    _judge_refused_checks(repo, ex, at)
+    assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reask"]
+
+
+def test_jdg_ac9_a_refused_step_starts_no_judge_session(repo: Path) -> None:  # JDG-AC9 (task AC 6)
+    at = time.time() + 3600
+    ex = standin("claude", steps=[refused(at, error_kind="model")], judges=[judge()])
+    out = go(repo, ex)
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    assert [c.request.kind for c in ex.calls] == ["step"]
+    vals = values(repo, two_step(), "T-1")
+    j = vals["judgements"]["draft"]
+    assert j["verdict"] == "ESCALATE" and j["reason"] == "usage_limit"  # not RETRY
+    assert spent(vals) == (0, 0)
+
+
 def test_bud_ac15_a_refused_chair_spends_nothing(repo: Path) -> None:  # BUD-AC15 (task AC 1)
     at = time.time() + 3600
     ex = Crew(chair=refused(at))
