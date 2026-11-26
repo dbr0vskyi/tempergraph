@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 4,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: Row 1.3: test_usage_limit.py:84 'def test_bud_ac15_a_refused_council_member_is_not_a_missing_answer' and :92 'att[\"escalate\"] == \"usage_limit\" and att[\"infra_spent\"] is False and att[\"usage_limit_resets_at\"] == at'. Row 1.3 is also covered by :96 'test_bud_ac15_a_refused_chair_spends_nothing' with :102 'assert spent(vals, UNIT) == (0, 0)'. Row 1.4: nodes.py:379 'usage_limit=res.usage_lim…",
+      "fix": "Read the bodies of the row 1.1 and 1.2 tests to confirm the full change."
+    }
+  ]
+}

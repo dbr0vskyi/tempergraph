@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: 3.3 gate.py:22 'usage_limit'; gate.py:307-308 the instant and 'tempergraph resume {spec.name} {task_id}' with no --decision. 3.4 nodes.py:1856-1857 conditional key. 3.6 detail.py:625-626 'if \"usage_limit_resets_at\" in p'. 3.5 status.py:89 and 170-173 were seen only as search output, with no read of the surrounding code. 3.1 test_usage_limit.py:171-183 and 3.2 lines 199-258 were seen only…",
+      "fix": "Read status.py around lines 160-175 and the 3.1 test body to confirm the omit-when-absent branch and the exit 3 / no --decision assertions."
+    }
+  ]
+}
