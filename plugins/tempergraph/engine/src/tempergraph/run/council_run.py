@@ -101,6 +101,7 @@ class CouncilRun:
     chair_text: str | None = None
     chair_failed: str | None = None
     chair_infra: bool = False
+    limited: tuple[float | None] | None = None  # the usage limit ended a session: its reset instant (BUD-B17)
     rounds_log: list[dict[str, Any]] = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -122,7 +123,8 @@ class CouncilRun:
     def dispatch(self, stage: int) -> list[str] | None:
         """The members asked in `stage`, or None when no member is (the attempt is past its last stage, a chair-only
         retry, a stop at a boundary, or an attempt that has already failed)."""
-        if self.chair_only or self.infra_all or self.capped or self.stopped_early or self.written:
+        if (self.chair_only or self.infra_all or self.capped or self.stopped_early or self.written
+                or self.limited is not None):
             return None
         return list(self.names) if stage <= self.last_stage else None
 
@@ -257,6 +259,9 @@ class CouncilRun:
     def _read(self, name: str, stage: int, ex: Any, req: SessionRequest, res: SessionResult | None, ranking: bool,
               asked: tuple[str, ...], read_round: int, width: int) -> cn.Answer:
         c = self.council
+        if res is not None and res.usage_limit and not res.ok:
+            self._limit(res)  # not a missing answer: the attempt pauses and nothing is spent (BUD-B17)
+            return cn.missing()
         if res is None or res.infra_cause is not None or not res.ok:
             return cn.missing()  # no session ended with an answer (CNL-B15)
         try:
@@ -269,12 +274,20 @@ class CouncilRun:
                                   executor=next(x for x in c.members if x.name == name).executor,
                                   alias=req.alias, tools=req.tools, timeout_s=req.timeout_s, idle_s=req.idle_s)
         res2 = self.session(ex2, req2, width=width)
+        if res2 is not None and res2.usage_limit and not res2.ok:
+            self._limit(res2)
+            return cn.missing()
         if res2 is None or res2.infra_cause is not None or not res2.ok:
             return cn.spoiled(res.text)
         try:
             return cn.parse_answer(res2.text, mode=c.mode, options=self.options, round=read_round, peers=asked)
         except cn.Unparsed:
             return cn.spoiled(res2.text)  # a second failure counts against the quorum (CNL-B11)
+
+    def _limit(self, res: SessionResult) -> None:
+        with self.lock:
+            if self.limited is None or (res.usage_limit_resets_at or 0) > (self.limited[0] or 0):
+                self.limited = (res.usage_limit_resets_at,)
 
     def _put(self, stage: int, name: str, answer: cn.Answer, res: SessionResult | None) -> None:
         while len(self.stages) <= min(stage, self.rounds):
@@ -319,9 +332,9 @@ class CouncilRun:
         c = self.council
         if self.chair_only:
             self._restore()
-        if self.infra_all or self.capped or self.written:
+        if self.infra_all or self.capped or self.written or self.limited is not None:
             return
-        final = self.stages[min(len(self.stages), self.rounds + 1) - 1] if self.stages else {}
+        final =self.stages[min(len(self.stages), self.rounds + 1) - 1] if self.stages else {}
         n = len(self.names)
         if c.mode == "vote":
             self.tally = cn.tally_vote(final, options=self.options, rule=c.rule, quorum=c.quorum, members=n)
@@ -363,6 +376,9 @@ class CouncilRun:
         if res is None:
             return
         written = self._workspace_guard(before, gitmod.fingerprint(self.workdir)) if res.ok else []
+        if res.usage_limit and not res.ok:
+            self._limit(res)
+            return
         if written:
             self.written.extend(written)
         elif res.infra_cause is not None:
@@ -397,7 +413,10 @@ class CouncilRun:
             "issues": [], "tools": [], "session_id": None, "escalate": None, "infra_spent": False, "check": None,
             "item": None, "timed_out": False, "changed": False, "council": council, "error_kind": None,
             "council_stop": None, "dissent_missing": None, "written": None, "infra_cause": None}
-        if self.infra_all or self.chair_infra:
+        if self.limited is not None:  # BUD-B17: nothing is spent and the attempt keeps no artifacts
+            rec.update(ok=False, escalate="usage_limit", usage_limit_resets_at=self.limited[0],
+                       usage_limit_stage="step", reuse={"notes": list(self.notes)})
+        elif self.infra_all or self.chair_infra:
             rec.update(ok=False, infra_spent=True, infra_cause="member_infra" if self.infra_all else "chair_infra")
         elif self.written:
             rec.update(ok=False, error_kind="member_changed_the_workspace", written=list(self.written))
@@ -456,8 +475,10 @@ def open_run(engine: Any, unit: str, state: Mapping[str, Any]) -> CouncilRun:
         fp = gitmod.fingerprint(workdir)
         engine.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                              entered_from=_entered_from(state, unit))
-    attempt = int(prev.get("attempt", 0)) + 1
-    engine.ctx.attempts_started += 1
+    again = prev.get("escalate") == "usage_limit" and not entered  # DUR-B12: the refused attempt runs again
+    attempt = int(prev["attempt"]) if again else int(prev.get("attempt", 0)) + 1
+    if not again:
+        engine.ctx.attempts_started += 1
     names = [m.name for m in c.members]
     seed = f"{engine.ctx.thread}/{unit}/{attempt}"
     fields = engine._fields(unit, state, attempt, visit, workdir)
@@ -469,8 +490,10 @@ def open_run(engine: Any, unit: str, state: Mapping[str, Any]) -> CouncilRun:
     chair_only = (scoped and retry and bool(council_answers(state, unit).get("stages")) and bool(held.get("labels"))
                   and c.chair is not None)
     notes: tuple[str, ...] = ()
-    if retry:
-        notes = tuple(str(b.get("problem") or b.get("evidence") or "") for b in judged.get("blockers") or []
+    if again:  # the judgement is the placeholder now: the refused attempt kept what its chair prompt reads
+        notes = tuple(str(n) for n in (prev.get("reuse") or {}).get("notes") or ())
+    elif retry:
+        notes =tuple(str(b.get("problem") or b.get("evidence") or "") for b in judged.get("blockers") or []
                       if b.get("problem") or b.get("evidence"))
     labels = dict(held["labels"]) if chair_only else cn.label_map(names, seed)
     return CouncilRun(engine=engine, unit=unit, council=c, state=state, attempt=attempt, visit=visit, entered=entered,

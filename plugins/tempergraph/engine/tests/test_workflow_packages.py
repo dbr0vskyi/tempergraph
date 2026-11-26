@@ -16,8 +16,9 @@ from tempergraph.package import selftest
 from tempergraph.package.loader import load_package
 from tempergraph.run.outcome_trust import coverage
 
-from .conftest import REPO_ROOT, workflow_packages
+from .conftest import ENGINE_ROOT, REPO_ROOT, workflow_packages
 
+ENGINE_SRC = ENGINE_ROOT / "src"  # the engine source this suite runs on (tests/conftest.py puts it first)
 PACKAGES = workflow_packages()
 IDS = [p.name for p in PACKAGES]
 
@@ -53,7 +54,8 @@ def test_package_is_in_the_marketplace(root: Path) -> None:
 @pytest.mark.parametrize("root", [p for p in PACKAGES if (p / "tests").is_dir()],
                          ids=[p.name for p in PACKAGES if (p / "tests").is_dir()])
 def test_package_own_tests_pass(root: Path) -> None:
+    # DUR-AC10: serves the regenerated diagrams of rows 4.9 to 4.11; each package's own self-test runs on the engine src.
     got = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-o", "addopts=",
                           str(root / "tests")], cwd=root, capture_output=True, text=True,
-                         env={**os.environ, "PYTHONPATH": str(root / "workflow")})
+                         env={**os.environ, "PYTHONPATH": os.pathsep.join([str(ENGINE_SRC), str(root / "workflow")])})
     assert got.returncode == 0, got.stdout[-2000:]

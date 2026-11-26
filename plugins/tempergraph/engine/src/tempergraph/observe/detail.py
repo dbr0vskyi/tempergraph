@@ -616,12 +616,15 @@ def _pause(spec: WorkflowSpec, row: Mapping[str, Any], snap: Snapshot, rec: Mapp
     unit = p.get("unit") or _unit_of(node)
     since = (rec or {}).get("ts")
     resume = p.get("resume") or (row.get("pending_gates") or [{}])[0].get("resume")
-    return {"unit": unit, "kind": p.get("kind") or (rec or {}).get("pause_kind"),
-            "question": _text(p.get("question") or p.get("reason")),
-            "artifacts": [{"key": k, "path": _artifact_path(spec, snap.values or {}, unit, k)}
-                          for k in p.get("artifacts") or []],
-            "decisions": list(p.get("decisions") or []), "resume": [resume] if resume else [],
-            "waiting_since": since, "waiting_s": _elapsed(since, now)}
+    block = {"unit": unit, "kind": p.get("kind") or (rec or {}).get("pause_kind"),
+             "question": _text(p.get("question") or p.get("reason")),
+             "artifacts": [{"key": k, "path": _artifact_path(spec, snap.values or {}, unit, k)}
+                           for k in p.get("artifacts") or []],
+             "decisions": list(p.get("decisions") or []), "resume": [resume] if resume else [],
+             "waiting_since": since, "waiting_s": _elapsed(since, now)}
+    if "usage_limit_resets_at" in p:  # RDD-B21
+        block["usage_limit_resets_at"] = p["usage_limit_resets_at"]
+    return block
 
 
 def _budgets(spec: WorkflowSpec, values: Mapping[str, Any], recorded: Mapping[str, Any], spent: float

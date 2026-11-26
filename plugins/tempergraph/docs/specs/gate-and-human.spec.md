@@ -44,6 +44,14 @@ WHEN a `wait` unit, an `ask` unit ([ASK](ask-unit.spec.md)) or an operator's `--
 
 - GIVEN an `ask` unit WHEN it is reached THEN the run pauses with kind `input`
 
+### HUM-B14 What pauses for a usage limit
+
+WHEN a session of an attempt ends not ok with `usage_limit` true ([BUD-B17](budgets-and-failures.spec.md)) THE gate SHALL pause with kind `escalation` and reason `usage_limit`, giving the payload `usage_limit_resets_at` as the session returned it (null when it reported none) and a resume command that carries no `--decision`.
+
+- GIVEN a step session that ends not ok with `usage_limit` true and a reset instant WHEN its gate decides THEN the process exits 3 and the payload has kind `escalation`, reason `usage_limit` and that instant as `usage_limit_resets_at`
+- GIVEN a session ended by the usage limit whose executor reported no reset instant WHEN its gate decides THEN the payload's `usage_limit_resets_at` is null
+- GIVEN a thread paused for a usage limit WHEN its payload is printed THEN its resume command names the thread and carries no `--decision`
+
 ### HUM-B11 What never pauses
 
 WHEN an infra failure ends an attempt, or the self-improvement workflow runs THE engine SHALL not pause ([BUD](budgets-and-failures.spec.md)).
@@ -107,3 +115,4 @@ WHEN a decision is not valid for the thread state ([DUR](durability-and-resume.s
 - HUM-AC7 (HUM-B3): A resume without `--unit` at two pending gates exits 2 listing both, and with `--unit` answers only that gate
 - HUM-AC8 (HUM-B5): An approval pause leaves the verdict PROCEED and adds no escalation
 - HUM-AC9 (HUM-B13): Each refused decision of HUM-B13 exits 2 and leaves the thread unchanged
+- HUM-AC10 (HUM-B14): A fixture run whose stand-in executor ends a step session not ok with `usage_limit` true and a reset instant exits 3 with a payload of kind `escalation`, reason `usage_limit` and that instant as `usage_limit_resets_at`, whose resume command carries no `--decision`; a fixture whose judge session ends the same way pauses with the same kind and reason; and a fixture whose executor reported no reset instant has `usage_limit_resets_at` null
