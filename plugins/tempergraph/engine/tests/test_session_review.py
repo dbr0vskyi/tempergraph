@@ -148,7 +148,38 @@ def test_judge_partial_read_needs_a_judgement_and_a_small_share(tmp_path: Path) 
     assert reask["changed_total"] == 0 and digest.causes([reask], judged=gave) == []
 
 
-def test_judged_units_marks_the_attempts_that_gave_a_judgement() -> None:  # SRV-AC14
+def test_a_null_changed_base_gives_no_count_and_no_finding(tmp_path: Path) -> None:  # SRV-AC34 (AC 4)
+    session(tmp_path, "N-1", "draft.1.judge", [read("other.md")])
+    got = digest.write_segment(tmp_path, "demo", "N-1",
+                               [rec("draft.1.judge", changed_base=None, changed_base_reason="no_entry_commit")], {})
+    (d,) = got
+    assert d["kind"] == "judge" and "changed_total" not in d and "changed_read" not in d
+    assert digest.causes(got, judged={"draft": {"passed": True, "gave": [1]}}) == []
+    session(tmp_path, "N-2", "draft.1.judge", [read("other.md")])
+    (old,) = digest.write_segment(tmp_path, "demo", "N-2", [rec("draft.1.judge", changed_paths=["notes.md"])], {})
+    assert old["changed_total"] == 1 and old["changed_read"] == 0  # no `changed_base` key: counted as before
+    assert {c["cause"] for c in digest.causes([old], judged={"draft": {"passed": True}})} == {"judge_unread_pass"}
+
+
+def test_judgements_are_keyed_by_unit_and_item() -> None:  # SRV-AC42 (AC 5)
+    def jr(unit: str, source: str, **kw: Any) -> dict[str, Any]:
+        return {"kind": "judgement", "unit": unit, "confidence_source": source, "blockers": [], **kw}
+
+    got = judged_units([jr("c", "engine_placeholder", attempt=1, item="x"), jr("c", "judge", attempt=1, item="y"),
+                        jr("d", "judge")])
+    assert got["c.x"] == {"passed": True, "gave": []}
+    assert got["c.y"] == {"passed": True, "gave": [1]}
+    assert set(got) == {"c.x", "c.y", "d"}
+
+
+def test_causes_read_each_items_own_judgements(tmp_path: Path) -> None:  # SRV-AC42 (AC 5)
+    ds = [digest.build(session(tmp_path, "K-1", f"phase.{p}.1.judge", [read("other.md")]), rec(f"phase.{p}.1.judge"),
+                       changed=["a.md"]) for p in ("p1", "p2")]
+    judged = {"phase.p1": {"passed": True, "gave": [1]}, "phase.p2": {"passed": False, "gave": [1]}}
+    assert digest.causes(ds, judged=judged) == [{"unit": "phase", "cause": "judge_unread_pass", "count": 1}]
+
+
+def test_judged_units_marks_the_attempts_that_gave_a_judgement() -> None:  # SRV-AC14, SRV-AC42
     def j(unit: str | None, source: str, blockers: list[str] | None = None, **kw: Any) -> dict[str, Any]:
         return {"kind": "judgement", "unit": unit, "confidence_source": source, "blockers": blockers or [], **kw}
 
@@ -163,10 +194,11 @@ def test_judged_units_marks_the_attempts_that_gave_a_judgement() -> None:  # SRV
     ])
     assert got["a"] == {"passed": True, "gave": []}
     assert got["b"] == {"passed": True, "gave": [2]}
-    assert got["c"]["gave"] == [1]
+    assert got["c.x"] == {"passed": True, "gave": []}
+    assert got["c.y"] == {"passed": True, "gave": [1]}
     assert got["d"] == {"passed": True, "gave": [1, 2]}  # passed is that of the unit's last record
     assert got["e"]["gave"] == [1]  # no attempt reads as attempt 1
-    assert set(got) == {"a", "b", "c", "d", "e"}
+    assert set(got) == {"a", "b", "c.x", "c.y", "d", "e"}
 
 
 def test_timeout_shape(tmp_path: Path) -> None:

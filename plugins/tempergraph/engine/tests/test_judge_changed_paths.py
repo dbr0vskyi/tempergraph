@@ -20,13 +20,12 @@ from tempergraph.constants import ExitCode
 from tempergraph.contracts import SessionRequest, SessionResult, WorkflowSpec
 from tempergraph.executors.standins import ScriptedExecutor, answer, standin
 from tempergraph.improve import digest, review
-from tempergraph.improve.record import judged_units, read_findings
+from tempergraph.improve.record import read_findings
 from tempergraph.store.layout import state_root_path
 
 from .fixtures.subworkflows import home_dir, register_workflow
 from .fixtures.workflows import crit, named, two_step
 from .test_run import DRAFT, MET, REVIEW, go, judge, records, verdict_block, with_outcome_spec
-from .test_session_review import read, session
 from .test_subworkflow_run import go as go_parent
 from .test_subworkflow_run import parent
 from .test_subworkflow_run import records as parent_records
@@ -98,18 +97,14 @@ def test_a_judge_that_opens_none_of_the_committed_files_and_passes_is_unread(rep
 
 def test_a_judge_that_opens_one_of_ten_committed_files_read_a_part(repo: Path) -> None:  # SRV-AC22, AC 5
     names = [f"f{i}.md" for i in range(10)]
-    ex = standin("claude", steps=[writes(*names)], judges=[judge()])
+    scripted = answer(MET, tools=("Read",), session_id="j", reads=("f0.md",))
+    ex = standin("claude", steps=[writes(*names)], judges=[scripted])
     assert go(repo, ex, one_unit(), task="J-2").exit_code is ExitCode.FINISHED
     rec = judge_run(repo, "J-2", "build.1.judge")
     assert sorted(rec["changed_paths"]) == sorted(names)
-    # the stand-in executor's tool events carry no capability or input summary: the judge's own session folder is
-    # written with the one read, and the digest is built again from the engine run's own record
-    root = state_root_path(repo)
-    sdir = session(root, "J-2", "build.1.judge", [read("f0.md")])
-    d = digest.build(sdir, rec, changed=rec["changed_paths"])
+    d = judge_digest(repo, "J-2", "build.1.judge")  # built from the run's own journal (SRV-AC47)
     assert d["changed_total"] == 10 and d["changed_read"] == 1
-    found = digest.causes([d], judged=judged_units(records(repo, "J-2")))
-    assert {(c["unit"], c["cause"]) for c in found} == {("build", "judge_partial_read")}
+    assert ("build", "judge_partial_read") in causes_of(repo, "J-2")
 
 
 def test_the_citation_check_keeps_a_judge_unread_observation_of_the_committed_work(repo: Path) -> None:  # SRV-AC23, AC 6
@@ -147,6 +142,7 @@ def test_a_retrys_judge_counts_the_whole_visit(repo: Path) -> None:  # SRV-AC25,
 def test_a_visit_begun_by_a_trip_back_counts_that_visit_only(repo: Path) -> None:  # SRV-AC26, AC 1
     def draft(req: SessionRequest) -> SessionResult:
         (req.workdir / "notes.md").write_text("the notes\n")  # the second visit writes the same content again
+        (req.workdir / "extra.md").write_text("more\n")  # `notes` is a declared artifact: left out of the count
         return answer("Wrote notes.md\nARTIFACT notes: notes.md", session_id="s-draft")
 
     base = two_step()

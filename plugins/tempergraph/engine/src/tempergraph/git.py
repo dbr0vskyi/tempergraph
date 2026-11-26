@@ -251,6 +251,53 @@ def changed_between(workdir: Path, base: str, end: str, limit: int = 500) -> lis
     return sorted(p for p in out.splitlines() if p and not p.startswith(".tempergraph/"))[:limit]
 
 
+def base_problem(workdir: Path, base: str) -> str | None:
+    """SRV-B37: why no count can be made from `base`: `outside_repository`, `no_entry_commit` or `commit_unknown`, in
+    that order of precedence; None when `base` is a commit of the repository that holds `workdir`."""
+    if git(["rev-parse", "--is-inside-work-tree"], workdir, check=False).strip() != "true":
+        return "outside_repository"
+    if not base:
+        return "no_entry_commit"
+    if not is_safe_ref(base) or git(["cat-file", "-t", base], workdir, check=False).strip() != "commit":
+        return "commit_unknown"
+    return None
+
+
+def judge_changed_paths(workdir: Path, base: str, limit: int) -> list[str]:
+    """SRV-B39, SRV-B40: the paths a judge's count covers: those that differ from `base` and exist in the workspace,
+    plus the modified and untracked ones, named as the workspace holds them (git's quoting undone), never one under
+    `.tempergraph/` and never a deleted one; at most `limit`. `changed_paths` is not this list."""
+    top = prefix(workdir)
+    lead = f"{top}/" if top else ""
+    found: list[str] = []
+    try:
+        diff = git(["diff", "--name-only", "-z", "--diff-filter=d", base, "--"], workdir, check=False)
+        status = git(["status", "--porcelain=v1", "-z", "--untracked-files=all"], workdir, check=False)
+    except GitError:
+        return found
+    names = [p for p in diff.split("\0") if p]
+    parts = status.split("\0")
+    i = 0
+    while i < len(parts):
+        entry = parts[i]
+        i += 1
+        if len(entry) < 4:
+            continue
+        code, name = entry[:2], entry[3:]
+        if "R" in code or "C" in code:
+            i += 1  # the origin of a rename or a copy follows as its own field
+        if "D" not in code.replace(" ", ""):
+            names.append(name)
+    for p in names:
+        if not p.startswith(lead):
+            continue
+        rel = p[len(lead):]
+        if rel.startswith(".tempergraph/") or rel in found or not (workdir / rel).exists():
+            continue
+        found.append(rel)
+    return found[:limit]
+
+
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:
     paths: list[str] = []
     try:

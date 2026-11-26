@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import fnmatch
 import hashlib
 import os
+import posixpath
 import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -79,6 +81,11 @@ ATTEMPT_CAP = 15
 INFRA_TRIES = 3
 BACKOFF_S = (10, 20, 40)
 DEFAULT_TIMEOUT_S = 600
+
+
+def _skip_match(path: str, pattern: str) -> bool:
+    """SRV-B42: a whole-path, case-sensitive match; `*` and `**` cross directories."""
+    return fnmatch.fnmatchcase(path, posixpath.normpath(pattern))
 
 
 class Drain(Exception):
@@ -1682,6 +1689,53 @@ class EngineNodes:
             return ""
         return ""
 
+    def _declared_files(self, unit: str, state: Mapping[str, Any], workdir: Path) -> set[str]:
+        """SRV-B41: the workspace-relative paths of the file artifacts the units of the run's path (and `unit`) declare
+        in `produces`, every item's of a map included; `./x`, `x` and an absolute path inside the workspace name one
+        path."""
+        spec = self.ctx.spec
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        out: set[str] = set()
+        root = os.path.normpath(str(workdir))
+        for name in dict.fromkeys([*path_units, unit]):
+            u = spec.units.get(name)
+            produces = getattr(u.step, "produces", None) if u is not None and u.step is not None else None
+            values = (state.get("artifacts") or {}).get(name) or {}
+            for key, kind in (produces or {}).items():
+                if kind != "file":
+                    continue
+                # a map keeps each item's value as `<key>[<item id>]`; the plain key is only the item in hand (MAP-B9)
+                for held, value in values.items():
+                    if held != key and not (held.startswith(f"{key}[") and held.endswith("]")):
+                        continue
+                    p = os.path.normpath(str(value))
+                    if os.path.isabs(p):
+                        if not (p == root or p.startswith(root + os.sep)):
+                            continue
+                        p = os.path.relpath(p, root)
+                    out.add(p)
+        return out
+
+    def _judge_count(self, unit: str, state: Mapping[str, Any], workdir: Path, base: str, g: Any) -> dict[str, Any]:
+        """SRV-B34, SRV-B37 to SRV-B43: the judge's own record fields. The lists of checks, git facts, the session's
+        own record and the suites stay unfiltered (`gitmod.changed_paths`)."""
+        problem = None
+        try:
+            problem = gitmod.base_problem(workdir, base)
+        except Exception:  # noqa: BLE001 - observability never changes the run (OVR-B4)
+            problem = "outside_repository"
+        if problem is not None:
+            return {"changed_base": None, "changed_base_reason": problem, "changed_left_out": 0}
+        try:
+            listed = gitmod.judge_changed_paths(workdir, base, 100000)
+        except Exception:  # noqa: BLE001
+            listed = []
+        declared = self._declared_files(unit, state, workdir)
+        listed = [p for p in listed if p not in declared]
+        patterns = tuple(getattr(g, "judge_may_skip", ()) or ())
+        kept = [p for p in listed if not any(_skip_match(p, pat) for pat in patterns)]
+        return {"changed_paths": kept[:200], "changed_base": base, "changed_left_out": len(listed) - len(kept)}
+
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
                        workdir: Path, claim: tuple[str, str] | None = None) -> dict[str, Any]:
         spec = self.ctx.spec
@@ -1758,9 +1812,9 @@ class EngineNodes:
         before = gitmod.fingerprint(workdir)
         base = str(att.get("entry_head") or "") if u.map is not None else self._entry_commit(
             unit, int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1)))
-        changed = list(gitmod.changed_paths(workdir, base or None))[:200]  # the digest's `changed_read` (SRV-B11, SRV-B34)
+        counted = self._judge_count(unit, state, workdir, base, g)  # the digest's `changed_read` (SRV-B11, SRV-B34)
         hold = self._hold(unit, state)
-        res, results = self._session(ex, req, views, extra={"changed_paths": changed}, hold=hold)
+        res, results = self._session(ex, req, views, extra=counted, hold=hold)
         all_results = list(results)
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
         if risk is not None:

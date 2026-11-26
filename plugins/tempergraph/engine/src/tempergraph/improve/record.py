@@ -211,14 +211,15 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
 
 
 def judged_units(seg: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
-    """SRV-B12, SRV-B31: per unit with a `judgement` record, `passed` (its last record has no blockers) and `gave`
-    (the attempts with a record whose `confidence_source` is not `engine_placeholder`: a real judgement)."""
+    """SRV-B12, SRV-B31, SRV-B44: per `unit.item` (the bare unit when the record has no `item`) with a `judgement`
+    record, `passed` (its last record has no blockers) and `gave` (the attempts with a record whose
+    `confidence_source` is not `engine_placeholder`: a real judgement)."""
     passed: dict[str, bool] = {}
     gave: dict[str, set[int]] = {}
     for r in seg:
         if r.get("kind") != "judgement" or not r.get("unit"):
             continue
-        unit = str(r["unit"])
+        unit = f"{r['unit']}.{r['item']}" if r.get("item") else str(r["unit"])
         passed[unit] = not (r.get("blockers") or [])
         held = gave.setdefault(unit, set())
         if r.get("confidence_source") != "engine_placeholder":
