@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The discovery proposal in `spec-decision-and-discovery-formats.rsrch.md` (draft pull request #215) has triage list the uncertainties of a task and close the ones routed `code` through a generated code map: definitions, references, imports and test reach, built with Python's own parser and written as plain files that reading sessions search with the tools they already have. It leaves two questions open: whether an unattended `claude -p` step can use language-server style queries, and whether tree-sitter may become an optional engine dependency. The owner wants code discovery to use a code graph or a syntax tree where possible.
+The discovery proposal in `spec-decision-and-discovery-formats.rsrch.md` has triage list the uncertainties of a task and close the ones routed `code` through a generated code map: definitions, references, imports and test reach, built with Python's own parser and written as plain files that reading sessions search with the tools they already have. It leaves two questions open: whether an unattended `claude -p` step can use language-server style queries, and whether tree-sitter may become an optional engine dependency. The owner wants code discovery to use a code graph or a syntax tree where possible.
 
 codegraph (`github.com/colbymchenry/codegraph`) is a tool that builds such a graph with tree-sitter and serves it to coding agents over MCP. This note answers whether temperspec should use it, what it would take, and where in temperspec's stages it would help. The engine knows no workflow (ADR `the-engine-names-no-workflow`), so any engine change it needs must be a general capability.
 
@@ -13,7 +13,7 @@ codegraph (`github.com/colbymchenry/codegraph`) is a tool that builds such a gra
 | codegraph repository at `73c6cff6` (v1.6.4, 2026-11-20): README, TELEMETRY.md, LICENSE, package.json, `src/mcp/daemon.ts`, `src/directory.ts` | code, docs | `github.com/colbymchenry/codegraph` |
 | codegraph 1.6.4 from npm, run on this repository at `de9502d8` | measured | `npm i @colbymchenry/codegraph@1.6.4` |
 | Six headless `claude -p` sessions, Claude Code 2.1.332, Sonnet, with and without codegraph | measured | this note, F7 |
-| The discovery proposal | doc | `plugins/temperspec-tgraph/docs/research/spec-decision-and-discovery-formats.rsrch.md` on #215 (F8, F9, conclusion 12) |
+| The discovery proposal | doc | `plugins/temperspec-tgraph/docs/research/spec-decision-and-discovery-formats.rsrch.md` (F8, F9, conclusion 12) |
 | Step MCP tools in the engine | spec, code | `executor-claude-code.spec.md` ECC-B18, ECC-B19; `engine/src/tempergraph/executors/mcpconfig.py`; `executors/preflight.py:175-182`; `executors/claude.py:111-131` |
 | temperspec units and their tools | code | `plugins/temperspec-tgraph/workflow/temperspec/__init__.py:94`, `:172-224`; `routing.py:498-523` |
 
