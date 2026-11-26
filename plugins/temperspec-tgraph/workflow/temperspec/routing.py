@@ -15,7 +15,7 @@ from typing import Any
 
 from tempergraph.api import FinalizerResult
 
-from . import specfmt, summary
+from . import review, specfmt, summary
 
 PACKAGE = Path(__file__).resolve().parents[2]
 RULES = "rules"
@@ -271,10 +271,66 @@ def route_discovery(view: Any) -> str:
     return "finalizer" if view.values.get("route") == "discovery-only" else "plan"
 
 
-def code_join(ctx: Any) -> dict[str, str]:
-    """The unit both arms of the switch `code_mode` reach after `code`: a model-free no-op. The engine's `joins_at`
-    may not be the entry of an arm, so the arms `single` (to `code`) and `phases` (to `expand`) meet here."""
+def route_code_join(view: Any) -> str:
+    """The unit both arms of the switch `code_mode` reach after `code`. The engine's `joins_at` may not be the entry of
+    an arm, so the arms `single` (to `code`) and `phases` (to `expand`) meet here. A run in the quick lane goes on to
+    the outcome gate (the target `finalizer`, where the gate runs first) and takes no review; every other run goes to
+    `independent_review` (IRV-B1, IRV-B2)."""
+    return "finalizer" if view.values.get("route") == "quick" else "independent_review"
+
+
+def _task_slug(ctx: Any) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", str((ctx.request or {}).get("task_id") or "task"))[:60]
+
+
+def _triage_path(ctx: Any) -> str:
+    return str(((ctx.artifacts or {}).get("triage") or {}).get("triage_note") or "")
+
+
+def review_before(ctx: Any) -> dict[str, str]:
+    """The `before` script of `independent_review`: write the change and the task's numbered criteria to the run's own
+    folder `.tempergraph/review/`, which no step commits, and clear the draft of an earlier review. It returns no key, so
+    the reader's prompt holds nothing of the run (IRV-B3 to IRV-B5)."""
+    workdir = Path(ctx.workdir)
+    review.write_inputs(workdir, _task_slug(ctx), _triage_path(ctx))
+    (workdir / review.DRAFT).unlink(missing_ok=True)
     return {}
+
+
+def _visit_after_review(workdir: Path, task: str) -> bool:
+    """Whether the run's commits hold a commit of a step other than the review after a review's commit: the visit a
+    first review started was built and committed, so the document at the branch head is an earlier review and not an
+    earlier attempt of this one (RVF-B6, RVF-B7)."""
+    steps: list[str] = []
+    for subject in _git(workdir, "log", "-n", "500", "--format=%s").stdout.splitlines():
+        m = review.RUN_COMMIT.match(subject)
+        if not m or m.group(2) != task:
+            break
+        steps.append(m.group(1))
+    steps.reverse()
+    if "independent_review" not in steps:
+        return False
+    return any(s != "independent_review" for s in steps[steps.index("independent_review") + 1:])
+
+
+def review_after(ctx: Any) -> dict[str, str]:
+    """The `after` script of `independent_review`, before its commit: build `<task id>.review.md` beside the triage note
+    from the reader's draft, keeping the findings of an earlier review at the branch head under `Earlier review`
+    (RVF-B1, RVF-B6, RVF-B7)."""
+    workdir = Path(ctx.workdir)
+    task = _task_slug(ctx)
+    triage = _triage_path(ctx)
+    path = (Path(triage).parent / f"{task}.review.md") if triage else Path("docs") / "tasks" / f"{task}.review.md"
+    try:
+        draft = (workdir / review.DRAFT).read_text(encoding="utf-8")
+    except OSError:
+        draft = ""
+    shown = _git(workdir, "show", f"HEAD:{path.as_posix()}")
+    earlier = shown.stdout if shown.returncode == 0 and _visit_after_review(workdir, task) else None
+    target = workdir / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(review.build_document(task, draft, earlier, True), encoding="utf-8")
+    return {"findings": path.as_posix()}
 
 
 # -- scripts the engine runs around a step --------------------------------------------------------

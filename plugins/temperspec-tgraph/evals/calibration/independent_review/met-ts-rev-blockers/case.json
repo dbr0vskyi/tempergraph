@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-rev-blockers",
+  "gate": "independent_review",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-rev-blockers",
+    "expected": "MET",
+    "reason": "The only finding is marked not blocking."
+  }
+}

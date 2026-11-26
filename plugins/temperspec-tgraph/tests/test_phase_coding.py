@@ -534,6 +534,10 @@ class Stand:
             return self._phase(work, str(item))
         if unit == "code":
             return self._code(work)
+        if unit == "independent_review":  # the reader after `code_join`: a clean change, so no trip back
+            (work / ".tempergraph" / "review").mkdir(parents=True, exist_ok=True)
+            (work / ".tempergraph" / "review" / "findings.md").write_text("## Findings\n\nNone\n", encoding="utf-8")
+            return answer("Read.", session_id="s-review")
         raise AssertionError(f"a session of {unit} that the stand-in does not answer")
 
     def _phase(self, work: Path, item: str) -> SessionResult:
@@ -802,6 +806,10 @@ def test_the_code_gate_checks_the_whole_change_after_the_phases(repo: Path) -> N
     stand = Stand(phases=2)
     out = _go(repo, stand, real=("phase", "code"))
     assert out.exit_code is ExitCode.FINISHED, out.message
+    # the gate ran when the code step's commit was the newest one: the review and the steps after it came later
+    (code_commit,) = [r.split()[0] for r in _log(stand, "log", "--reverse", "--format=%H %s").splitlines()
+                      if "(temperspec): code for " in r]
+    _log(stand, "checkout", "-q", "--detach", code_commit)
     # the code session changed no file of a row (the phases did), and the gate makes no finding about the rows' files
     res = checks.code_check(_code_context(stand, base))
     assert res.result == "PASS", res.evidence

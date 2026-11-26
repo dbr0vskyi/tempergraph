@@ -203,14 +203,16 @@ def test_the_workflow_validates_and_declares_the_switch() -> None:
     assert dict(switch.arms) == {"single": "code", "phases": "expand"}
     here = SPEC.order.index("plan")
     # CDM-AC11, CDM-AC12 (CDM-B6, CDM-B7): the map `phase` sits between expand and the code step, which is the join
-    assert SPEC.order[here:here + 6] == ("plan", "code_mode", "expand", "phase", "code", "code_join")
+    # IRV-AC1 (IRV-B1): the review follows the join
+    assert SPEC.order[here:here + 7] == ("plan", "code_mode", "expand", "phase", "code", "code_join",
+                                         "independent_review")
     assert SPEC.units["plan"].route is None and SPEC.units["plan"].route_targets == ()
     blueprint = json.loads((ROOT / "blueprint.json").read_text(encoding="utf-8"))
     assert "plan" not in blueprint["flow"]
     assert blueprint["flow"]["code_mode"]["switch"] == {"arms": {"single": "code", "phases": "expand"},
                                                         "default": "phases"}
     kinds = {u["name"]: u["kind"] for u in blueprint["units"]}
-    assert kinds["code_mode"] == "switch" and kinds["code_join"] == "script" and kinds["phase"] == "map"
+    assert kinds["code_mode"] == "switch" and kinds["code_join"] == "route" and kinds["phase"] == "map"
     # AC 6: the new map unit validates, runs its phases one after another, has no line back, and leaves the join as it was
     phase = SPEC.units["phase"]
     assert phase.kind == "map" and phase.map is not None and phase.map.mode == "sequential"
@@ -251,7 +253,7 @@ def silent_check(ctx: Any) -> CheckResult:
     return CheckResult(result="PASS", evidence="counted")
 
 
-UNITS = ("triage", "plan", "code_mode", "expand", "phase", "code", "code_join")
+UNITS = ("triage", "plan", "code_mode", "expand", "phase", "code", "code_join", "independent_review")
 
 
 def _scripted(check: Callable[..., Any]) -> Any:
@@ -260,7 +262,7 @@ def _scripted(check: Callable[..., Any]) -> Any:
     for name in UNITS:
         unit = SPEC.units[name]
         if unit.step is not None:
-            step = dataclasses.replace(unit.step, prompt="Do it.", after=(), self_check=False)
+            step = dataclasses.replace(unit.step, prompt="Do it.", before=(), after=(), self_check=False)
             gate = Gate(check=check if name == "plan" else None, judge=Judge(stance="Verify."),
                         criteria=[Criterion(id=f"c-{name}", text="The output is good",
                                             check_method="Read the file and compare", severity="blocker")])
@@ -328,11 +330,19 @@ def _records(repo: Path, kind: str, task: str = "C-1") -> list[dict[str, Any]]:
     return [r for r in map(json.loads, path.read_text(encoding="utf-8").splitlines()) if r["kind"] == kind]
 
 
+def _reader(req: SessionRequest) -> SessionResult:
+    (req.workdir / "findings.md").write_text("## Findings\n\nNone\n", encoding="utf-8")
+    return _said("Read.\nARTIFACT findings: findings.md", "r")
+
+
 def _entered(repo: Path, task: str = "C-1") -> list[str]:
-    """The units entered, with the join unit `code_join` (a script unit, which the engine records as a `script` run)
-    last when it ran."""
-    return [r["unit"] for r in _records(repo, "unit_entered", task)] + [
-        r["unit"] for r in _records(repo, "script", task) if r["unit"] == "code_join"]
+    """The units entered, with the join unit `code_join` (a route unit, which the engine records as a `route` pick)
+    where it ran: after `code` and before the review, when the run went on to it."""
+    entered = [r["unit"] for r in _records(repo, "unit_entered", task)]
+    if any(r["unit"] == "code_join" for r in _records(repo, "route", task)):
+        entered.insert(entered.index("code") + 1 if "independent_review" not in entered
+                       else entered.index("independent_review"), "code_join")
+    return entered
 
 
 def _routes(repo: Path, task: str = "C-1") -> list[dict[str, Any]]:
@@ -341,9 +351,9 @@ def _routes(repo: Path, task: str = "C-1") -> list[dict[str, Any]]:
 
 SIMPLE = _plan([("One", "light", [("test", "tests/a.py"), ("code", "src/a.py")])])
 FIVE = _plan([(f"Part {i}", "light", []) for i in range(1, 6)])
-SINGLE = [_triage(), _planner(SIMPLE), _coder]
-PHASES = [_triage(), _planner(FIVE), _expander, _phaser, _coder]
-ENTERED_ON_PHASES = ["triage", "plan", "expand", "phase", "code", "code_join"]
+SINGLE = [_triage(), _planner(SIMPLE), _coder, _reader]
+PHASES = [_triage(), _planner(FIVE), _expander, _phaser, _coder, _reader]
+ENTERED_ON_PHASES = ["triage", "plan", "expand", "phase", "code", "code_join", "independent_review"]
 
 
 def test_a_run_records_one_route_with_the_switch_the_arm_the_zone_and_the_seven_measures(repo: Path) -> None:
@@ -363,7 +373,8 @@ def test_a_simple_plan_takes_single_and_a_complex_plan_takes_phases(repo: Path) 
     assert _run(repo, SINGLE, task="S-1").exit_code is ExitCode.FINISHED
     (route,) = _routes(repo, "S-1")
     assert (route["arm"], route["zone"]) == ("single", "simple")
-    assert _entered(repo, "S-1") == ["triage", "plan", "code", "code_join"]  # no expand step, no phase item
+    # no expand step, no phase item; the review follows the join (IRV-AC1)
+    assert _entered(repo, "S-1") == ["triage", "plan", "code", "code_join", "independent_review"]
 
     assert _run(repo, PHASES, task="P-1").exit_code is ExitCode.FINISHED
     (route,) = _routes(repo, "P-1")
@@ -394,7 +405,7 @@ OVER_ONE = {
 def test_a_plan_over_exactly_one_limit_takes_phases(repo: Path, sign: str) -> None:
     # AC 1, CDM-AC6 (CDM-B3)
     text, sizes = OVER_ONE[sign]
-    out = _run(repo, [_triage(), _planner(text, sizes), _expander, _phaser, _coder])
+    out = _run(repo, [_triage(), _planner(text, sizes), _expander, _phaser, _coder, _reader])
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"]) == ("phases", "complex"), route["measures"]
@@ -405,14 +416,14 @@ def test_the_control_plan_inside_every_limit_takes_single(repo: Path) -> None:
     # AC 1, CDM-AC6 (CDM-B3)
     inside = _plan([("One", "light", [("test", "tests/a.py")] * 6 + [("code", "src/a.py")] * 6)],
                    commands=("git --version", "git status", "git diff"))
-    assert _run(repo, [_triage(), _planner(inside, {"src/a.py": 190_000}), _coder]).exit_code is ExitCode.FINISHED
+    assert _run(repo, [_triage(), _planner(inside, {"src/a.py": 190_000}), _coder, _reader]).exit_code is ExitCode.FINISHED
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"]) == ("single", "simple"), route["measures"]
 
 
 def test_a_missing_fact_takes_phases_in_the_zone_fault(repo: Path) -> None:
     # AC 1, CDM-AC9 (CDM-B5)
-    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder], check=silent_check)
+    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder, _reader], check=silent_check)
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"]) == ("phases", "fault")
@@ -425,7 +436,7 @@ def test_a_repository_override_that_is_not_json_takes_phases_in_the_zone_fault(r
     path = complexity.override_path(state_root_path(repo), SPEC.name, "code_mode")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("{not json", encoding="utf-8")
-    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder])
+    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder, _reader])
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"], route["rules_source"]) == ("phases", "fault", "repository")
@@ -434,7 +445,8 @@ def test_a_repository_override_that_is_not_json_takes_phases_in_the_zone_fault(r
 
 def test_the_operator_names_phases_for_a_simple_plan(repo: Path) -> None:
     # AC 2, CDM-AC13 (CDM-B8)
-    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder], flags={"code_mode.arm": "phases"})
+    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder, _reader],
+               flags={"code_mode.arm": "phases"})
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["chosen_by"], route["would_choose"]) == ("phases", "operator", "single")
@@ -443,11 +455,12 @@ def test_the_operator_names_phases_for_a_simple_plan(repo: Path) -> None:
 
 def test_the_operator_names_single_for_a_plan_of_five_phases(repo: Path) -> None:
     # AC 2, CDM-AC14 (CDM-B8)
-    out = _run(repo, [_triage(), _planner(FIVE), _coder], flags={"code_mode.arm": "single"})
+    out = _run(repo, [_triage(), _planner(FIVE), _coder, _reader], flags={"code_mode.arm": "single"})
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["chosen_by"], route["would_choose"]) == ("single", "operator", "phases")
-    assert _entered(repo) == ["triage", "plan", "code", "code_join"]  # the expand step is never entered
+    # the expand step is never entered
+    assert _entered(repo) == ["triage", "plan", "code", "code_join", "independent_review"]
 
 
 # -- the report by arm ---------------------------------------------------------------------------------------------
@@ -507,7 +520,7 @@ def test_a_quick_lane_run_takes_no_arm_and_enters_no_expand_step(repo: Path) -> 
     # AC 1, CDM-AC15 (CDM-B9)
     out = _run(repo, [_triage("quick"), _coder])
     assert out.exit_code is ExitCode.FINISHED, out.message
-    assert _entered(repo) == ["triage", "code", "code_join"]
+    assert _entered(repo) == ["triage", "code", "code_join"]  # IRV-AC2 (IRV-B2): the quick lane takes no review
     assert _routes(repo) == []
 
 

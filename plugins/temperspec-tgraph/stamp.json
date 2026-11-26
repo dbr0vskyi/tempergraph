@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+e0e2769b32e5",
-  "docs_digest": "72fb6120a831e1715642144c797033f69bcc69b248632a331ad8e8e88a42e3a2",
-  "shape_digest": "af10a279a7aa48ae0e70bea4212e4bc273728af0f93cc86cdd17b107e10c7e9b",
+  "workflow_version": "0.1.0+b85aa6864224",
+  "docs_digest": "11a74fcb57622a585e4a34d799d337ec90a434623425a4a5ccd56462bc1fe844",
+  "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
   "entries_applied": [
     {
       "id": "E0.2.0-1",
@@ -71,6 +71,7 @@
     "outcome-unverified-blocker|discovery|ts-dis-gaps|outcome.json",
     "outcome-unverified-blocker|discovery|ts-dis-general|outcome.json",
     "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
+    "outcome-unverified-blocker|independent_review|ts-rev-blockers|outcome.json",
     "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
     "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
     "outcome-unverified-blocker|phase|ts-phs-change|outcome.json",
@@ -100,10 +101,10 @@
     "validate:template-key-not-on-every-path|code||",
     "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 23,
+  "outcome_revision": 24,
   "baseline": {
     "error": 0,
     "warning": 37
   },
-  "stamped_at": "2026-11-26T02:49:58.667Z"
+  "stamped_at": "2026-11-26T05:44:07.432Z"
 }

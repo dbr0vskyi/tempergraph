@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = load_package(ROOT).spec
 checks = importlib.import_module("tgwf_temperspec.checks")
 routing = importlib.import_module("tgwf_temperspec.routing")
+summary = importlib.import_module("tgwf_temperspec.summary")
 fmt = importlib.import_module("tgwf_temperspec.specfmt")
 OWNER = {key: unit for unit in SPEC.order for key in (SPEC.units[unit].step.produces if SPEC.units[unit].step else {})}
 
@@ -612,7 +613,8 @@ def test_every_step_and_judge_states_its_model_effort_and_reason() -> None:  # d
                                                    "why": judge.sizing}, name
     assert efforts == {"setup": ("high", "medium"), "triage": ("medium", "medium"),
                        "discovery_short": ("high", "high"), "discovery": ("max", "high"),
-                       "plan": ("high", "high"), "expand": ("medium", "medium"), "code": ("high", "high")}
+                       "plan": ("high", "high"), "expand": ("medium", "medium"), "code": ("high", "high"),
+                       "independent_review": ("high", "medium")}
 
 
 # -- the quick lane, the proof of a criterion and the pull request's description ---------------------------
@@ -699,6 +701,7 @@ class _Summary(_Final):
 
 
 def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> None:
+    # PRD-AC1, PRD-AC2, PRD-AC3, PRD-AC4 (AC 6)
     (tmp_path / "note.md").write_text("# Triage\n\n## Acceptance criteria\n\n1. An idle session is refused\n")
     (tmp_path / "handoff.md").write_text("# Hand-off\n\n## Decisions\n\n- Idle time counts from the last request\n\n"
                                          "## Open questions\n\n- None\n")
@@ -725,12 +728,93 @@ def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> Non
 
 
 def test_a_reused_pull_request_gets_the_new_description(tmp_path: Path) -> None:
+    # PRD-AC8 (AC 6)
     (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
     ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr edit": (0, ""),
                               "gh pr list": (0, '[{"url":"https://github.com/acme/tool/pull/9"}]\n')}, {})
     got = routing.finalize(ctx)
     assert got.outcome == "reused" and "not updated" not in got.reason
     assert ctx.ran[-1] == "gh pr edit https://github.com/acme/tool/pull/9 --body-file .tempergraph/pull-request.md"
+    assert not any(c.startswith("gh pr create") for c in ctx.ran)
+
+
+def test_a_refused_replacement_says_the_description_was_not_updated(tmp_path: Path) -> None:
+    # PRD-AC8 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr edit": (1, "denied"),
+                              "gh pr list": (0, '[{"url":"https://github.com/acme/tool/pull/9"}]\n')}, {})
+    got = routing.finalize(ctx)
+    assert got.outcome == "reused" and "not updated" in got.reason
+
+
+def test_a_new_draft_pull_request_carries_the_description(tmp_path: Path) -> None:
+    # PRD-AC7 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                              "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")}, {})
+    got = routing.finalize(ctx)
+    created = [c for c in ctx.ran if c.startswith("gh pr create")]
+    assert got.outcome == "opened" and len(created) == 1
+    assert created[0].endswith("--body-file .tempergraph/pull-request.md")
+    assert "1. One" in (tmp_path / ".tempergraph" / "pull-request.md").read_text()
+
+
+def test_a_description_that_cannot_be_written_opens_the_pull_request_without_one(tmp_path: Path) -> None:
+    # PRD-AC6 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    (tmp_path / ".tempergraph").write_text("a file where the folder should be")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                              "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")}, {})
+    got = routing.finalize(ctx)
+    created = [c for c in ctx.ran if c.startswith("gh pr create")]
+    assert got.outcome == "opened" and len(created) == 1 and "--body-file" not in created[0]
+
+
+def test_the_description_is_never_committed(repo: Path) -> None:
+    # PRD-AC5 (AC 6)
+    (repo / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(repo, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                          "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")}, {})
+    routing.finalize(ctx)
+    assert (repo / ".tempergraph" / "pull-request.md").is_file()
+    status = _git(repo, "status", "--porcelain", "--untracked-files=all")
+    assert "pull-request" not in status and ".tempergraph" not in status
+    assert "pull-request" not in _git(repo, "log", "--name-only", "--format=")
+
+
+def test_the_description_lists_only_the_first_14_criteria_and_names_what_the_run_wrote(tmp_path: Path) -> None:
+    # PRD-AC1, PRD-AC2, PRD-AC3, PRD-AC4 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n" + "".join(f"{n}. Criterion {n}\n" for n in range(1, 16)))
+    (tmp_path / "handoff.md").write_text("## Decisions\n\n- None\n\n## Open questions\n\n- None\n")
+    (tmp_path / "report.md").write_text("## Deviations\n\n- None\n")
+    ctx = _Summary(tmp_path, {}, {"git diff --name-only": "src/a.py\n"})
+    body = summary.build(ctx)
+    assert "14. Criterion 14" in body and "15. Criterion 15" not in body
+    assert "No spec and no decision record changed." in body
+    assert "Open questions" not in body and "Deviations from the plan" not in body and "Decisions taken" not in body
+    # the run wrote no plan: the line names the three other documents
+    line = next(ln for ln in body.splitlines() if "not needed for review" in ln)
+    assert "note.md" in line and "handoff.md" in line and "report.md" in line and line.count("`") == 6
+
+
+def test_the_description_lists_the_findings_that_block_nothing(tmp_path: Path) -> None:
+    # PRD-AC9 (AC 6)
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    (tmp_path / "TASK-7.review.md").write_text(
+        "# Review: TASK-7\n\n## Findings\n\n1. `src/a.py:3` blocking: the loop never ends\n"
+        "2. `src/b.py:9` not blocking: a name could be clearer\n\n## Earlier review\n\n"
+        "1. `src/c.py:5` not blocking: a comment is stale\n")
+    body = summary.build(_Summary(tmp_path, {}, {}))
+    head = "Review findings that block nothing"
+    assert head in body and body.index("Read these") < body.index(head)
+    listed = body[body.index(head):]
+    assert "src/b.py" in listed and "9" in listed and "a name could be clearer" in listed
+    assert "src/c.py" in listed and "a comment is stale" in listed
+    assert "the loop never ends" not in body
+    (tmp_path / "TASK-7.review.md").write_text("# Review: TASK-7\n\n## Findings\n\nNone\n")
+    assert head not in summary.build(_Summary(tmp_path, {}, {}))
+    (tmp_path / "TASK-7.review.md").unlink()
+    assert head not in summary.build(_Summary(tmp_path, {}, {}))
 
 
 # -- the plan's marks: checked first at the code gate, then verified against what changed -------------------

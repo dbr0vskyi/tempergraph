@@ -400,7 +400,7 @@
     }
   ],
   "blueprint_digest": "f3cfde244d99f7aed0e6208d70084b9e6124a4ac60c072c79fc66ff67cb91322",
-  "outcome_revision": 1,
+  "outcome_revision": 24,
   "scaffold": {
     "files": {
       ".claude-plugin/plugin.json": "39a15359d0849808c9b96dbe747fc4a87e59647eb16287e5e76655356aeffef7",
@@ -436,7 +436,7 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-26T02:49:58.669Z",
+    "at": "2026-11-26T05:44:07.434Z",
     "ok": true,
     "rungs": {
       "load": "passed",

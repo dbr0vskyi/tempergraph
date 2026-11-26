@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 23,
+  "revision": 24,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -1784,6 +1784,93 @@
           "severity": "warning"
         }
       ]
+    },
+    "independent_review": {
+      "statement": "A reader that sees only the change, the task's criteria and the repository writes numbered findings, each with a file, a line and a mark, and no blocking finding is left",
+      "criteria": [
+        {
+          "id": "ts-rev-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each finding names an existing file, a line inside it and a mark, in numbered order, or the section says None",
+          "check_method": "Parse the Findings section; check each item's file, line and mark against the workspace",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-session",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The reader opened no hand-over document of the run and wrote no file but its draft",
+          "check_method": "Read the session record of the reader; N/A with no record",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the step left is committed, with nothing uncommitted in the workspace",
+          "check_method": "Read the workspace status after the step's commit",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-step",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A blocking finding on a file the change touches sends the run to the code step, any other blocking finding to the plan step",
+          "check_method": "Sort the blocking findings against the paths the change touched and read the run's commit subjects for the first trip",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:review_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rev-blockers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "No finding the reader marked blocking remains",
+          "check_method": "Read the Findings section; list each finding marked blocking by number, file, line and text, and none that is not blocking",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "findings"
+            ],
+            "scale": {
+              "met": "no finding is marked blocking, or the section says None",
+              "partial": "a finding is marked blocking but names no step to go back to",
+              "unmet": "at least one finding is marked blocking",
+              "evidence": "each blocking finding with its number, file, line and text, in the order of the document",
+              "seeds": [
+                "met-ts-rev-blockers",
+                "unmet-ts-rev-blockers"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
     }
   },
   "assumptions": [
@@ -1941,6 +2028,12 @@
       "origin": "authored",
       "at": "2026-11-26T12:00:00.000Z",
       "note": "issue 150: a failing ts-spec-sync with no place named goes back to the step that owns the specs (the full discovery, else the plan step, else the code step) because ts-set-links and ts-tri-gaps no longer serve it and ts-plan-spec does; the outcome judge's stance asks for the place and the fix in the evidence of each criterion it grades PARTIAL or UNMET (spec outcome-gate, OGT-B6 to OGT-B12)"
+    },
+    {
+      "revision": 24,
+      "origin": "authored",
+      "at": "2026-11-26T18:00:00.000Z",
+      "note": "issue 173: the unit independent_review after code_join, a read-only reader that sees the change, the task's criteria and the repository, with numbered findings checked model-free and one trip back (ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step, ts-rev-blockers; specs independent-review, review-findings)"
     }
   ]
 }
