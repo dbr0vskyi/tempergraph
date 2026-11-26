@@ -458,8 +458,12 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         degraded = (final.get("run") or {}).get("degraded") or None  # FLX-B9: a fallback was taken
         deg = {"degraded": True, "degraded_unit": degraded.get("unit")} if degraded else {}
         outcome.degraded = bool(degraded)
+        capped: dict[str, Any] = {}
+        if outcome.reason == "attempt_cap":  # CMP-B20: the exit says what repeated
+            capped = ctx.report()
+            outcome.payload = {**(outcome.payload or {}), **capped}
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
-                  cost_so_far=cost_so_far(cost.to_json()), **deg)
+                  cost_so_far=cost_so_far(cost.to_json()), **deg, **capped)
         try:
             write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                               "exit_code": int(outcome.exit_code),
@@ -1140,10 +1144,11 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 waiting = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
                 before = _pending_update(spec, waiting, values, human_payload)
         else:  # stopped
+            stop_at = (values.get("run") or {}).get("stopped") or {}
+            unit = str(stop_at.get("unit") or _last_unit(values))
             if d is None or d.word not in ("retry", "back", "rewind"):
-                return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",
-                               tid=tid)
-            unit = str(((values.get("run") or {}).get("stopped") or {}).get("unit") or _last_unit(values))
+                return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>; "
+                               f"it stopped at {unit} ({stop_at.get('reason') or 'stopped'})", tid=tid)
             try:
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:

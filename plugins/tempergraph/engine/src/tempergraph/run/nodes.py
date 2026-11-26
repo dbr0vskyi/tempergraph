@@ -109,6 +109,9 @@ class RunContext:
     capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS-B17)
     main_checkout: Path | None = None
     attempts_started: int = 0
+    counted: dict[tuple[str, str | None], int] = field(default_factory=dict)  # counted attempts by unit and item (CMP-B19)
+    started: dict[tuple[str, str | None], int] = field(default_factory=dict)  # every attempt started, counted or not
+    trips: dict[str, int] = field(default_factory=dict)  # trips back, by the unit they entered (CMP-B20)
     origin: str = "cli"
     stage: str = "local-dev"  # PRO-B7, PRO-B4
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
@@ -120,6 +123,21 @@ class RunContext:
     child: str | None = None  # SWF-B8: the sub-workflow unit whose child this context runs; None for the run's own spec
     parent_thread: str = ""  # a child's context keeps the parent's thread
     read_worktreeinclude: bool = True  # `run.worktree.read_worktreeinclude`, for the writer worktrees (WSP-B2)
+
+    def count_attempt(self, unit: str, item: str | None, attempt: int, visit: int) -> None:
+        """CMP-B19: an attempt counts against the cap only when its unit, item or slot has attempted before in the
+        thread, as a retry or in a visit after a trip back."""
+        self.started[(unit, item)] = self.started.get((unit, item), 0) + 1
+        if attempt > 1 or visit > 1:
+            self.attempts_started += 1
+            self.counted[(unit, item)] = self.counted.get((unit, item), 0) + 1
+
+    def report(self) -> dict[str, Any]:
+        """CMP-B20: what repeated in this invocation, for the exit at the attempt cap."""
+        repeated = [{"unit": u, "item": i, "attempts": self.started.get((u, i), n),
+                     "trips_back": self.trips.get(u, 0)} for (u, i), n in self.counted.items()]
+        return {"attempts_counted": self.attempts_started, "trips_back": sum(self.trips.values()),
+                "repeated": repeated}
 
     @property
     def thread(self) -> str:
@@ -502,7 +520,7 @@ class EngineNodes:
         if again is not None:  # DUR-B12: the session the limit ended runs again, as that attempt and with its inputs
             attempt, first = int(prev["attempt"]), bool(again["first"])
         else:
-            self.ctx.attempts_started += 1
+            self.ctx.count_attempt(unit, iid, attempt, visit)
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM-B6, RST-B22, RST-B23)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}
@@ -642,6 +660,10 @@ class EngineNodes:
                 for call in selfcheck.close(self.ctx.state_root, ticket):
                     self.ctx.log.write("self_check", unit=unit, item=iid, attempt=attempt, result=call.get("result"),
                                        findings=call.get("findings"), duration_s=call.get("duration_s"))
+        if res.partial and not res.ok:  # RCT-B11: a session the stop request ended is no failed attempt; none is recorded,
+            reason = self.ctx.drain_requested()  # so no retry is charged and a resume runs the attempt again
+            if reason:
+                raise Drain(reason)
         after = gitmod.fingerprint(workdir)
         foreign = self._foreign_worktrees(unit, iid, key, known, worktrees_before)  # WTR-B26: recorded, never touched
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
@@ -1902,6 +1924,9 @@ class EngineNodes:
         self.ctx.log.write("gate", unit=unit, item=((state.get("attempts") or {}).get(unit) or {}).get("item"),
                            verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
+        if r["token"] == "BACK":
+            to = ((state.get("judgements") or {}).get(unit) or {}).get("back_to") or r["node"]
+            self.ctx.trips[to] = self.ctx.trips.get(to, 0) + 1
         done = self._audits.pop((unit, ((state.get("attempts") or {}).get(unit) or {}).get("item")), None)
         if done is not None:  # JDG-B7: the audit record follows the gate of the judgement it audits
             self.ctx.log.write("audit_judge", unit=unit, **done)

@@ -73,6 +73,13 @@ WHEN a request file does not parse THE engine SHALL act on it as a `drain` reque
 
 - GIVEN a request file holding `{"mode":` WHEN the engine reads it THEN the run drains and the record notes the unreadable request
 
+### RCT-B11 A thread stopped by request resumes with no decision
+
+WHEN `resume` names a thread that stopped by request and carries no decision THE engine SHALL continue the thread, asking for no decision, from the attempt a `now` stop interrupted or, after a `drain` stop, from the attempt that was due next, as the same run would have gone on without the stop.
+
+- GIVEN a run drained between unit `a` and unit `b` WHEN `resume` runs with no decision THEN `b` starts its first attempt, no request file exists and the run ends with the exit it would have had without the stop
+- GIVEN a step session in unit `a`, whose retry budget is 1, that a `now` stop ended WHEN `resume` runs with no decision THEN that attempt runs under the number it had, the retry budget is unspent and the run ends with the exit it would have had without the stop
+
 ## Acceptance criteria
 
 - RCT-AC1 (RCT-B1, RCT-B2): The drain and now scenarios pass with scripted executors and a real process tree, on Linux and macOS
@@ -85,6 +92,7 @@ WHEN a request file does not parse THE engine SHALL act on it as a `drain` reque
 - RCT-AC8 (RCT-B8): A `drain` request after a `now` request leaves the file holding `now`
 - RCT-AC9 (RCT-B9): The next resume removes a stale request file and records it as stale
 - RCT-AC10 (RCT-B10): A request file that does not parse drains the run
+- RCT-AC11 (RCT-B11): For each of the modes `drain` and `now`, a plain `resume` of a fixture thread stopped by request ends with the exit the same fixture has without the stop, asks for no decision, leaves no request file, and leaves every budget counter as the unstopped fixture has it
 
 ## Open questions
 
