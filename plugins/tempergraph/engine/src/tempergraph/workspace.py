@@ -8,6 +8,7 @@ derived names, start with bootstrap, resume with re-attach, release without remo
 
 from __future__ import annotations
 
+import contextlib
 import fnmatch
 import hashlib
 import json
@@ -16,7 +17,7 @@ import re
 import shutil
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -479,14 +480,58 @@ def bootstrap(main: Path, path: Path, decl: WorktreeDecl | None, run_command: Ru
     return result
 
 
+def write_pause_mark(path: Path, worktree: Path) -> None:
+    """Write the head and the sorted status lines of `worktree` where a resume reads them (WTR-B28)."""
+    from tempergraph.git import fingerprint
+
+    fp = fingerprint(worktree)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"head": fp.head, "status": sorted(ln for ln in fp.status.splitlines() if ln)}))
+    os.chmod(path, 0o600)
+
+
+def take_pause_mark(path: Path) -> dict[str, Any] | None:
+    """Read and remove the marker a paused segment left; None when it is absent or unreadable."""
+    try:
+        doc = json.loads(path.read_text())
+    except (OSError, ValueError):
+        doc = None
+    with contextlib.suppress(OSError):
+        path.unlink()
+    if not isinstance(doc, dict) or not isinstance(doc.get("status"), list):
+        return None
+    return doc
+
+
 def attach_workspace(rec: WorkspaceRecord, thread: str, decl: WorktreeDecl | None, state_root: Path,
-                     run_command: RunCommand | None = None) -> WorkspaceRecord:
-    """On resume: reuse the worktree, or re-attach one to the run's branch (WSP-B1)."""
+                     run_command: RunCommand | None = None, *,
+                     marked: Mapping[str, Any] | None = None) -> WorkspaceRecord:
+    """On resume: reuse the worktree, or re-attach one to the run's branch (WSP-B1). With `marked`, the head and
+    status the paused segment left are what the worktree is compared with (WTR-B28)."""
     if rec.mode == "in_place":
         rec.action = "reused"
         return rec
     path = Path(rec.path)
     main = main_checkout(state_root.parent) or state_root.parent
+    if path.exists() and branch(path) == rec.branch and marked is not None:
+        from tempergraph.git import fingerprint
+
+        fp = fingerprint(path)
+        now = [ln for ln in fp.status.splitlines() if ln]
+        was = [str(ln) for ln in marked.get("status", [])]
+        extra = [ln for ln in now if ln not in was]
+        mark_head = str(marked.get("head") or "")
+        if fp.head == mark_head and not extra and sorted(now) == sorted(was):
+            rec.action = "reused"
+        else:
+            n = "0"
+            if mark_head and fp.head != mark_head:
+                n = git(["rev-list", "--count", f"{mark_head}..{fp.head}", "--"], path, check=False).strip()
+            rec.action = "external_change"
+            rec.bootstrap = {**rec.bootstrap, "external_commits": int(n or 0),
+                             "external_changed": len(extra)}
+        rec.last_head = fp.head
+        return rec
     if path.exists() and branch(path) == rec.branch:
         head = git(["rev-parse", "HEAD"], path, check=False).strip()
         changed = [ln for ln in git(["status", "--porcelain=v1"], path, check=False).splitlines() if ln]

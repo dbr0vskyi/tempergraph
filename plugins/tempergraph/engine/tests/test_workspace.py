@@ -133,6 +133,36 @@ def test_worktree_lifecycle(repo: Path) -> None:
     assert done.state == "released" and wt.exists()  # never removed in release 1
 
 
+def test_a_resume_compares_the_worktree_with_the_marker_of_the_pause(repo: Path) -> None:  # WTR-AC15, AC 2
+    root = ensure_state_root(state_root_path(repo))
+    plan = resolve_workspace(two_step(), repo, task_id="T-9")
+    rec = prepare_workspace("demo/T-9", plan, WorktreeDecl(), root)
+    wt = Path(rec.path)
+    marker = root / "pause-workspace.json"
+    (wt / "own.txt").write_text("the run's own file\n")  # before the pause: no change
+    wsmod.write_pause_mark(marker, wt)
+    assert wsmod.take_pause_mark(marker) is not None and not marker.exists()
+    wsmod.write_pause_mark(marker, wt)
+    same = attach_workspace(rec, "demo/T-9", None, root, marked=wsmod.take_pause_mark(marker))
+    assert same.action == "reused"
+    wsmod.write_pause_mark(marker, wt)
+    mark = wsmod.take_pause_mark(marker)
+    (wt / "by-a-person.txt").write_text("x\n")
+    git(wt, "add", "-A")
+    git(wt, "commit", "-q", "-m", "a person's change")
+    (wt / "untracked.txt").write_text("y\n")
+    changed = attach_workspace(same, "demo/T-9", None, root, marked=mark)
+    assert changed.action == "external_change"
+    assert changed.bootstrap["external_commits"] == 1 and changed.bootstrap["external_changed"] == 1
+    wsmod.write_pause_mark(marker, wt)  # a marker taken after the commit and the file
+    after = attach_workspace(changed, "demo/T-9", None, root, marked=wsmod.take_pause_mark(marker))
+    assert after.action == "reused"
+    assert wsmod.take_pause_mark(marker) is None
+    place = wsmod.WorkspaceRecord(mode="in_place", requested="in_place", resolved_by="read_only", path=str(repo))
+    assert attach_workspace(place, "demo/T-9", None, root, marked=mark).action == "reused"
+    assert "external_commits" not in place.bootstrap
+
+
 def test_slot_worktrees_are_cut_after_a_checkpoint_and_named_by_their_slot(repo: Path) -> None:  # CTS-AC4 (CTS-B5, WTR-B20)
     root = ensure_state_root(state_root_path(repo))
     plan = resolve_workspace(two_step(), repo, task_id="T-5")

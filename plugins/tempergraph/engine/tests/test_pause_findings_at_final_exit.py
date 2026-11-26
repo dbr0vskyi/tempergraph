@@ -198,9 +198,23 @@ def committed_in_worktree(repo: Path, task: str) -> None:
     git(wt, "commit", "-m", "a person's change")
 
 
+def writes_and_commits(req: Any) -> Any:
+    """A step that writes a file and commits it in the worktree before the run pauses."""
+    from .test_worktree_cleanup import git
+
+    (req.workdir / "own.txt").write_text("the run's own file\n")
+    git(req.workdir, "add", "-A")
+    git(req.workdir, "commit", "-m", "the run's own commit")
+    return DRAFT
+
+
 def test_the_judge_is_told_whether_the_workspace_changed(
-        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC46, AC 3
-    ex = paused_on_gap(repo, "F-10", monkeypatch)
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC46, WTR-AC15, AC 2
+    ex = paused_on_gap(repo, "F-13", monkeypatch, draft=writes_and_commits)
+    finish(repo, "F-13", ex)  # nothing done between the pause and the resume
+    (prompt,) = judged_prompts()
+    assert "workspace unchanged" in facts_of(prompt, finding_of(repo, "F-13", "gap_escalation")["fingerprint"])
+    ex = paused_on_gap(repo, "F-10", monkeypatch, draft=writes_and_commits)
     committed_in_worktree(repo, "F-10")
     finish(repo, "F-10", ex)
     (prompt,) = judged_prompts()
