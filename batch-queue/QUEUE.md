@@ -108,21 +108,54 @@ Before the pull request is ready:
 
 Owner decisions taken by the agent, to confirm: #7 G3 (in stable mode the review-cap floor is limited to what the daily cap leaves).
 
-## Second session (2026-11-25 evening, on the Raspberry Pi; the owner is away, the agent orchestrates)
+## Second session (2026-11-25 evening to 2026-11-26, on the Raspberry Pi; the owner is away, the agent orchestrates)
 
 The table above is as the first session left it; this section is the newer truth until the table is rewritten.
 
-Owner's words for this session: at most three runs at once, fewer when the machine is loaded; **runs open no pull request of their own** (the launch puts a `gh` shim first on `PATH` that refuses `pr create`; #184, opened by i123 before the word, is closed); **a finished run is merged into this branch straight away**, its independent review follows the merge and its findings become a follow-up run.
+Owner's words for this session: at most three runs at once, fewer when the machine is loaded; **runs open no pull request of their own** (#184 and #164 are closed; everything is in #138); **a finished run is merged into this branch straight away**, its independent review follows the merge and its findings become issues or a follow-up run; the agent delegates and does not build.
 
-Launch on this machine: `~/tg-runs/launch.sh <name> <tempergraph arguments>` (detached, log and exit code in `~/tg-runs/`). A stopped thread takes a plain `resume` (`--decision retry` is refused on an unfinished thread). Engine build `0.2.0-1847f9465c02`, Python 3.13.
+### Launching on this machine
 
-| Item | State | Note |
-|---|---|---|
-| i123 (#123) | merged `525cf6ad`, review **blocked** | 28.85 USD. Paused at the code gate (`environmental`, #185) and at the outcome gate (`loop_budget`: `ts-traced` DUR-AC7, `ts-verify`); accepted there. Review `tasks/i123.review.md`: the follow-up-commit signal cannot fire on a real run. Follow-ups filed: #186, #187, #188 |
-| i123b (#123) | running | The review's findings, from the batch head (`tasks/i123b.md`) |
-| i148 (#148, #149) | running | Resumed here from its carried state; paused once at phase `p4` (plan row 4.4 against PHC-AC13: the criterion stands, the row was rewritten) |
-| i21b (#165) | running | Paused once at phase `p1` on `ts-phs-scope` (#148), answered `proceed` after the commits were checked |
-| #185 | built by hand, `a880075b` | The suite's isolation hides the caller's sign-in: three schedule tests failed on any Linux machine with a Claude sign-in, so every code gate paused. The pytest plugin for package tests is not extended |
-| Requests drafted | queued | `tasks/i150.md`, `i153.md`, `i169.md`, `i170.md`, `i171.md`, `i172.md` (first slice), `i173.md` (without its live run), `i114.md`. Order: i153; i150 and i169 after i148 is merged; i171, i170, i172 in series; i173 after i150; i114 last |
+`~/tg-runs/launch.sh <name> <tempergraph arguments>` starts a run detached (log and exit code in `~/tg-runs/`). It puts `~/tg-runs/bin` first on `PATH` (a `gh` shim: `pr create` is refused, and **every write through `gh api` is refused, which holds the loop's filing**), and sets `TMPDIR=/var/tmp/tg-runs` (on disk, outside the home folder: `/tmp` is an 8 GB memory volume that three suites fill, and a temporary folder under the home folder fails `tests/test_outside_git.py`). Never export `TEMPERGRAPH_AUTONOMY` for a run whose base is older than `f15cfa1d`. `~/tg-runs/watch.sh` waits for a run's exit and removes old pytest folders. A stopped thread takes a plain `resume`; a thread that a stale stop request ended as `stopped` takes `--decision retry`. Python 3.13, engine build `0.2.0-3d01d61d4214`.
 
-Owner decisions taken by the agent in this session, to confirm: i148 row 4.4 (PHC-AC13 outranks the plan row); i123 accepted at the outcome gate with two blockers open; #184 closed.
+A restamp in a worktree: `PATH=<repo>/.venv/bin:$PATH PYTHONPATH=plugins/tempergraph/engine/src TEMPERGRAPH_HOME=<a throwaway folder> python -m tempergraph author verify plugins/temperspec-tgraph` (the name is registered from the main checkout, so the register rung needs another home); diagrams: `python -m tempergraph upgrade-check plugins/<package> --stamp`.
+
+### State
+
+| Item | State | Cost USD | Note |
+|---|---|---|---|
+| i123 (#123) | merged `525cf6ad` | 28.85 | Review blocked it; i123b repaired it |
+| i123b (#123) | merged `ade5bd09` | 18.11 | Review: follow-ups (#193). Also #186, #187, #188 from the first review |
+| i21b (#165) | merged `feb20fe3` | 13.35 | Stopped at the outcome gate's trip back. Review: follow-ups (#190). The operator's live probe (L-43) is still to run |
+| i148 (#148, #149) | merged `b0dbb317` | 16.5 | Stopped at the code gate (#185, #191). Review: follow-ups (#192) |
+| i171 (#171) | merged `b546268e` | 9.08 | One owner question. Review: criteria met, **filing held** (`tasks/i171.review.md`); #194, #195, #196 |
+| i150 (#150) | merged `3bce7089` | 9.49 | One pause (a restamp row). Review: follow-ups (#197) |
+| i169 (#169) | merged `aca69138` | 10.11 | No touch of a person. Review: follow-ups (#201) |
+| i153 (#153) | merged `a6f86113` | 18.23 | Stopped at the outcome gate's trip back. Review: follow-ups (#202); recognition of a real refusal unproven live |
+| i170 (#170) | merged `fba4993c` | 14.40 | Review running |
+| i173 (#173) | running | | The review unit, without its live run |
+| i172 (#172, first slice) | running | | Cause codes |
+| i171b (#171) | running | | Makes the pattern rule safe to switch on (`tasks/i171b.md`) |
+| i114 (#114, #117) | queued | | Last; cut to the #117 half unless #201 lands first |
+| By hand (sub-agents) | on the branch | | #185 (`a880075b`, `685fc407`, `f15cfa1d`), #191 (`3726bc35`) |
+| Research | #189 | | Heavy commands apart from the session that needs them; the draft note is a comment on the issue |
+
+Then, from the first session's table: i145, i134a, i134b, i62, i103, i130, i104, i32, i76, i136, i135, i22, i10, i14.
+
+### Owner decisions taken by the agent, to confirm
+
+1. i148 row 4.4: PHC-AC13 outranks the plan row (the early return of `code_check` runs no command).
+2. i123 accepted at the outcome gate with two blockers open, then merged though its review blocked it (the owner's word: merge straight away); i123b repaired it.
+3. #184 and #164 closed (runs open no pull request).
+4. i123b: a lasting ruling for its phase gates (specs and notes changed before any phase are not counted against `ts-phs-scope`).
+5. i171 G2: a count-met finding the friction judge did not answer stays `not_judged`.
+6. i153: the rerun clause of plan row 1.3 moved to a phase 4 test row; the fix of `tests/test_workflow_packages.py` added to its phase 4.
+7. i21b, i148, i153 stopped at a gate and merged as they stood (each gate's failures were environmental or a false finding).
+8. **The loop's filing is held** on this machine. Three issues were filed before the hold took effect (#198, #199, #200, at the stop exit of i170); each has an operator note and is left for the owner's triage. Whether the loop may file unattended after i171b is the owner's.
+9. #196 default: closing a loop issue as duplicate binds the cause to the target.
+
+### Before the pull request is ready (added to the first session's list)
+
+- Remove the `gh` shim's hold only after i171b is merged and reviewed, and check first whether the loop tries again a filing that failed.
+- The operator's live checks: L-43 (#165), a real usage-limit refusal (#202).
+- Triage #198, #199, #200.
