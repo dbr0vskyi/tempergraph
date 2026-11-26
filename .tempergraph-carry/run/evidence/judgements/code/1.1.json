@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-code-aligned",
+      "evidence": "PARTIAL: I read the code against the plan's account of each spec behaviour, not the spec files themselves. ISS-B16 to ISS-B18 are in filing.py `_redeliver` (lines 487-538) and `_expired` (477-484), and `queued_at` is stamped in `Outbox.add` (351-358). SIL-B46 is at filing.py:90. CLI-B21 to CLI-B23 are in cli/improve.py `_outbox` (422-452). CLI-B24 and CLI-B25 are `--reason` with choices (main.py:…",
+      "fix": "Read the spec scenarios against the code to confirm."
+    },
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: I found no contradiction in the code I read. The related specs were not opened, and no test was shown to cover the changed `_redeliver` path for the release and trial writers beyond the check's passing suite.",
+      "fix": "Confirm against the related specs."
+    },
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: The test names carry criterion ids and describe the right assertions, for example test_outbox_delivery.py:50 `becomes_a_comment ... # ISS-AC15`, :75 `muted ... ISS-AC16`, :102 `past_the_age_bound ... ISS-AC17`, and test_pause_hand_on.py:71-190 for SIL-AC57 to SIL-AC59. I did not read the test bodies, so I could not confirm that each assertion fails when the criterion's result is absent.",
+      "fix": "Read the assertions."
+    }
+  ]
+}

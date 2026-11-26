@@ -1,0 +1,108 @@
+{"t": 1.678, "n": 1, "ev": "session_started", "session_id": "65109c7f-afd8-4363-8393-e76181bcd15e", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 3.152, "n": 2, "ev": "tool_started", "name": "Read", "call_id": "toolu_011ViFjtX1MuA2RSWQ4L2fZY", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 3.217, "n": 3, "ev": "tool_started", "name": "Read", "call_id": "toolu_01KJfcHtCvfDgTBSCTCY9x4n", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/tasks/i170c.triage.md"}
+{"t": 3.267, "n": 4, "ev": "tool_finished", "call_id": "toolu_01KJfcHtCvfDgTBSCTCY9x4n", "ok": true, "duration_s": 0.049}
+{"t": 3.473, "n": 5, "ev": "tool_finished", "call_id": "toolu_011ViFjtX1MuA2RSWQ4L2fZY", "ok": true, "duration_s": 0.321}
+{"t": 5.4, "n": 6, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01GTEJsm4WRC2hS6jCeeHUSu", "capability": "search", "subagent": false, "input_summary": "class Outbox|def file\\(|def add|def take|comments_today|sent_now|listed|redelivered|def comment_body|def _read|def _marker|def _cause"}
+{"t": 5.45, "n": 7, "ev": "tool_finished", "call_id": "toolu_01GTEJsm4WRC2hS6jCeeHUSu", "ok": true, "duration_s": 0.05}
+{"t": 6.89, "n": 8, "ev": "tool_started", "name": "Read", "call_id": "toolu_011CBxPpJhcu42UFGDVpNtZA", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 6.911, "n": 9, "ev": "tool_finished", "call_id": "toolu_011CBxPpJhcu42UFGDVpNtZA", "ok": true, "duration_s": 0.021}
+{"t": 7.516, "n": 10, "ev": "tool_started", "name": "Read", "call_id": "toolu_01P3LLfeaSjuVg8xRiBKFuBp", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 7.545, "n": 11, "ev": "tool_finished", "call_id": "toolu_01P3LLfeaSjuVg8xRiBKFuBp", "ok": true, "duration_s": 0.028}
+{"t": 9.734, "n": 12, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01LcXDwcEKPEY1MawBUKz977", "capability": "search", "subagent": false, "input_summary": "loop_result|filing\\.file\\(|redelivered|comment_capped"}
+{"t": 9.765, "n": 13, "ev": "tool_finished", "call_id": "toolu_01LcXDwcEKPEY1MawBUKz977", "ok": true, "duration_s": 0.031}
+{"n": 15, "ev": "resources", "t": 77755.177, "cpu_s": 2.0, "processes": 1, "rss_peak_kb": 236928}
+{"t": 10.459, "n": 15, "ev": "tool_started", "name": "Read", "call_id": "toolu_01AHs6HFHJCLqit9J4vQPHq1", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_filing.py"}
+{"t": 10.487, "n": 16, "ev": "tool_finished", "call_id": "toolu_01AHs6HFHJCLqit9J4vQPHq1", "ok": true, "duration_s": 0.028}
+{"t": 13.297, "n": 17, "ev": "tool_started", "name": "Read", "call_id": "toolu_01SfPtKTJm5zPLB1gVtoPABt", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/codehost.py"}
+{"t": 13.32, "n": 18, "ev": "tool_finished", "call_id": "toolu_01SfPtKTJm5zPLB1gVtoPABt", "ok": true, "duration_s": 0.022}
+{"t": 13.97, "n": 19, "ev": "tool_started", "name": "Read", "call_id": "toolu_01JL6QC4t9cPCLStcyLmxKFU", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/child.py"}
+{"t": 13.988, "n": 20, "ev": "tool_finished", "call_id": "toolu_01JL6QC4t9cPCLStcyLmxKFU", "ok": true, "duration_s": 0.018}
+{"t": 15.076, "n": 21, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01CWdmaoiDnBnLp1bPsicWcT", "capability": "search", "subagent": false, "input_summary": "seen_again|mute.days"}
+{"t": 15.099, "n": 22, "ev": "tool_finished", "call_id": "toolu_01CWdmaoiDnBnLp1bPsicWcT", "ok": true, "duration_s": 0.022}
+{"t": 15.903, "n": 23, "ev": "tool_started", "name": "Read", "call_id": "toolu_01HVAUajYT66MbVDfUaQcPsA", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_improve.py"}
+{"t": 15.919, "n": 24, "ev": "tool_finished", "call_id": "toolu_01HVAUajYT66MbVDfUaQcPsA", "ok": true, "duration_s": 0.016}
+{"t": 16.776, "n": 25, "ev": "tool_started", "name": "Read", "call_id": "toolu_01U3SEEoiFWJEfQkFK53KU1U", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_release_watch.py"}
+{"t": 16.801, "n": 26, "ev": "tool_finished", "call_id": "toolu_01U3SEEoiFWJEfQkFK53KU1U", "ok": true, "duration_s": 0.025}
+{"t": 18.495, "n": 27, "ev": "text", "last_line": "Phase 3 tests come first. I've read the filing code and the existing tests. I'm editing the small test files now, then I'll write `test_outbox_delivery.py`."}
+{"n": 29, "ev": "resources", "t": 77765.187, "cpu_s": 2.0, "processes": 1, "rss_peak_kb": 237120}
+{"t": 20.067, "n": 29, "ev": "tool_started", "name": "Edit", "call_id": "toolu_012pt2iNjUv2QtgzD61W9njA", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_improve.py"}
+{"t": 20.101, "n": 30, "ev": "tool_finished", "call_id": "toolu_012pt2iNjUv2QtgzD61W9njA", "ok": true, "duration_s": 0.035}
+{"t": 21.967, "n": 31, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01BBdJm4H8smQ2euKC6pwhMd", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_release_watch.py"}
+{"t": 21.998, "n": 32, "ev": "tool_finished", "call_id": "toolu_01BBdJm4H8smQ2euKC6pwhMd", "ok": true, "duration_s": 0.031}
+{"t": 23.53, "n": 33, "ev": "tool_started", "name": "Edit", "call_id": "toolu_0179CkAMkDDZNmNnhUUfczE7", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_filing.py"}
+{"t": 23.569, "n": 34, "ev": "tool_finished", "call_id": "toolu_0179CkAMkDDZNmNnhUUfczE7", "ok": true, "duration_s": 0.039}
+{"t": 27.855, "n": 35, "ev": "tool_started", "name": "Edit", "call_id": "toolu_019iafLduKZG7Ye6wsGSsree", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_filing.py"}
+{"t": 27.883, "n": 36, "ev": "tool_finished", "call_id": "toolu_019iafLduKZG7Ye6wsGSsree", "ok": true, "duration_s": 0.028}
+{"n": 38, "ev": "resources", "t": 77775.198, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 239584}
+{"t": 31.652, "n": 38, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01GzCauGb8sM9CSmYhP8yMPx", "capability": "search", "subagent": false, "input_summary": "^def |^from|^import"}
+{"t": 31.687, "n": 39, "ev": "tool_finished", "call_id": "toolu_01GzCauGb8sM9CSmYhP8yMPx", "ok": true, "duration_s": 0.035}
+{"t": 34.358, "n": 40, "ev": "tool_started", "name": "Read", "call_id": "toolu_01AVDN6zTvgmi8VPk9dUeXT6", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_loop_child.py"}
+{"t": 34.391, "n": 41, "ev": "tool_finished", "call_id": "toolu_01AVDN6zTvgmi8VPk9dUeXT6", "ok": true, "duration_s": 0.033}
+{"n": 43, "ev": "resources", "t": 77785.209, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 240896}
+{"n": 44, "ev": "resources", "t": 77795.219, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 241776}
+{"t": 58.387, "n": 44, "ev": "tool_started", "name": "Write", "call_id": "toolu_01RuKCnGvFFNnQYDMkj3MzU1", "capability": "write", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_outbox_delivery.py"}
+{"t": 58.423, "n": 45, "ev": "tool_finished", "call_id": "toolu_01RuKCnGvFFNnQYDMkj3MzU1", "ok": true, "duration_s": 0.036}
+{"n": 47, "ev": "resources", "t": 77805.227, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 243104}
+{"t": 60.641, "n": 47, "ev": "tool_started", "name": "Bash", "call_id": "toolu_013iU2aBJpkzbXMecR1WSSwc", "capability": "shell", "subagent": false, "input_summary": "cd plugins/tempergraph/engine && python -m pytest tests/test_outbox_delivery.py tests/test_improve.py::test_outbox_max_age_is_a_parameter_record tests/test_release_watch.py tests/test_filing.py -q -n…"}
+{"t": 64.689, "n": 48, "ev": "tool_finished", "call_id": "toolu_013iU2aBJpkzbXMecR1WSSwc", "ok": false, "duration_s": 4.049}
+{"t": 65.787, "n": 49, "ev": "text", "last_line": "Nine tests fail for the expected reasons: delivery isn't checked yet and nothing stamps a queue time. Now the code rows, starting with the parameter."}
+{"t": 66.987, "n": 50, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01QEvR5ET71Yw4jREn5JjtY6", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/params.py"}
+{"t": 67.029, "n": 51, "ev": "tool_finished", "call_id": "toolu_01QEvR5ET71Yw4jREn5JjtY6", "ok": true, "duration_s": 0.042}
+{"n": 53, "ev": "resources", "t": 77815.238, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 255824}
+{"t": 72.886, "n": 53, "ev": "tool_started", "name": "Edit", "call_id": "toolu_015cuEB88xR8r6YAjqBZ1DEc", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 72.906, "n": 54, "ev": "tool_finished", "call_id": "toolu_015cuEB88xR8r6YAjqBZ1DEc", "ok": true, "duration_s": 0.02}
+{"t": 75.218, "n": 55, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01HJ2bC9q1cSE3aLcFdFSQnt", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 75.238, "n": 56, "ev": "tool_finished", "call_id": "toolu_01HJ2bC9q1cSE3aLcFdFSQnt", "ok": true, "duration_s": 0.02}
+{"t": 76.752, "n": 57, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01BgStYzMpVDVV5CrJvU5eAv", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 76.771, "n": 58, "ev": "tool_finished", "call_id": "toolu_01BgStYzMpVDVV5CrJvU5eAv", "ok": true, "duration_s": 0.02}
+{"t": 78.656, "n": 59, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01YMd5AJdEGyroWqh44nSQym", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 78.689, "n": 60, "ev": "tool_finished", "call_id": "toolu_01YMd5AJdEGyroWqh44nSQym", "ok": true, "duration_s": 0.033}
+{"n": 62, "ev": "resources", "t": 77825.248, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 257344}
+{"t": 88.617, "n": 62, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01GxJLh5ezaY5Hz5qAGGwrvY", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"t": 88.659, "n": 63, "ev": "tool_finished", "call_id": "toolu_01GxJLh5ezaY5Hz5qAGGwrvY", "ok": true, "duration_s": 0.042}
+{"n": 65, "ev": "resources", "t": 77835.259, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 257344}
+{"t": 90.423, "n": 65, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01UvrPgz6RYMruyzpDke1Pts", "capability": "shell", "subagent": false, "input_summary": "cd plugins/tempergraph/engine && python -m pytest tests/test_outbox_delivery.py tests/test_improve.py tests/test_release_watch.py tests/test_filing.py tests/test_loop_issues.py -q -n 0"}
+{"n": 67, "ev": "resources", "t": 77845.267, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 257344}
+{"n": 68, "ev": "resources", "t": 77855.276, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 257344}
+{"t": 110.353, "n": 68, "ev": "tool_finished", "call_id": "toolu_01UvrPgz6RYMruyzpDke1Pts", "ok": false, "duration_s": 19.93}
+{"t": 113.3, "n": 69, "ev": "tool_started", "name": "Read", "call_id": "toolu_01WPnpmM4MPy9Hvr1u61TNEm", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_loop_child.py"}
+{"t": 113.328, "n": 70, "ev": "tool_finished", "call_id": "toolu_01WPnpmM4MPy9Hvr1u61TNEm", "ok": true, "duration_s": 0.028}
+{"t": 116.602, "n": 71, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01KgHaANqNgPRFZ5NoT2V7UE", "capability": "search", "subagent": false, "input_summary": "outbox_dropped"}
+{"t": 116.633, "n": 72, "ev": "tool_finished", "call_id": "toolu_01KgHaANqNgPRFZ5NoT2V7UE", "ok": true, "duration_s": 0.032}
+{"t": 118.9, "n": 73, "ev": "text", "last_line": "The result key `kind` overwrote the loop record's own `kind`, so the record was never written as `loop_result`. I'm renaming that result key to `entry_kind` and will report it as a deviation."}
+{"t": 120.095, "n": 74, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01B9JRnW8uwUtxj9XcEP8Byr", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/filing.py"}
+{"n": 76, "ev": "resources", "t": 77865.287, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 259744}
+{"t": 120.122, "n": 76, "ev": "tool_finished", "call_id": "toolu_01B9JRnW8uwUtxj9XcEP8Byr", "ok": true, "duration_s": 0.027}
+{"t": 120.97, "n": 77, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01Qw1JHEURdCowBghP6XHyqh", "capability": "shell", "subagent": false, "input_summary": "sed -i 's/\"kind\": \"create\", \"repo\"/\"entry_kind\": \"create\", \"repo\"/; s/\"kind\": \"comment\", \"repo\": REPO, \"number\": 1}/\"entry_kind\": \"comment\", \"repo\": REPO, \"number\": 1}/; s/\"kind\": \"reopen\", \"repo\": R…"}
+{"t": 120.993, "n": 78, "ev": "denied", "name": "Bash"}
+{"t": 120.996, "n": 79, "ev": "tool_finished", "call_id": "toolu_01Qw1JHEURdCowBghP6XHyqh", "ok": false, "duration_s": 0.027}
+{"t": 121.966, "n": 80, "ev": "text", "last_line": "The `sed` call was denied, so I'll make the same edits with the Edit tool."}
+{"t": 124.135, "n": 81, "ev": "tool_started", "name": "Edit", "call_id": "toolu_012vSqs5SwrwZCuwTwbpQLDz", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_outbox_delivery.py"}
+{"t": 124.157, "n": 82, "ev": "tool_finished", "call_id": "toolu_012vSqs5SwrwZCuwTwbpQLDz", "ok": true, "duration_s": 0.022}
+{"t": 125.302, "n": 83, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01U6kHK72xqsRpNAM315wueT", "capability": "shell", "subagent": false, "input_summary": "cd plugins/tempergraph/engine && python -m pytest tests/test_outbox_delivery.py tests/test_improve.py tests/test_release_watch.py tests/test_filing.py tests/test_loop_issues.py -q -n 0"}
+{"n": 85, "ev": "resources", "t": 77875.295, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 269888}
+{"n": 86, "ev": "resources", "t": 77885.303, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 269888}
+{"t": 145.069, "n": 86, "ev": "tool_finished", "call_id": "toolu_01U6kHK72xqsRpNAM315wueT", "ok": true, "duration_s": 19.766}
+{"t": 145.984, "n": 87, "ev": "text", "last_line": "All named files pass. Now I'll mark the phase 3 rows in the plan in one edit."}
+{"t": 146.121, "n": 88, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01RFbPftUyDtv481rqY64BAP", "capability": "shell", "subagent": false, "input_summary": "git status --short"}
+{"t": 146.466, "n": 89, "ev": "tool_finished", "call_id": "toolu_01RFbPftUyDtv481rqY64BAP", "ok": true, "duration_s": 0.345}
+{"t": 149.443, "n": 90, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01JeV3574Sh3myXJq3U7Afda", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 149.468, "n": 91, "ev": "tool_finished", "call_id": "toolu_01JeV3574Sh3myXJq3U7Afda", "ok": true, "duration_s": 0.025}
+{"n": 93, "ev": "resources", "t": 77895.311, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 269888}
+{"t": 150.876, "n": 93, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01LFE3ZyqAM7WccDjWW2HNyr", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 150.896, "n": 94, "ev": "tool_finished", "call_id": "toolu_01LFE3ZyqAM7WccDjWW2HNyr", "ok": true, "duration_s": 0.02}
+{"t": 152.312, "n": 95, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01Q5M3TdCMUQizKpvkmn4qYU", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 152.336, "n": 96, "ev": "tool_finished", "call_id": "toolu_01Q5M3TdCMUQizKpvkmn4qYU", "ok": true, "duration_s": 0.024}
+{"t": 153.607, "n": 97, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01CPLk6yLZEEU7StiHBsvMxd", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 153.629, "n": 98, "ev": "tool_finished", "call_id": "toolu_01CPLk6yLZEEU7StiHBsvMxd", "ok": true, "duration_s": 0.023}
+{"t": 154.74, "n": 99, "ev": "tool_started", "name": "Edit", "call_id": "toolu_017iFPdZQ1J7etXeTEMX6Cp9", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 154.765, "n": 100, "ev": "tool_finished", "call_id": "toolu_017iFPdZQ1J7etXeTEMX6Cp9", "ok": true, "duration_s": 0.025}
+{"t": 155.807, "n": 101, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01FdekdwRm17VsEWJfjDj9kR", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 155.829, "n": 102, "ev": "tool_finished", "call_id": "toolu_01FdekdwRm17VsEWJfjDj9kR", "ok": true, "duration_s": 0.022}
+{"t": 156.779, "n": 103, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01NEmaUfwjbbfWxNmb5HCXH3", "capability": "edit", "subagent": false, "input_summary": "plugins/tempergraph/docs/plans/i170c.plan.md"}
+{"t": 156.816, "n": 104, "ev": "tool_finished", "call_id": "toolu_01NEmaUfwjbbfWxNmb5HCXH3", "ok": true, "duration_s": 0.037}
+{"n": 106, "ev": "resources", "t": 77905.318, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 276336}
+{"t": 163.444, "n": 106, "ev": "text", "last_line": "ARTIFACT phase_note: Ran tests/test_outbox_delivery.py, tests/test_improve.py, tests/test_release_watch.py, tests/test_filing.py and tests/test_loop_issues.py with `python -m pytest ... -n 0`; all pa…"}
+{"t": 163.8, "n": 107, "ev": "denied", "name": "Bash"}
+{"t": 163.8, "n": 108, "ev": "result", "ok": true, "text": "Phase 3 is built and rows 3.1 to 3.7 are marked in the plan. The five test files that cover the phase passed in a run after the last code change. That run did not include the plan marks, so I did not re-run anything after marking.\n\n- **Tests run:** `test_outbox_delivery.py`, `test_improve.py`, `test_release_watch.py`, `test_filing.py` and `test_loop_issues.py`, with `python -m pytest ... -n 0`.\n- **Tests first:** I wrote the tests first and watched nine of them fail for the expected reasons (delivery unchecked, no `queued_at`, no parameter).\n- **Marks:** I wrote them with seven separate Edit calls, not one, because the tool replaces one string per call.\n- **Spec check:** I did not do the step-7 search of the spec folders for specs that the change makes false.\n\nThe code changes are in `improve/filing.py` and `improve/params.py`:\n- **`outbox.max_age_days`:** 30 with source ISS-B18.\n- **`Outbox.add`:** it stamps `queued_at` when the entry has none and keeps an existing one.\n- **`_redeliver`:** the new function checks each waiting entry for expiry, a comment on an open issue, and a muted cause.\n\nOne deviation from the plan: the `outbox_dropped` result for an expired entry names the op as `entry_kind`, not `kind`. In `child.py` the result is merged into the `loop_result` record after the record's own `kind`. A key called `kind` therefore overwrote `loop_result`, and the loop child no longer wrote the record as `loop_result`. The spec only says the record holds \"the entry's kind\", so the field name is mine to pick. If you want a different name, it changes in `_redeliver` and in `test_outbox_delivery.py`.\n\nARTIFACT phase_note: Ran tests/test_outbox_delivery.py, tests/test_improve.py, tests/test_release_watch.py, tests/test_filing.py and tests/test_loop_issues.py with `python -m pytest ... -n 0`; all passed after the last code change. Plan marks were written afterwards; I did not re-run. One deviation from row 3.7: the expired result's field for the entry's op is `entry_kind`, not `kind`, because child.py merges the result into the loop_result record after its own `kind` and a `kind` key overwrote `loop_result` (spec ISS-B18 only says it holds \"the entry's kind\"). The step-7 search of the specs outside the plan's front matter was not done.", "subtype": "success", "is_error": false, "session_id": "65109c7f-afd8-4363-8393-e76181bcd15e"}

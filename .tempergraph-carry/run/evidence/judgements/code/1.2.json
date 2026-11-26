@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-code-aligned",
+      "evidence": "PARTIAL: I read the code for each behaviour and it matches. ISS-B16 to B18: filing.py:487-538 `_redeliver` turns a create into a comment, drops a muted cause (`reason: muted`) and drops an expired entry (`reason: expired`); `Outbox.add` keeps `queued_at` (filing.py:354-355). CLI-B21 to B23: cli/improve.py:422-452 `_outbox` lists without a body, oldest first, and refuses `clear` with neither or bo…",
+      "fix": ""
+    },
+    {
+      "criterion": "ts-code-related",
+      "evidence": "PARTIAL: I found no contradiction in the changed code I read, and the pinned related tests passed in the check's pytest run. FFD-B1 (one recorded answer per fingerprint) holds in child.py:451-453. The ISS-B9 shared issue-list cache holds in filing.py:552 and 571-573. ISS-B13's day bound is counted in `_redeliver` at filing.py:511. I did not open the related specs themselves beyond the report's cl…",
+      "fix": ""
+    },
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: I read test_pause_hand_on.py in full. The SIL-AC59 test (lines 163-189) asserts one `filed` result and one issue holding the fingerprint, or `recorded`/`not_attributed` with no issue. The SIL-AC58 test (lines 125-148) asserts the second ticket lacks the first's fingerprint. The SIL-AC57 tests assert the ticket holds the fingerprint and one answer per fingerprint, but not that an issue is…",
+      "fix": ""
+    }
+  ]
+}

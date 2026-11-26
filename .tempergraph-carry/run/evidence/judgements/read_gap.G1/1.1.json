@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "read_gap",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-rdg-answers",
+      "evidence": "PARTIAL: Most claims match their files. SIL-B19 is at self-improvement.spec.md l.162-166 and the Outbox class at filing.py l.340-360. The redelivery loop is at l.443-448 (`results.append({\"op\": \"redelivered\", ...})`), and the mute and open-issue match at l.462-487 run only for new decisions. The grep for max_age_days found only the triage note. One claim is wrong: the scenario is said to be prove…",
+      "fix": "Cite SIL-AC10 and not SIL-AC3 as the criterion that proves SIL-B19, and give the gap finding in full."
+    }
+  ]
+}

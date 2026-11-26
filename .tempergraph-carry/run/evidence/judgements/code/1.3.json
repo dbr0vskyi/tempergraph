@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "code",
+  "visit": 1,
+  "attempt": 3,
+  "blockers": [
+    {
+      "criterion": "ts-code-tests",
+      "evidence": "PARTIAL: I read test_outbox_delivery.py (ISS-AC15/16/17) and test_pause_hand_on.py (SIL-AC57/58/59) in full; they assert the criterion results, e.g. `assert res == [{\"op\": \"outbox_dropped\", \"reason\": \"muted\", \"fingerprint\": fp}]` (line 84) and `assert [r[\"op\"] ... ] == [\"filed\"]` (line 184). I did not read the other new or changed test files in full: test_segment_binding, test_outbox_verbs, test_…",
+      "fix": ""
+    }
+  ]
+}
