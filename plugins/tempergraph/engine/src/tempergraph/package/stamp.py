@@ -179,6 +179,7 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
         "workflow_version": lp.workflow_version, "docs_digest": lp.docs_digest, "shape_digest": model["digest"],
         "entries_applied": _entries_applied(prior, rep.compat["entries"]),
         "tool_set": tool_set(lp.spec),
+        "revisit": _revisit_states(lp.spec),
         "audit": audit_keys,
         "outcome_revision": revision,
         "baseline": {"error": 0, "warning": sum(1 for f in found if f.severity == "warning")},
@@ -186,6 +187,13 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
     }
     write_json(root / STAMP, rep.stamp, mode=0o644)
     return rep
+
+
+def _revisit_states(spec: WorkflowSpec) -> dict[str, dict[str, str]]:
+    """DRV-B3: the states of the decision records' revisit triggers that read offline (no issue, no CLI version)."""
+    from tempergraph.audit.revisit import Readers, states
+
+    return states(spec, Readers(engine_version=ENGINE_VERSION))
 
 
 def _entries_applied(prior: Mapping[str, Any] | None, new_ids: Sequence[str],

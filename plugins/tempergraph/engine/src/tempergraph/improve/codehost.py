@@ -154,6 +154,15 @@ class GhCodeHost:
                         "--input", "-"], {"body": body})
         return str((got or {}).get("html_url") or "")
 
+    def issue_state(self, repo: str, number: int) -> str | None:
+        """DRV-B2: `open` or `closed`, None when the issue cannot be read."""
+        try:
+            got = self._gh(["api", f"repos/{_check(repo)}/issues/{int(number)}"])
+        except CodeHostError:
+            return None
+        state = str((got or {}).get("state") or "")
+        return state if state in ("open", "closed") else None
+
     def reopen(self, repo: str, number: int) -> None:
         self._gh(["api", f"repos/{_check(repo)}/issues/{int(number)}", "--method", "PATCH", "--input", "-"],
                  {"state": "open"})

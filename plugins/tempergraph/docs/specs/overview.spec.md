@@ -75,6 +75,7 @@ The component specs, each owning what follows its name:
 - [audit-rule-catalog.spec.md](audit-rule-catalog.spec.md) ARC: the audit's rules outside tools, keyed to ranked causes.
 - [tool-surface-audit.spec.md](tool-surface-audit.spec.md) TSA: grant, need and use of each step and judge session.
 - [prompt-audit.spec.md](prompt-audit.spec.md) PRA: model-facing text, its names, agreement with declarations and size.
+- [decision-revisit.spec.md](decision-revisit.spec.md) DRV: decision records whose revisit trigger has fired.
 - [engine-update.spec.md](engine-update.spec.md) UPD: the `install` and `update` verbs and the workflow registry.
 - [version-metadata.spec.md](version-metadata.spec.md) VER: release record, changelog, transforms, stamps, compatibility states.
 - [state-and-run-migration.spec.md](state-and-run-migration.spec.md) MIG: store layout migration and threads across releases.

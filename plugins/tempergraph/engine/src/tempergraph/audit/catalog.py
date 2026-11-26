@@ -299,6 +299,8 @@ RULES: tuple[Rule, ...] = (
     _r("prompt-tool-conflict", "definition", "C7", "warning / high", "prompt_conflict",
        "Make the text and the declaration say the same; the engine's tools block is the source of truth",
        spec="PRA"),
+    _r("decision-revisit-due", "definition", "C7", "info / high", "decision_revisit",
+       "Read the decision record again and revise it, or rewrite its revisit trigger, then restamp", spec="DRV"),
     _r("prompt-constraint-heavy", "definition", "C7", "warning / medium", "prompt_structure",
        "Give each rule that is not mechanical its reason in half a line, or replace a list of prohibitions with "
        "what the step owns and where the rest goes", spec="PRA"),
