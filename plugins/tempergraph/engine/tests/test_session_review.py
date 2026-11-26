@@ -81,6 +81,26 @@ def test_repeats_become_a_cause_and_the_digest_holds_no_clear_text(tmp_path: Pat
     assert CANARY not in json.dumps(d) and "t.py" not in json.dumps(d)  # keyed digests only
 
 
+def edit(path: str) -> dict[str, Any]:
+    return {"name": "Edit", "cap": "edit", "summary": path}
+
+
+def test_srv_ac1_repeats_that_did_not_fail_give_no_tool_repeat(tmp_path: Path) -> None:  # SRV-AC1 (SRV-B2), AC 7
+    sdir = session(tmp_path, "D-2", "draft.1.step", [edit("a.py")] * 4)
+    d = digest.build(sdir, rec("draft.1.step"), {"tools": ["read", "edit"]})
+    assert [(r["tool"], r["error_class"], r["count"]) for r in d["repeats"]] == [("Edit", None, 4)]  # still digested
+    assert "tool_repeat" not in {c["cause"] for c in digest.causes([d])}
+
+
+def test_srv_ac1_failed_repeats_among_others_give_tool_repeat_once(tmp_path: Path) -> None:  # SRV-AC1 (SRV-B2), AC 7
+    calls = [bash("pytest t.py", ok=False, out="No such file t.py")] * 4 + [edit("a.py")] * 4
+    sdir = session(tmp_path, "D-3", "draft.1.step", calls)
+    d = digest.build(sdir, rec("draft.1.step"), {"tools": ["read", "edit", "shell"]})
+    assert sorted(str(r["error_class"]) for r in d["repeats"]) == ["None", "not_found"]
+    assert [c for c in digest.causes([d]) if c["cause"] == "tool_repeat"] == [
+        {"unit": "draft", "cause": "tool_repeat", "count": 1}]
+
+
 @pytest.mark.parametrize(("calls", "decl", "want"), [
     ([bash("cat a.py"), bash("grep x b.py"), bash("ls src")], ["read", "shell"], "shell_for_files"),
     ([read("a.py")] * 1, ["read"], None),
