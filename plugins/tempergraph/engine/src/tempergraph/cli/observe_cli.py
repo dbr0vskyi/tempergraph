@@ -154,6 +154,13 @@ def cmd_store(env: Any, a: argparse.Namespace) -> int:
                                "removed" if not a.dry_run else "would_remove":
                                [str(p.relative_to(root)) for p in plan.remove],
                                "refused": plan.refused, "kept_failed": plan.kept_failed, "failed": failed}
+        from tempergraph.observe import supervision_cost as sco
+        from tempergraph.store.layout import home_path
+
+        old = sco.prunable_journals(home_path(), time.time())  # SCO-B17: kept 90 days, like evidence
+        gone = [] if a.dry_run else logs.apply(logs.Plan(remove=old))
+        pruned["journals_removed" if not a.dry_run else "journals_would_remove"] = [str(p) for p in old]
+        pruned["failed"] += gone
         if a.schedules:  # TCK-B23: the one thing that shortens the machine-wide ledger
             from tempergraph.cli import schedule_cli
             from tempergraph.schedule import ledger

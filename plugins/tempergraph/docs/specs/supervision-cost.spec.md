@@ -118,9 +118,10 @@ WHEN a `supervision` verb runs THE engine CLI SHALL offer `supervision hook <eve
 
 ### SCO-B17 Privacy and retention
 
-WHEN supervision data is kept or sent THE engine SHALL keep no prompt, command line, tool output or transcript text in the journal, only a verb word, resolved ids, counts, sizes and times; send host sessions and thread ids hashed in anything that leaves the machine ([CST](central-run-stats.spec.md)); keep journals 90 days like evidence ([LOS](local-observability-store.spec.md)); and keep closed figures with the ledger.
+WHEN supervision data is kept or sent THE engine SHALL keep no prompt, command line, tool output or transcript text in the journal, only a verb word, resolved ids, counts, sizes and times; send host sessions and thread ids hashed in anything that leaves the machine ([CST](central-run-stats.spec.md)); keep journals 90 days like evidence ([LOS](local-observability-store.spec.md)), `store prune` removing a journal and its `.offsets.json` once its last entry is 90 days old and `--dry-run` listing them; and keep closed figures with the ledger.
 
 - GIVEN a canary prompt and command WHEN the journal, ledger and sink rows are scanned THEN neither appears
+- GIVEN a journal whose last entry is 91 days old and one with an entry from yesterday WHEN `store prune` runs THEN the first and its offsets file are removed and the second is kept
 
 ## Acceptance criteria
 
@@ -130,9 +131,10 @@ WHEN supervision data is kept or sent THE engine SHALL keep no prompt, command l
 - SCO-AC4 (SCO-B11): A hook failure injected at each entry kind leaves the host call's result and duration (within 2 s) unchanged
 - SCO-AC5 (SCO-B5, SCO-B6, SCO-B12): Sessions with `TEMPERGRAPH_SESSION_KEY` write no journal entry, and `unknown` and unprobed hosts close `incomplete` with null cost
 - SCO-AC6 (SCO-B3, SCO-B12): P-SUP-3 (`PostToolUse` input for `Bash` carries the command and the response size, and `Stop` and `SubagentStop` give a transcript path whose assistant lines carry usage) has a recorded result with date, machine and Claude Code version before the Claude Code row leaves `projected`, and on a live orchestration of three or more runs the share of [OSK](orchestrator-skill.spec.md) is computed by this spec
+- SCO-AC7 (SCO-B17): `store prune` removes a journal and its offsets file whose last entry is 90 or more days old, keeps one with a newer entry, and with `--dry-run` lists them and removes nothing
 
 ## Open questions
 
 - Should the `rewake` idle threshold follow the host's actual cache lifetime when the host reports it (the status line's `prompt_cache.ttl`)? Until answered: a fixed 300 s default. Owner: implementer.
 - Should a team sink receive the session-level reported figure? Until answered: yes, hashed. Owner: owner.
-- Not built yet: `measured_zero`, orchestration splits and the status line's `reported` entry wait for orchestrations and a status line; journals are not yet pruned at 90 days; P-SUP-3 has not run. Owner: engine owner.
+- Not built yet: `measured_zero`, orchestration splits and the status line's `reported` entry wait for orchestrations and a status line; P-SUP-3 has not run. Owner: engine owner.
