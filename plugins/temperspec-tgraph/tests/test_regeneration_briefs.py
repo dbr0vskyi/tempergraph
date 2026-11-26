@@ -38,3 +38,36 @@ def test_rgf_ac5_the_code_prompt_says_to_fix_the_listed_findings_and_nothing_els
     assert "fix those findings and change nothing else" in text
     assert "touch no file that fixing them does not need" in text
     assert "no stamp, authoring record or diagram by hand" in text
+
+
+def test_rgf_ac5_the_code_brief_after_a_failed_regeneration_holds_the_numbered_findings_under_the_reason(
+        tmp_path: Path) -> None:
+    # RGF-AC5 (RGF-B5), AC 5: the prompt the stand-in read on the visit that follows a failed regeneration
+    import importlib
+    import subprocess
+    import sys
+
+    here = str(ROOT / "tests")
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    rr = importlib.import_module("test_regeneration_run")
+    from tempergraph.constants import ExitCode
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for args in (("init", "-q", "-b", "main"), ("config", "user.email", "t@example.invalid"),
+                 ("config", "user.name", "Test")):
+        subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+    (repo / "README.md").write_text("scratch\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True, capture_output=True)
+    rr._declare_flaky(repo, rr._flaky("gen", "1", "tools/three.json"), reports={"three.json": rr.THREE})
+    stand = rr.irv.Stand()
+    out = rr._go(repo, stand)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    first, last = rr._code_prompts(stand)[0], rr._code_prompts(stand)[-1]
+    assert "Why this unit runs again" not in first
+    reason_at = last.index("Why this unit runs again")
+    at = [last.index(f"{n}. [", reason_at) for n in (1, 2, 3)]
+    assert at == sorted(at) and "4. [" not in last
+    assert "summary-long" in last[at[0]:at[1]] and "blocker-unverified" in last[at[2]:]
