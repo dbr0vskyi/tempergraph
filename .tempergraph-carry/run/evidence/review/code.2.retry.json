@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.retry",
+  "view_chars": 17383,
+  "observations": [
+    {
+      "category": "environment_fault",
+      "turns": [
+        8,
+        14
+      ],
+      "remedy_class": "lessons",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "A test asserted that 'tg-' was absent from worktree output, but the sandbox temp path contains 'tg-', so it failed on the repo's own path; the session narrowed the assertion to the exact worktree path."
+    },
+    {
+      "category": "environment_fault",
+      "turns": [
+        26,
+        31,
+        36,
+        37
+      ],
+      "remedy_class": "tools",
+      "confidence": 0.7,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The preview of the full suite (about 23 minutes) hit the default 10-minute background limit and then a kill at about 98% before a third run passed, so the preview needs a longer default limit."
+    },
+    {
+      "category": "wasted_turns",
+      "turns": [
+        26,
+        29,
+        31,
+        33,
+        36,
+        38
+      ],
+      "remedy_class": "flow",
+      "confidence": 0.5,
+      "check": "kept",
+      "corroborated": false,
+      "note": "About 69 minutes passed in waiting and re-launching the preview, with no tests failing in the two lost runs."
+    },
+    {
+      "category": "tool_thrash",
+      "turns": [
+        23,
+        25
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.4,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The session called an undeclared Monitor tool that is disabled for it, then polled output files outside the workspace instead."
+    },
+    {
+      "category": "instruction_ignored",
+      "turns": [
+        3
+      ],
+      "remedy_class": "prompt",
+      "confidence": 0.35,
+      "check": "kept",
+      "corroborated": false,
+      "note": "The session never opened the triage note or any spec, and did not do the step 7 search of specs outside the plan before the report."
+    }
+  ],
+  "conformance": [
+    {
+      "item": "task-notes.rule.md opened with read",
+      "status": "followed",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "item": "plan.rule.md opened with read",
+      "status": "followed",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "item": "Read the triage note and specs before changing files",
+      "status": "not_followed",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "item": "Run only the phase's test files after the phase",
+      "status": "followed",
+      "turns": [
+        8,
+        20
+      ]
+    },
+    {
+      "item": "Make the one verification run through the preview",
+      "status": "followed",
+      "turns": [
+        22,
+        32,
+        37
+      ]
+    },
+    {
+      "item": "Change no file after the final preview run",
+      "status": "followed",
+      "turns": [
+        27,
+        40
+      ]
+    },
+    {
+      "item": "Step 7 check of specs outside the plan",
+      "status": "unclear",
+      "turns": []
+    },
+    {
+      "item": "Skills and subagents",
+      "status": "not_applicable",
+      "turns": []
+    }
+  ],
+  "none_found": false
+}

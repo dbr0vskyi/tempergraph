@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.judge",
+  "view_chars": 11353,
+  "observations": [
+    {
+      "category": "judge_unread",
+      "turns": [
+        7,
+        9,
+        10
+      ],
+      "remedy_class": "brief",
+      "confidence": 0.6,
+      "check": "unsupported",
+      "corroborated": false,
+      "note": "The judge saw two changed files (test_session_review.py, digest.py) only through grep lines and read 3 of 8 changed files, so alignment and related-spec criteria resting on them were left PARTIAL instead of being checked by opening the files."
+    }
+  ],
+  "conformance": [],
+  "none_found": false
+}
