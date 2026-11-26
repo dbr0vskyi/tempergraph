@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "triage",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-tri-gaps",
+      "evidence": "UNMET: No concept is missing from the gap list. My grep of plugins/*/docs/specs for regenerat|generated file|reading list|name-taken found no spec for the unit (only scaffold regeneration at blueprint-and-scaffold.spec.md:47 and name-taken in engine-update.spec.md:122). But G5 (line 45), G7 (line 47) and G8 (line 48) do not name the search that found nothing; they only assert that no spec states …",
+      "fix": "Add to G5, G7 and G8 the search (terms and folders) that found no covering spec."
+    }
+  ]
+}

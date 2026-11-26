@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "read_gap",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-rdg-answers",
+      "evidence": "PARTIAL: Verified: blueprint-and-scaffold.spec.md:115 names rung 7 as 'workflows register <path> --check, then register'; registry.py:140-141 raises name-taken when Path(e.get('path')).resolve() != root; registry.py:143,148 set path to str(root) and rewrite the entry; verify.py:186-199 matches; test_registry.py:79-84 matches. False claim: 'the only name-taken rule is engine-update.spec.md:122-124…",
+      "fix": "State that UPD-B24 (engine-update.spec.md:155) already specifies name-taken for `workflows register`. The gap is the author-verify rung and a second checkout of the same package."
+    }
+  ]
+}

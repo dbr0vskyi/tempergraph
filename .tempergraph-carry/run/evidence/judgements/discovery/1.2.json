@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "unit": "discovery",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-dis-behaviour",
+      "evidence": "PARTIAL: The behaviours state observable results, for example RGF-B8 'THE workflow SHALL pause the run at once and send nothing back' and HUM-B16 'one line for each failing finding ... numbered from 1'. RGN-B13 and RGN-AC13 name the check id `ts-code-lane`, which is an internal name that could be replaced by a plain description (the quick lane's guard on files the triage note names).",
+      "fix": "Describe the lane guard in words and drop the check id from RGN-B13 and RGN-AC13."
+    },
+    {
+      "criterion": "ts-dis-general",
+      "evidence": "PARTIAL: The behaviours read as general rules. HUM-B15 reads 'WHEN a gate that has no judge and declares `on_fail: back` meets a check FAIL ... THE gate SHALL send the run back to its one back target with no retry'. The engine specs name no workflow. The criteria SCF-AC9, SCF-AC10 and RGN-AC5 carry the phrase 'byte for byte as it was', which is wording that could be dropped. The sentences carry w…",
+      "fix": "Simplify the 'byte for byte as it was' phrasing to 'unchanged' and trim the sentences over 500 characters."
+    }
+  ]
+}

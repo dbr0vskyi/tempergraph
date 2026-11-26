@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "discovery",
+  "visit": 1,
+  "attempt": 3,
+  "blockers": [
+    {
+      "criterion": "ts-dis-general",
+      "evidence": "PARTIAL: Behaviours read as general rules and carry no narration of the old defect or the change. Task fixture values are copied into scenarios. regeneration-failures.spec.md:75 (RGF-AC3) lists the fixture 'a failed rung with a summary over 60 characters ... a check with no pass case ... a blocker no case verifies', and RGF-B3 line 30 uses 'V4 audit' with 'outcome-unverified-blocker'.",
+      "fix": "Replace the i173 fixture values in RGF-AC3 and the RGF-B3 scenarios with illustrative reports."
+    }
+  ]
+}

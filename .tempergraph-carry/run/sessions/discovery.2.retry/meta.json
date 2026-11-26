@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.retry",
+  "kind": "retry",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "/home/dbr0vskyi/projects/tempergraph/.tempergraph/runs/temperspec/i203a/sessions/discovery.2.retry/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T14:16:58.012Z",
+  "ended_at": "2026-11-26T14:33:46.691Z",
+  "session_id": "674dc531-25c1-4841-8544-f193a56f48ae",
+  "model": "claude-sonnet-5-5",
+  "pgid": 3804951,
+  "cli_version": "2.1.332"
+}

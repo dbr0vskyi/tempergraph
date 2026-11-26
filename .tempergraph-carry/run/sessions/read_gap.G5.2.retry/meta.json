@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G5.2.retry",
+  "kind": "retry",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "/home/dbr0vskyi/projects/tempergraph/.tempergraph/runs/temperspec/i203a/sessions/read_gap.G5.2.retry/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T13:49:24.636Z",
+  "ended_at": "2026-11-26T13:49:43.208Z",
+  "session_id": "8538592b-34a6-46d3-8c33-ad22083de48c",
+  "model": "claude-sonnet-5-5",
+  "pgid": 3550267,
+  "cli_version": "2.1.332"
+}
