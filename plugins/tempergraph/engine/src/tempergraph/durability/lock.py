@@ -10,6 +10,8 @@ import contextlib
 import json
 import os
 import sys
+import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import IO, Any
 
@@ -89,6 +91,26 @@ class RunLock:
 
     def __exit__(self, *exc: object) -> None:
         self.release()
+
+
+@contextlib.contextmanager
+def exclusive(path: Path, timeout_s: float = 60.0) -> Iterator[None]:
+    """An exclusive OS lock held for the body (OUT-B30): waits up to `timeout_s`, then raises `LockHeld`. It writes
+    no holder file, so `is_held` sees it and the run lock is unchanged."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fh = open(path, "a+")  # noqa: SIM115 - closed below
+    try:
+        deadline = time.monotonic() + timeout_s
+        while not _try(fh, exclusive=True):
+            if time.monotonic() >= deadline:
+                raise LockHeld(path, {})
+            time.sleep(0.05)
+        try:
+            yield
+        finally:
+            _release(fh)
+    finally:
+        fh.close()
 
 
 def read_holder(path: Path) -> dict[str, Any]:

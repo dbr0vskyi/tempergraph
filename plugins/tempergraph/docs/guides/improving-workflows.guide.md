@@ -67,7 +67,7 @@ A review can fail, for example because the signed-in account has used up its all
 
 ## 5. Revise the outcome
 
-Runs also collect evidence that the outcome itself is wrong: a criterion that never fails, one people keep overriding, or a gap that keeps showing up. When a run's finalizer opened a pull request, the loop also reads a person's review of it through `gh` (counts and kinds only; review text stays in the run's local evidence), and a `met` run that was sent back (rerun, a `changes_requested` review, or a follow-up commit on a file the run wrote) is shown as an escape by `outcome show` and `outcome candidates`. See it with `tempergraph outcome candidates <workflow>`, then revise the outcome as described in [Authoring workflows](authoring-workflows.guide.md#revise-a-workflow).
+Runs also collect evidence that the outcome itself is wrong: a criterion that never fails, one people keep overriding, or a gap that keeps showing up. When a run's finalizer opened a pull request, the loop also reads the review of an owner, member or collaborator of the repository through `gh` (not a bot, and not the loop's own marked comments; counts and kinds only; review text stays in the run's local evidence), and a `met` run that was sent back (rerun, a `changes_requested` review, or a follow-up commit on a file the run wrote; the files the run wrote are those that differ between its branch start and its end commit, whatever tool or command changed them) is shown as an escape by `outcome show` and `outcome candidates`. See it with `tempergraph outcome candidates <workflow>`, then revise the outcome as described in [Authoring workflows](authoring-workflows.guide.md#revise-a-workflow).
 
 ## How much babysitting
 

@@ -338,6 +338,10 @@ class EngineNodes:
 
             write_prompt(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, req.session_key, req.prompt)
         key = req.session_key
+        started = ""
+        if req.kind in ("step", "retry"):  # SIL-B33: the commit the session started from
+            with contextlib.suppress(Exception):
+                started = gitmod.head(req.workdir)
         for n in range(self.ctx.infra_tries):
             if hold is not None:
                 reason = self.ledger.acquire(
@@ -379,6 +383,8 @@ class EngineNodes:
                                    duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
                                    slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
                                    **({"lessons_digest": lessons_digest} if lessons_digest else {}),
+                                   **({"wrote_paths": self._wrote_paths(req, started)}
+                                      if req.kind in ("step", "retry") else {}),
                                    **dict(extra or {}))
                 if hold is not None:
                     spent = CostTotals()
@@ -391,6 +397,15 @@ class EngineNodes:
                 break
             self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
         return results[-1], results
+
+    @staticmethod
+    def _wrote_paths(req: SessionRequest, started: str) -> list[str]:
+        """SIL-B33: the files that differ from the commit the session started from, committed or not, by any tool or
+        command; empty when git cannot say."""
+        try:
+            return gitmod.changed_paths(req.workdir, started or None)
+        except Exception:  # noqa: BLE001 - observability never changes the run (OVR-B4)
+            return []
 
     def _cost(self, state: Mapping[str, Any], results: list[SessionResult]) -> dict[str, Any]:
         totals = CostTotals.from_json((state.get("run") or {}).get("cost"))

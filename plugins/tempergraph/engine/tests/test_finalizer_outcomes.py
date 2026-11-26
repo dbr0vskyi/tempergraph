@@ -54,6 +54,10 @@ def pushes(ctx: Any) -> FinalizerResult:
     return FinalizerResult(outcome="opened", reason="pushed", url=PR)
 
 
+def pushes_nothing(ctx: Any) -> FinalizerResult:
+    return FinalizerResult(outcome="opened", reason="opened", url=PR)
+
+
 def skips(ctx: Any) -> FinalizerResult:
     return FinalizerResult(outcome="skipped", reason="no origin", manual_steps=["add a remote", "push the branch"])
 
@@ -103,6 +107,26 @@ def test_fin_ac1_a_published_run_pushes_to_the_bare_remote(repo: Path, tmp_path:
     row = ledger(repo)[0]
     assert (row["pull_request"]["repo"], row["pull_request"]["number"]) == ("acme/notes", 7)
     assert git_out(bare, "rev-parse", "refs/heads/published") == row["pull_request"]["commit"]
+
+
+def test_fin_ac5_the_recorded_pull_request_holds_host_repo_number_and_end_commit(repo: Path, tmp_path: Path) -> None:
+    # FIN-AC5, FIN-B11, task AC 7
+    got = finalize.recorded_pull_request({"url": PR}, repo)
+    assert got == {"host": "example.test", "repo": "acme/notes", "number": 7, "commit": git_out(repo, "rev-parse", "HEAD")}
+    assert finalize.recorded_pull_request({"url": PR}, None)["commit"] == ""
+    assert finalize.recorded_pull_request({"url": PR}, tmp_path / "gone")["commit"] == ""
+    assert finalize.recorded_pull_request({}, repo) is None
+    assert finalize.recorded_pull_request(None, repo) is None
+    assert finalize.recorded_pull_request({"url": "https://example.test/acme/notes"}, repo) is None
+
+
+def test_fin_ac5_a_run_that_returns_the_url_has_the_end_commit_on_its_row(repo: Path) -> None:
+    # FIN-AC5, FIN-B11, task AC 7
+    out = go(repo, happy(), spec_with(pushes_nothing))
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    row = ledger(repo)[0]
+    assert (row["pull_request"]["repo"], row["pull_request"]["number"]) == ("acme/notes", 7)
+    assert len(row["pull_request"]["commit"]) == 40  # the end commit of the run's own branch
 
 
 def test_fin_ac1_a_skipped_run_writes_one_line_and_shows_its_steps(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:

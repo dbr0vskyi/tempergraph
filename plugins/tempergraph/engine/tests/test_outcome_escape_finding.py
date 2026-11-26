@@ -19,7 +19,7 @@ from tempergraph.model import flow
 from tempergraph.run.log import Ledger
 from tempergraph.store.layout import run_dir
 
-from .test_pr_later import END, QUIET, REPO, commit, pr_host, ticket_of
+from .test_pr_later import QUIET, REPO, commit, head, pr_host, state, ticket_of, wrote
 from .test_pr_later import review as pr_review
 from .test_run import registry
 
@@ -28,25 +28,23 @@ CLEAN = {"lenses": {"friction": False}, "fault_fingerprints": [], "outcome_finge
 
 def make_run(root: Path, task: str, units: dict[str, list[str]], *, number: int = 1, request: str | None = None,
              verdict: str = "met") -> None:
-    """A finished run of the fixture workflow that opened pull request `number`: its ledger row, the paths each unit
-    wrote (run log and digest) and its request in the local evidence."""
+    """A finished run of the fixture workflow that opened pull request `number`, in a real repository: the paths each
+    unit wrote are committed (`wrote` of `test_pr_later`: the `workspace` record with `base_commit` and one `agent_run`
+    record with `wrote_paths` for each unit), the ledger row records the last commit as the end commit, each session
+    has a digest with no `_wrote`, and the request is in the local evidence."""
     thread = f"demo/{task}"
+    rd = run_dir(root, "demo", task)
+    rd.mkdir(parents=True, exist_ok=True)
+    for unit, paths in units.items():
+        wrote(root, task, unit, *paths)
+        key = f"{unit}.1.step"
+        sdir = rd / "sessions" / key
+        sdir.mkdir(parents=True, exist_ok=True)
+        (sdir / "digest.json").write_text(json.dumps({"session_key": key, "kind": "step", "unit": unit}))
     Ledger(path=root / "ledger.jsonl").append(
         {"kind": "run_segment", "thread_id": thread, "workflow": "demo", "workflow_version": "v1", "machine": "m1",
          "exit_code": 0, "outcome": {"verdict": verdict, "criteria": []},
-         "pull_request": {"host": "example.test", "repo": REPO, "number": number, "commit": END}})
-    rd = run_dir(root, "demo", task)
-    rd.mkdir(parents=True, exist_ok=True)
-    lines = []
-    for unit, paths in units.items():
-        key = f"{unit}.1.step"
-        lines.append({"kind": "agent_run", "unit": unit, "session_key": key, "changed_paths": list(paths)})
-        sdir = rd / "sessions" / key
-        sdir.mkdir(parents=True, exist_ok=True)
-        (sdir / "digest.json").write_text(json.dumps({
-            "session_key": key, "kind": "step", "unit": unit,
-            "_wrote": sorted(identity.request_digest(p) for p in paths)}))
-    (rd / "run.jsonl").write_text("".join(json.dumps(r) + "\n" for r in lines))
+         "pull_request": {"host": "example.test", "repo": REPO, "number": number, "commit": head(root)}})
     if request is not None:
         path = evidence_path(root, "demo", task)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,38 +76,77 @@ def loop_kinds(root: Path) -> list[dict[str, Any]]:
 def test_a_changes_requested_review_is_one_outcome_finding_with_no_session(tmp_path: Path, mode: str) -> None:
     # SIL-AC29, task AC 3
     spec = dataclasses.replace(QUIET, improvement_mode=mode)
-    make_run(tmp_path, "T-1", {"draft": ["a.py"]}, request="R1")
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"]}, request="R1")
     host = pr_host()
     host.reviews[(REPO, 1)] = [pr_review()]
-    process(tmp_path, host, spec)
-    (f,) = escapes(tmp_path, "T-1")
+    process(root, host, spec)
+    (f,) = escapes(root, "T-1")
     assert (f["unit"], f["lens"], f["side"], f["class"]) == (flow.OUTCOME_UNIT, "outcome", "workflow", "fault")
     assert f["thread"] == "demo/T-1" and f["request_digest"] == identity.request_digest("R1")
-    kinds = loop_kinds(tmp_path)
+    kinds = loop_kinds(root)
     assert not [r for r in kinds if r["kind"] in ("loop_judged", "review_planned")]  # no model call
     lens = [r for r in kinds if r["kind"] == "loop_lens"]
     assert [r["thread"] for r in lens] == (["demo/T-1"] if mode == "stable" else [])
 
 
 def test_a_follow_up_commit_on_files_of_two_units_is_a_finding_for_each(tmp_path: Path) -> None:
-    # SIL-AC29, task AC 3
-    make_run(tmp_path, "T-1", {"draft": ["a.py"], "review": ["b.py"], "other": ["c.py"]}, request="R1")
+    # SIL-AC29, SIL-AC32, task AC 3
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"], "review": ["b.py"], "other": ["c.py"]}, request="R1")
     host = pr_host()
-    host.commits[(REPO, 1)] = [commit(END, ["old.py"]), commit("bbbbbbb2", ["a.py", "b.py"])]
-    process(tmp_path, host)
-    assert sorted(f["unit"] for f in escapes(tmp_path, "T-1")) == ["draft", "review"]
-    process(tmp_path, host)  # a second read adds no second finding
-    assert len(escapes(tmp_path, "T-1")) == 2
+    host.commits[(REPO, 1)] = [commit(head(root), ["old.py"]), commit("bbbbbbb2", ["a.py", "b.py"])]
+    process(root, host)
+    assert sorted(f["unit"] for f in escapes(root, "T-1")) == ["draft", "review"]
+    process(root, host)  # a second read adds no second finding
+    assert len(escapes(root, "T-1")) == 2
+
+
+def test_a_judge_sessions_changed_paths_are_no_unit_that_wrote(tmp_path: Path) -> None:
+    # SIL-AC32: a judge's `changed_paths` keeps its meaning and never names a writer
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"]}, request="R1")
+    log = run_dir(root, "demo", "T-1") / "run.jsonl"
+    with log.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"kind": "agent_run", "session_kind": "judge", "unit": "review",
+                             "session_key": "review.1.judge", "changed_paths": ["a.py"]}) + "\n")
+    host = pr_host()
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["a.py"])]
+    process(root, host)
+    assert [f["unit"] for f in escapes(root, "T-1")] == ["draft"]
 
 
 def test_a_run_that_is_no_escape_gets_no_finding(tmp_path: Path) -> None:  # SIL-AC29, task AC 3
-    make_run(tmp_path, "T-1", {"draft": ["a.py"]})
-    make_run(tmp_path, "T-2", {"draft": ["a.py"]}, number=2, verdict="unmet")
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"]})
+    make_run(root, "T-2", {"draft": ["a.py"]}, number=2, verdict="unmet")
     host = pr_host()
     host.reviews[(REPO, 1)] = [pr_review("approved")]
     host.reviews[(REPO, 2)] = [pr_review()]
-    process(tmp_path, host)
-    assert escapes(tmp_path, "T-1") == [] and escapes(tmp_path, "T-2") == []
+    process(root, host)
+    assert escapes(root, "T-1") == [] and escapes(root, "T-2") == []
+
+
+def test_a_run_that_is_an_escape_only_by_a_rerun_gets_no_finding_at_a_read(tmp_path: Path) -> None:
+    # SIL-AC33, task AC 2
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"]})
+    Ledger(path=root / "ledger.jsonl").append({"kind": "intervention", "thread_id": "demo/T-1", "cause": "rerun"})
+    process(root, pr_host())  # the pull request shows nothing
+    assert escapes(root, "T-1") == []
+
+
+def test_a_read_of_a_run_already_shown_as_an_escape_records_the_unit_of_a_later_file(tmp_path: Path) -> None:
+    # SIL-AC33, task AC 2
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"], "review": ["b.py"]})
+    host = pr_host()
+    host.reviews[(REPO, 1)] = [pr_review()]
+    process(root, host)
+    assert [f["unit"] for f in escapes(root, "T-1")] == [flow.OUTCOME_UNIT]
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["b.py"])]
+    process(root, host)
+    assert sorted(f["unit"] for f in escapes(root, "T-1")) == sorted([flow.OUTCOME_UNIT, "review"])
 
 
 # -- SIL-AC31: the pattern rule alone -----------------------------------------------------------------------------
@@ -124,18 +161,20 @@ def three_runs(root: Path, n: int) -> MemoryCodeHost:
 
 
 def test_escapes_of_three_runs_and_three_requests_file_one_issue(tmp_path: Path) -> None:  # SIL-AC31, task AC 3
-    host = three_runs(tmp_path, 3)
-    out = process(tmp_path, host)  # the outcome judge has no calibration score
+    root = state(tmp_path)
+    host = three_runs(root, 3)
+    out = process(root, host)  # the outcome judge has no calibration score
     assert len(host.issues) == 1 and "outcome_escape" in host.issues[0]["title"]
     assert "filed" in {r["op"] for r in out["results"]}
 
 
 def test_escapes_of_two_runs_are_recorded_and_file_none(tmp_path: Path) -> None:  # SIL-AC31, task AC 3
-    host = three_runs(tmp_path, 2)
-    out = process(tmp_path, host)
+    root = state(tmp_path)
+    host = three_runs(root, 2)
+    out = process(root, host)
     assert host.issues == []
     assert out["results"] and {r["op"] for r in out["results"]} == {"recorded"}
-    assert len(escapes(tmp_path, "T-1")) == 1 and len(escapes(tmp_path, "T-2")) == 1
+    assert len(escapes(root, "T-1")) == 1 and len(escapes(root, "T-2")) == 1
 
 
 # -- SIL-AC30: a kept review observation corroborates the escape finding -------------------------------------------
@@ -155,38 +194,41 @@ def with_unmet_finding(root: Path, task: str, unit: str) -> None:
 
 
 def test_an_observation_recorded_before_the_escape_corroborates_it(tmp_path: Path) -> None:  # SIL-AC30, task AC 4
-    make_run(tmp_path, "T-1", {"draft": ["a.py"], "review": ["b.py"]})
-    with_unmet_finding(tmp_path, "T-1", "draft")
-    observe(tmp_path, "T-1", "draft")
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"], "review": ["b.py"]})
+    with_unmet_finding(root, "T-1", "draft")
+    observe(root, "T-1", "draft")
     host = pr_host()
-    host.commits[(REPO, 1)] = [commit(END, []), commit("bbbbbbb2", ["a.py"])]
-    process(tmp_path, host)
-    (f,) = escapes(tmp_path, "T-1")
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["a.py"])]
+    process(root, host)
+    (f,) = escapes(root, "T-1")
     assert f["unit"] == "draft" and f["review"] == "review:tool_thrash" and f["review_weight"] == 1
-    (unmet,) = [x for x in read_findings(tmp_path, "demo", "T-1") if x["cause"].startswith("outcome_unmet")]
+    (unmet,) = [x for x in read_findings(root, "demo", "T-1") if x["cause"].startswith("outcome_unmet")]
     assert "review" not in unmet  # SRV-B7: the `outcome_unmet` finding of lens `outcome` is still skipped
 
 
 def test_an_observation_recorded_after_the_escape_corroborates_it(tmp_path: Path) -> None:  # SIL-AC30, task AC 4
-    make_run(tmp_path, "T-1", {"draft": ["a.py"]})
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"]})
     host = pr_host()
-    host.commits[(REPO, 1)] = [commit(END, []), commit("bbbbbbb2", ["a.py"])]
-    process(tmp_path, host)
-    (f,) = escapes(tmp_path, "T-1")
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["a.py"])]
+    process(root, host)
+    (f,) = escapes(root, "T-1")
     assert "review" not in f
-    observe(tmp_path, "T-1", "draft")
-    assert review.corroborate(tmp_path, "demo", "T-1", "demo/T-1") == 1
-    (f,) = escapes(tmp_path, "T-1")
+    observe(root, "T-1", "draft")
+    assert review.corroborate(root, "demo", "T-1", "demo/T-1") == 1
+    (f,) = escapes(root, "T-1")
     assert f["review"] == "review:tool_thrash" and f["review_weight"] == 1
 
 
 def test_an_observation_on_a_unit_with_no_escape_finding_changes_none(tmp_path: Path) -> None:
     # SIL-AC30, task AC 4
-    make_run(tmp_path, "T-1", {"draft": ["a.py"], "review": ["b.py"]})
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"], "review": ["b.py"]})
     host = pr_host()
-    host.commits[(REPO, 1)] = [commit(END, []), commit("bbbbbbb2", ["a.py"])]
-    observe(tmp_path, "T-1", "review")
-    process(tmp_path, host)
-    (f,) = escapes(tmp_path, "T-1")
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["a.py"])]
+    observe(root, "T-1", "review")
+    process(root, host)
+    (f,) = escapes(root, "T-1")
     assert f["unit"] == "draft" and "review" not in f and "review_weight" not in f
-    assert findings_path(tmp_path, "demo", "T-1").exists()
+    assert findings_path(root, "demo", "T-1").exists()

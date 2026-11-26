@@ -28,6 +28,7 @@ from typing import Any
 
 from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet, WorkflowSpec
 from tempergraph.docs import append_jsonl, write_json
+from tempergraph.durability import lock as durability_lock
 from tempergraph.executors.registry import Registry, default_registry
 from tempergraph.improve import autonomy, escape, filing, params, pr_later
 from tempergraph.improve.codehost import CodeHost, GhCodeHost
@@ -310,12 +311,25 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pr_state", "reason": "error",
                                "error": type(exc).__name__})
         try:  # OUT-B23, OUT-B24, OUT-B25: the pull requests that runs of the workflow recorded
-            for got in pr_later.read(root, wf, host):
-                lines = escape.record(root, wf, got["thread_id"], got["changed"])  # SIL-B33: no model call
-                if lines and t.get("mode") == "stable":  # SIL-B10: the outcome lens, for the earlier run
-                    append_jsonl(log, {"ts": now_iso(), "kind": "loop_lens", "lens": "outcome",
-                                       "trigger": "outcome_escape", "thread": got["thread_id"]})
-                escaped += [(f, got["task"]) for f in lines]
+            # OUT-B30: one read at a time for the workflow, so overlapping reads leave one entry and one finding
+            with durability_lock.exclusive(root / "locks" / "pull-request-read" / f"{wf}.lock"):
+                for got in pr_later.read(root, wf, host):
+                    if got.get("error"):  # OUT-B31: one record, no text, and the other pull requests are read
+                        append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pull_request_read",
+                                           "reason": "error", "thread": got["thread_id"], "number": got["number"],
+                                           "error": got["error"]})
+                        continue
+                    try:  # OUT-B32: the finding follows the state, appended entry or not
+                        lines = escape.record(root, wf, got["thread_id"], got["changed"])  # SIL-B33: no model call
+                    except Exception as exc:  # noqa: BLE001 - left to the next read
+                        append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pull_request_read",
+                                           "reason": "error", "thread": got["thread_id"],
+                                           "error": type(exc).__name__})
+                        continue
+                    if lines and t.get("mode") == "stable":  # SIL-B10: the outcome lens, for the earlier run
+                        append_jsonl(log, {"ts": now_iso(), "kind": "loop_lens", "lens": "outcome",
+                                           "trigger": "outcome_escape", "thread": got["thread_id"]})
+                    escaped += [(f, got["task"]) for f in lines]
         except Exception as exc:  # noqa: BLE001
             append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pull_request_read", "reason": "error",
                                "error": type(exc).__name__})
