@@ -17,6 +17,7 @@ from tempergraph.run.runner import resume
 from tempergraph.store.layout import home_path, state_root_path
 
 from .fixtures.workflows import two_step
+from .test_loop_child import earlier_judged, friction_ticket, judge_says
 from .test_pause_findings_at_final_exit import finding_of, finish, gap_only, held, paused_on_gap
 from .test_run import NO_SLEEP, REVIEW, judge, registry
 from .test_stop_at_pause import stop, tickets
@@ -177,6 +178,19 @@ def test_a_recorded_answer_is_used_without_a_second_judgement(
     assert asked_about(seen, fp) == 0  # no row in the judge's prompt
     assert answers(repo, "H-rec", fp) == 1
     assert len(host.issues) == 1  # filed on the recorded answer
+
+
+def test_a_recorded_answer_of_this_thread_counts_once_towards_the_majority(tmp_path: Path) -> None:  # SIL-AC59, AC 3
+    """The answer this thread recorded inside the window is the thread's one answer: the pattern is met, the
+    confidence is below the floor, and one answer is `few_answers`, never a majority of two (FFD-B1, SIL-B49)."""
+    root = tmp_path / ".tempergraph"
+    host = MemoryCodeHost()
+    for n in (1, 2):  # two other runs hold the fingerprint, so the count is met with this one
+        friction_ticket(root, n)
+    earlier_judged(root, 3, True, 0.5)  # this thread's own answer, dated now
+    out = child.process(friction_ticket(root, 3), registry(standin("claude", judges=[judge_says(0.5)])), host)
+    assert [r["op"] for r in out["results"]] == ["recorded"]
+    assert [r["reason"] for r in out["results"]] == ["few_answers"] and not host.issues
 
 
 def test_a_recorded_answer_not_attributed_files_nothing_and_asks_nothing(
