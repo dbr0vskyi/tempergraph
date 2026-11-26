@@ -165,6 +165,7 @@ class GateSpec:
     back_targets: tuple[str, ...] = ()
     loop_budget: int = 1
     retry_budget: int = 2
+    judge_may_skip: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -136,7 +136,19 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("script-before-external", lambda: _step(two_step(), "draft", before=(
         Script(run=["pytest"], side_effects="external"),))),
     ("self-check-without-check", lambda: _step(two_step(), "review", self_check=True)),
+    # WFM-AC8 (WFM-B14): the three refusals of `judge_may_skip`
+    ("judge-may-skip-absolute", lambda: _gate(two_step(), "draft", judge_may_skip=("/tmp/out/*",))),
+    ("judge-may-skip-outside-repository", lambda: _gate(two_step(), "draft",
+                                                         judge_may_skip=("../out/*", "docs/../../x"))),
+    ("judge-may-skip-without-judge", lambda: _gate(two_step(), "draft", judge=None, judge_may_skip=("dist/**",))),
 ]
+
+
+def test_judge_may_skip_with_a_judge_validates() -> None:  # WFM-AC8
+    spec = _gate(two_step(), "draft", judge_may_skip=("dist/**", "docs/../out/*.log"))
+    assert spec.units["draft"].gate.judge is not None
+    assert errors(validate(spec, ALL)) == []
+    assert Gate(judge_may_skip=["a/*"]).judge_may_skip == ("a/*",)
 
 
 @pytest.mark.parametrize("code,build", CASES, ids=[c for c, _ in CASES])

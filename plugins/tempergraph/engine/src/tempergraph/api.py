@@ -154,11 +154,12 @@ def Risk(*, levels: Iterable[RiskLevel], rule: Callable[..., Any] | None = None,
 def Gate(*, check: Callable[..., Any] | None = None, check_timeout_s: int = 1800,  # noqa: N802
          judge: JudgeSpec | None = None, criteria: Iterable[Criterion] = (), on_fail: str = "retry",
          on_budget_spent: str = "ask", fallback: str | None = None, approval: bool = False,
-         back_targets: Iterable[str] = (), loop_budget: int = 1, retry_budget: int = 2) -> GateSpec:
+         back_targets: Iterable[str] = (), loop_budget: int = 1, retry_budget: int = 2,
+         judge_may_skip: Iterable[str] = ()) -> GateSpec:
     return GateSpec(check=_opt_ref(check), check_timeout_s=check_timeout_s, judge=judge, criteria=tuple(criteria),
                     on_fail=on_fail, on_budget_spent=on_budget_spent, fallback=fallback,  # type: ignore[arg-type]
                     approval=approval, back_targets=tuple(back_targets), loop_budget=loop_budget,
-                    retry_budget=retry_budget)
+                    retry_budget=retry_budget, judge_may_skip=tuple(judge_may_skip))
 
 
 def Script(*, run: Iterable[str] | None = None, call: Callable[..., Any] | None = None,  # noqa: N802
