@@ -487,6 +487,13 @@ class EngineNodes:
             maps = {unit: m}
         iid = item["id"] if item else None
         first = entered or prev.get("item") != iid
+        entry_head = ""  # SRV-B35: the commit an item's first attempt of the visit started from, carried by its retries
+        if u.map is not None:
+            if first:
+                with contextlib.suppress(Exception):
+                    entry_head = gitmod.head(workdir)
+            else:
+                entry_head = str(prev.get("entry_head") or "")
         attempt = int(item["attempt"]) if item else int(prev.get("attempt", 0)) + 1
         self.ctx.attempts_started += 1
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM-B6, RST-B22, RST-B23)
@@ -521,7 +528,8 @@ class EngineNodes:
                 record: dict[str, Any] = {
                     "attempt": attempt, "visit": visit, "item": iid, "ok": False, "text": "", "issues": [],
                           "tools": [], "session_id": None, "error_kind": "item_model", "infra_spent": False,
-                          "check": None, "escalate": "workflow_fault", "timed_out": False}
+                          "check": None, "escalate": "workflow_fault", "timed_out": False,
+                          "entry_head": entry_head}
                 return {"attempts": {unit: record}, "maps": maps}
             alias = chosen
         slot_spec = self._slot_spec(unit, iid) if u.contest is not None else None  # CTS-B6: this slot's own overrides
@@ -537,7 +545,7 @@ class EngineNodes:
         failed, env, hybrid = self._scripts(st.before, unit, attempt, "before", state, workdir)
         fields.update(hybrid)  # a `before` script's keys are the session's to read (SCR-B5)
         if failed is not None:
-            return self._script_failed(unit, state, attempt, visit, failed, env, path_units, first, hybrid)
+            return self._script_failed(unit, state, attempt, visit, failed, env, path_units, first, hybrid, entry_head)
         judged = (state.get("judgements") or {}).get(unit) or {}
         fb = (state.get("feedback") or {}).get(unit) or {}
         retry = not first and bool(prev)
@@ -645,6 +653,7 @@ class EngineNodes:
             "changed": before != after, "escalate": escalate, "cut_off": res.partial, "check": None,
             "duration_s": res.duration_s, "tool_wall_share": res.tool_wall_share,
             "slow_host": res.timed_out and res.tool_wall_share >= 0.6, "missing_fields": rendered.missing_fields,
+            **({"entry_head": entry_head} if u.map is not None else {}),
         }
         esc_spec = laddermod.escalation_of(u, full_ov)
         if up:
@@ -1078,11 +1087,15 @@ class EngineNodes:
         return Move(writes, goto=judge_node)
 
     def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
-                       path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
-        """A failed `before` script fails the attempt with no session (SCR-B7, SCR-B2)."""
-        record = {"attempt": attempt, "visit": visit, "ok": False, "text": "", "issues": [], "tools": [],
-                  "session_id": None, "error_kind": f"script_failed:{name}", "infra_spent": False, "check": None,
-                  "escalate": "environmental" if env else None, "timed_out": False}
+                       path_units: list[str], first: bool, arts: dict[str, str], entry_head: str = ""
+                       ) -> dict[str, Any]:
+        """A failed `before` script fails the attempt with no session (SCR-B7, SCR-B2). An item of a map keeps the
+        commit its first attempt started from, for the retry that follows (SRV-B35)."""
+        record: dict[str, Any] = {
+            "attempt": attempt, "visit": visit, "ok": False, "text": "", "issues": [], "tools": [],
+            "session_id": None, "error_kind": f"script_failed:{name}", "infra_spent": False, "check": None,
+            "escalate": "environmental" if env else None, "timed_out": False,
+            **({"entry_head": entry_head} if entry_head else {})}
         run = {"path": {"units": path_units + [unit]}} if first and unit not in path_units else {}
         return {"attempts": {unit: record}, "artifacts": {unit: arts or None}, "run": run}
 
@@ -1603,6 +1616,21 @@ class EngineNodes:
         keep = tuple(t for t in views.tools if not (t.startswith("mcp__") and t.split("__", 2)[1] in down))
         return dataclasses.replace(views, tools=keep, deferred=(*views.deferred, *lost))
 
+    def _entry_commit(self, unit: str, visit: int) -> str:
+        """SRV-B34, SRV-B36: the commit recorded when the unit's visit was entered (EVT-B12), the first record of the
+        unit and visit in this run's log; empty when none holds one."""
+        from tempergraph.run.events import records
+        from tempergraph.run.subrun import root_log
+
+        try:
+            for r in records(root_log(self.ctx.log).path):
+                if r.get("kind") == "unit_entered" and r.get("unit") == unit and r.get("visit") == visit \
+                        and r.get("child") == self.ctx.child:
+                    return str(r.get("head_commit") or "")
+        except Exception:  # noqa: BLE001 - observability never changes the run (OVR-B4)
+            return ""
+        return ""
+
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
                        workdir: Path, claim: tuple[str, str] | None = None) -> dict[str, Any]:
         spec = self.ctx.spec
@@ -1677,7 +1705,9 @@ class EngineNodes:
                              options=jopts,
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
-        changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV-B11)
+        base = str(att.get("entry_head") or "") if u.map is not None else self._entry_commit(
+            unit, int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1)))
+        changed = list(gitmod.changed_paths(workdir, base or None))[:200]  # the digest's `changed_read` (SRV-B11, SRV-B34)
         hold = self._hold(unit, state)
         res, results = self._session(ex, req, views, extra={"changed_paths": changed}, hold=hold)
         all_results = list(results)
