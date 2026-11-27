@@ -277,6 +277,11 @@ def test_lfs_ac5_ac6_sil_ac63_a_held_exit_leaves_held_with_or_without_a_dry_run(
     lifted_thread(repo, monkeypatch, "S-machine", run_argv=("--no-dry-run",))
     s = newest_summary(repo, "S-machine")
     assert (s["filing"], s["filing_source"]) == ("held", "machine_hold")
+    settings_file()
+    monkeypatch.setenv("TEMPERGRAPH_AUTONOMY", "record")
+    lifted_thread(repo, monkeypatch, "S-machine-env", run_argv=("--no-dry-run",))
+    s = newest_summary(repo, "S-machine-env")
+    assert (s["filing"], s["filing_source"]) == ("held", "machine_hold")
 
 
 # DUR-AC15
@@ -292,11 +297,15 @@ def test_dur_ac15_status_shows_the_two_words_of_the_newest_summary(
         code, st, _ = cli(repo, None, "status", "demo/R-1", *argv)
         (row,) = [r for r in st["threads"] if r["thread_id"] == "demo/R-1"]
         assert (row["filing"], row["filing_source"]) == ("dry_run", "argument")
-    log = child.loop_log(repo / ".tempergraph", "demo", "R-1")  # a later exit that started no child adds no summary
+    log = child.loop_log(repo / ".tempergraph", "demo", "R-1")
     before = log.read_text()
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")  # a later final exit that starts no child
+    runner.hand_to_loop(repo / ".tempergraph", two_step(), "R-1", "demo/R-1", SUMMARY, None, registry(standin("claude")), {})
+    assert not tickets()
     code, st, _ = cli(repo, None, "status", "demo/R-1", "--json")
-    (row,) = st["threads"]
-    assert log.read_text() == before and row["filing"] == "dry_run"
+    (row,) = [r for r in st["threads"] if r["thread_id"] == "demo/R-1"]
+    assert log.read_text() == before
+    assert (row["filing"], row["filing_source"]) == ("dry_run", "argument")
 
 
 # LFS-AC4
