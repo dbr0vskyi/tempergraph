@@ -199,8 +199,9 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
     (autonomy `record`, a dry run) and, for a friction fault, the loop log holds a judge answer for the fingerprint.
     Read at every final exit of the thread."""
     from tempergraph.improve import child
+    from tempergraph.improve.filing import COUNT_CAUSES, THREAD_COUNT_CAUSE
 
-    held = [f for f in read_findings(root, workflow, task_id) if f.get("segment_exit") == 3
+    held =[f for f in read_findings(root, workflow, task_id) if f.get("segment_exit") == 3
             and str(f.get("thread")) == thread]
     if not held:
         return []
@@ -216,7 +217,8 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
         if fp in in_tickets:
             continue
         made = _when(f.get("at"))
-        friction = f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")
+        by_count = str(f.get("cause") or "").split(":", 1)[0] in (*COUNT_CAUSES, THREAD_COUNT_CAUSE)  # SIL-B35
+        friction = f.get("class") == "fault" and f.get("lens") not in ("outcome", "review") and not by_count
         covered = any(fps and fp in fps and (made is None or ts is None or ts >= made)
                       for ts, fps in started) and (not friction or str(fp) in answered)
         if not covered:

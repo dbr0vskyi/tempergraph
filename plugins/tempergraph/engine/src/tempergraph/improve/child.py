@@ -497,6 +497,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     cands: list[filing.Candidate] = []
     context: dict[str, Any] = {"records": _records(root, wf, task), "mode": t.get("mode"),  # ISS-B8 to ISS-B10
                                "judge_executor": t.get("executor")}
+    thread_findings = read_findings(root, wf, task)
     for f in mine:
         if f.get("lens") == "review":  # SRV-B28: a finding made of review observations never files, in any run
             continue
@@ -508,6 +509,9 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         if not (t.get("lenses") or {}).get("friction"):  # a review-only ticket files no friction finding
             continue
         j = judged.get(str(f.get("fingerprint")))
+        if str(f.get("cause") or "").split(":", 1)[0] == filing.THREAD_COUNT_CAUSE:  # FFD-B8: the thread's count, all segments
+            f = {**f, "count": sum(int(g.get("count") or 0) for g in thread_findings
+                                   if g.get("fingerprint") == f.get("fingerprint"))}
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
                                       earlier_answers=earlier.get(str(f.get("fingerprint")), ()),

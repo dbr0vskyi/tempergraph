@@ -22,6 +22,8 @@ from tempergraph.improve.codehost import LOOP_LABEL, CodeHost, CodeHostError
 
 ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL-B11)
 DEFAULT_LABELS = [LOOP_LABEL, "needs-triage"]  # ISS-B1: the engine's own `issue_labels`
+COUNT_CAUSES = frozenset({"answer_overrode", "upstream_confirmed", "retry_passed_unchanged", "retry_same_failure"})
+THREAD_COUNT_CAUSE = "resume_no_progress"  # FFD-B8: files on a count of 2 in the thread
 
 
 def marker(fp: str) -> str:
@@ -156,6 +158,19 @@ def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository:
     escape = str(f.get("cause") or "").split(":", 1)[0] == "outcome_escape"  # SIL-B34: the pattern rule alone
     if c.lens == "outcome" and not c.calibrated and not escape:
         return Decision(action="record", reason="uncalibrated", candidate=c)  # SIL-B7
+    base = str(f.get("cause") or "").split(":", 1)[0]
+    if c.lens == "friction" and base in COUNT_CAUSES:  # FFD-B7: the pattern rule alone, whatever the judge answered
+        counts, met = _pattern(c, history, now)
+        if met:
+            return Decision(action="file", reason="pattern_met", candidate=c, repo=repo, counts=counts, counted=counts)
+        return Decision(action="record", reason="below_count", candidate=c, counted=counts)
+    if c.lens == "friction" and base == THREAD_COUNT_CAUSE:  # FFD-B8: the thread's own count
+        n = int(f.get("count") or 0) + sum(
+            int(h.get("count") or 0) for h in history if h.get("fingerprint") == f.get("fingerprint")
+            and h.get("thread") == f.get("thread"))
+        if n >= 2:
+            return Decision(action="file", reason="fault", candidate=c, repo=repo, counted={"count": n})
+        return Decision(action="record", reason="below_count", candidate=c, counted={"count": n})
     if c.lens == "friction":
         if c.confidence is None:
             return Decision(action="record", reason="not_judged", candidate=c)  # SIL-B35
@@ -641,7 +656,8 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             results.append({"op": "recorded", "reason": d.reason, "fingerprint": fp})
             continue
         if dry_run:
-            results.append({"op": "would_file", "repo": d.repo, "title": title(f), "fingerprint": fp})
+            results.append({"op": "would_file", "repo": d.repo, "title": title(f), "fingerprint": fp,
+                            "reason": d.reason})
             continue
         groups.setdefault((d.repo, cause_key(f)), []).append(d)
     for (repo, key), ds in groups.items():
