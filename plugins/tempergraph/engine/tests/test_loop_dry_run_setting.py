@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 from pathlib import Path
@@ -162,10 +163,8 @@ def test_help_lists_both_arguments(capsys: pytest.CaptureFixture[str]) -> None: 
 
     for verb in ("run", "resume"):
         capsys.readouterr()
-        try:
+        with contextlib.suppress(SystemExit):
             main([verb, "--help"])
-        except SystemExit:
-            pass
         out = capsys.readouterr().out
         assert "--dry-run" in out and "--no-dry-run" in out, verb
 
