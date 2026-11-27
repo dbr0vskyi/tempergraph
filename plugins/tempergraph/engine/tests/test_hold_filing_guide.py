@@ -16,7 +16,9 @@ from .conftest import DOCS, workflow_names
 GUIDE = DOCS / "guides" / "improving-workflows.guide.md"
 SPECS = (
     "friction-filing-decisions", "self-improvement", "loop-issues", "improvement-proposals",
-    "run-settings-and-overrides", "run-options",
+    "run-settings-and-overrides", "run-options", "loop-filing-state", "contracts", "run-events",
+    "loop-summary-and-review-retries", "runs-without-a-final-exit", "promotion-check",
+    "durability-and-resume",
 )
 
 
@@ -33,12 +35,14 @@ def help_of(verb: str, capsys: pytest.CaptureFixture[str]) -> str:
     return capsys.readouterr().out
 
 
-def test_the_guide_names_the_three_holds_the_cli_and_the_catalog_have(
-        capsys: pytest.CaptureFixture[str]) -> None:  # PRP-AC16, ROP-AC12 (task AC 10)
+def test_the_guide_names_the_holds_the_cli_and_the_catalog_have(
+        capsys: pytest.CaptureFixture[str]) -> None:  # PRP-AC16, ROP-AC13 (task AC 14)
     text = section()
     assert "loop_autonomy" in text and "loop_autonomy" in settings.CATALOG  # the setting
-    assert "`--dry-run`" in text
-    assert "--dry-run" in help_of("run", capsys) and "--dry-run" in help_of("resume", capsys)
+    assert "loop_dry_run" in text and "loop_dry_run" in settings.CATALOG
+    for option in ("--dry-run", "--no-dry-run"):
+        assert f"`{option}`" in text
+        assert option in help_of("run", capsys) and option in help_of("resume", capsys)
     assert "tempergraph run <workflow>" in text and "tempergraph resume <workflow> <thread> --dry-run" in text
     assert "TEMPERGRAPH_AUTONOMY=record" in text
     assert "tempergraph config paths" in text
@@ -49,6 +53,18 @@ def test_the_guide_names_the_three_holds_the_cli_and_the_catalog_have(
     for what in ("autonomy_record", "would_file", "loop_judged", "loop.jsonl"):  # what each still records
         assert what in text
     assert "still run" in text and "still spends" in text
+
+
+def test_the_guide_states_the_whole_filing_rule_in_one_section() -> None:  # LFS-AC2, ROP-AC12 (task AC 14)
+    text = " ".join(section().split())
+    assert "The loop files by default" in text
+    assert "a workflow declares `loop_dry_run`" in text and "a settings file or a profile" in text
+    assert "`--dry-run` and `--no-dry-run` on `run` and `resume`" in text
+    assert "the one given last wins" in text and "`--unset run.loop_dry_run`" in text
+    assert "`--no-dry-run` files for one thread of a workflow that declares `record`" in text
+    assert "The hold wins over the argument" in text
+    assert "The order is: the hold, then the declared level and the argument, then the dry run." in text
+    assert "The improvement mode has no part in any of it." in text
 
 
 def test_every_command_of_the_section_is_a_verb_of_the_cli() -> None:  # PRP-AC16 (task AC 10)
