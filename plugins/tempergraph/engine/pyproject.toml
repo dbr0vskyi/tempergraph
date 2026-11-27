@@ -40,7 +40,7 @@ tempergraph = ["py.typed", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+addopts = "-q --strict-markers --ignore-glob='**/evals/**'"
 markers = [
     "live: needs a signed-in claude CLI and spends money; skipped unless TEMPERGRAPH_LIVE=1",
     "suite_audit: runs every test file of the suite alone; skipped unless TEMPERGRAPH_SUITE_AUDIT=1",

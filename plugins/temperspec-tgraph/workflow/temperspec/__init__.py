@@ -74,6 +74,7 @@ from .checks import (
     owner_answers_check,
     phase_check,
     plan_check,
+    read_component_check,
     review_check,
     setup_check,
     triage_check,
@@ -192,7 +193,8 @@ def workflow() -> Any:
                     prompt=text("prompts/read_component.md"), summary="Read one component folder; report findings",
                     **_sized("read_component"), tools=READ, timeout_s=1200,
                     produces={"component_finding": Value(max_chars=1500)},
-                    gate=Gate(judge=_judge("read_component", []), on_budget_spent="stop"))),
+                    gate=Gate(check=read_component_check, judge=_judge("read_component", []),
+                              on_budget_spent="stop"))),
             "setup": Step(
                 prompt=text("prompts/setup.md"), summary="Write the overview spec and one spec per component",
                 **_sized("setup"), tools=[*READ, "edit", "write"], timeout_s=3600,
