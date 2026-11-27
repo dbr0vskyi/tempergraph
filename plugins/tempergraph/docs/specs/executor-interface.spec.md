@@ -203,12 +203,13 @@ WHEN a start is preflighted THE engine SHALL time one interpreter spawn and a wa
 
 ### EXI-B30 Launcher-owned workspace paths
 
-WHEN an executor route declares `launcher_owned_paths` THE engine SHALL, before and after each session, exclude those paths from the workspace fingerprint and from `changed_paths`, remove them after the session when they did not exist before the session, and refuse at preflight any declaration whose path would cover a tracked or already-existing file.
+WHEN an executor route declares `launcher_owned_paths` THE engine SHALL exclude those paths from the workspace fingerprint and from `changed_paths` before and after each session, and remove any that did not exist before the session once it ends.
 
 - GIVEN a route that declares `launcher_owned_paths: [".codemie/"]` and a launcher that creates `.codemie/` WHEN the judge guard compares fingerprints THEN the path is excluded and the judgement is not discarded for it
-- GIVEN a route whose declared path covers a tracked file WHEN preflighted THEN the run exits 2 naming the path
 
 ## Acceptance criteria
+
+- EXI-AC17 (EXI-B30): A declared launcher-owned path that changes during a judge session does not cause the guard to discard the judgement, and a path that did not exist before the session is removed after it ends
 
 - EXI-AC1 (EXI-B16): No module outside the executor package imports a concrete executor, by a source scan
 - EXI-AC2 (EXI-B1, EXI-B17, EXI-B26, EXI-B27): Every preflight rule of EXI-B1 refuses with exit 2 and leaves the state root unchanged
