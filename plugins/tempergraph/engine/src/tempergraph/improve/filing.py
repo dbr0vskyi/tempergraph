@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from tempergraph.improve import params
+from tempergraph.improve import bindings, params
 from tempergraph.improve.codehost import LOOP_LABEL, CodeHost, CodeHostError
 
 ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL-B11)
@@ -604,6 +604,7 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             note = "search_failed"  # retried once, then files anyway and says why
         match = _match_open(opened or [], fps, key)
         regression: int | None = None
+        source: int | None = None  # the closed loop issue whose close as a duplicate sends the comment to `match`
         if match is None and not failed:  # an open issue always wins; only then do closed ones count
             if (repo, "closed") not in listed:
                 listed[(repo, "closed")] = _read(host, repo, "closed")
@@ -615,11 +616,25 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             elif last is not None:
                 reason = str(last.get("state_reason") or "")
                 days = float(params.value("mute.days"))
-                if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
-                    results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
-                    continue
-                if reason == "completed" and last.get("number") is not None:
-                    regression = int(last["number"])  # ISS-B4
+                if reason == "duplicate" and isinstance(last.get("number"), int):  # BND-B1 to BND-B7
+                    got = bindings.learn(host, repo, key, last, outbox.path.parent, now)
+                    if got.state == "unreadable":  # BND-B6: no issue, no comment
+                        results.append({"op": "binding_unreadable", "cause_key": key, "repo": repo})
+                        continue
+                    if got.state == "bound":
+                        if got.learned:
+                            results.append({"op": "bound", "cause_key": key, "repo": repo, "source": int(last["number"]),
+                                            "target": int(got.number or 0)})
+                        if str(got.issue.get("state") or "") == "open":
+                            match, source = got.issue, int(last["number"])
+                        else:  # BND-B5: the closed target decides as a closed loop issue does; no chain is followed
+                            last, reason = got.issue, str(got.issue.get("state_reason") or "")
+                if match is None:
+                    if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
+                        results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
+                        continue
+                    if reason == "completed" and last.get("number") is not None:
+                        regression = int(last["number"])  # ISS-B4
         f = ds[0].candidate.finding
         if match is not None:  # ISS-B13: at most the bound of "seen again" comments to one issue in one UTC day
             ident = (repo, int(match["number"]))
@@ -628,8 +643,12 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
                 results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fps[0]})
                 continue
         if match is not None:
-            p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0],
-                 "body": comment_body(ds)}
+            text = comment_body(ds)
+            if source is not None:  # BND-B4: a comment on a target says where it comes from
+                text = bindings.opening_sentence(str(f.get("workflow")), str(f.get("cause")),
+                                                 list(dict.fromkeys(_unit(x.candidate.finding) for x in ds)),
+                                                 source) + "\n" + text
+            p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0], "body": text}
         else:
             p = {"op": "create", "repo": repo, "title": title(f), "body": body(ds, regression),
                  "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0],
