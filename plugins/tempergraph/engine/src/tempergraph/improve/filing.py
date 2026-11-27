@@ -17,7 +17,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from tempergraph.improve import params
+from tempergraph.improve import bindings, params
 from tempergraph.improve.codehost import LOOP_LABEL, CodeHost, CodeHostError
 
 ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL-B11)
@@ -454,12 +454,14 @@ def _match_open(issues: Sequence[Mapping[str, Any]], fps: Sequence[str], key: st
     return next((i for i in order if _holds(i, [_cause_line(key)])), None)
 
 
-def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> dict[tuple[str, int], int]:
-    """ISS-B13: the `issue_commented` records of the workflow's runs in the state root dated on `now`'s UTC day,
-    counted per (repo, issue number). An unreadable file or line is skipped."""
+def comments_by_day(root: Path, workflow: str | None, now: datetime | None = None) -> dict[tuple[str, int], int]:
+    """ISS-B13, BND-B3: the `issue_commented` records of the workflow's runs in the state root (of every workflow
+    when `workflow` is None) dated on `now`'s UTC day, counted per (repo, issue number). An unreadable file or line
+    is skipped."""
     day = (now or datetime.now(UTC)).astimezone(UTC).date()
     out: dict[tuple[str, int], int] = {}
-    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+    pattern = "*/*/loop.jsonl" if workflow is None else f"{workflow}/*/loop.jsonl"
+    for path in sorted((root / "runs").glob(pattern)):
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
@@ -488,6 +490,38 @@ def _expired(p: Mapping[str, Any], now: datetime) -> bool:
         return False
     at = at if at.tzinfo else at.replace(tzinfo=UTC)
     return now - at > timedelta(days=float(params.value("outbox.max_age_days")))
+
+
+def _comment_bound(p: dict[str, Any], got: bindings.Binding, source: int, host: CodeHost, outbox: Outbox,
+                   results: list[dict[str, Any]], comments_today: Mapping[tuple[str, int], int] | None,
+                   sent_now: dict[tuple[str, int], int]) -> None:
+    """BND-B11: a waiting create of a bound cause is one comment on the open target within the day bound (BND-B3);
+    its opening sentence is built from the payload, or from its title and `Seen again` line when it lacks the fields."""
+    repo = str(p.get("repo"))
+    fp = p.get("fingerprint")
+    ident = (repo, int(got.number or 0))
+    if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+            params.value("seen_again.max_per_issue_per_day")):
+        results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fp})
+        return
+    comment = str(p.get("comment") or "")
+    m = re.match(r"\[loop\] (.*?): (.*)$", str(p.get("title") or ""))
+    workflow = str(p.get("workflow") or (m.group(1) if m else ""))
+    cause = str(p.get("cause") or (m.group(2) if m else ""))
+    units = p.get("units")
+    if not isinstance(units, list):
+        seen = re.search(r"\*\*Seen again\*\*: .*? at (.*)\.$", comment, re.MULTILINE)
+        units = re.findall(r"`([^`]+)`", seen.group(1)) if seen else []
+    sentence = bindings.opening_sentence(workflow, cause, [str(u) for u in units], source)
+    c = {"op": "comment", "repo": repo, "number": ident[1], "fingerprint": fp,
+         "body": sentence + "\n" + (comment or "**Seen again**"), "queued_at": p.get("queued_at")}
+    try:
+        url = _deliver(host, c)
+    except CodeHostError:
+        outbox.add(p)
+        return
+    sent_now[ident] = sent_now.get(ident, 0) + 1
+    results.append({"op": "commented", "url": url, "fingerprint": fp, "repo": repo, "number": ident[1]})
 
 
 def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[dict[str, Any]], now: datetime,
@@ -534,6 +568,22 @@ def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[
             closed, cfailed = listed[(repo, "closed")]
             mine = [i for i in closed or [] if _holds(i, lines)]
             last = max(mine, key=_closed_at) if mine and not cfailed else None
+            key = next((ln[len("<!-- tempergraph:cause="):-len(" -->")] for ln in lines
+                        if ln.startswith("<!-- tempergraph:cause=")), "")
+            if (last is not None and key and str(last.get("state_reason") or "") == "duplicate"
+                    and isinstance(last.get("number"), int)):  # BND-B11: a bound cause's waiting create
+                got = bindings.learn(host, repo, key, last, outbox.path.parent, now)
+                if got.state == "unreadable":
+                    outbox.add(p)  # back with its queue time; it expires by ISS-B18
+                    return
+                if got.state == "bound":
+                    if got.learned:
+                        results.append({"op": "bound", "cause_key": key, "repo": repo, "source": int(last["number"]),
+                                        "target": int(got.number or 0)})
+                    if str(got.issue.get("state") or "") == "open":
+                        _comment_bound(p, got, int(last["number"]), host, outbox, results, comments_today, sent_now)
+                        return
+                    last = got.issue  # BND-B5: the closed target decides as a closed loop issue does
             if (last is not None and str(last.get("state_reason") or "") in ("not_planned", "duplicate")
                     and now - _closed_at(last) < timedelta(days=float(params.value("mute.days")))):
                 results.append({"op": "outbox_dropped", "reason": "muted", "fingerprint": p.get("fingerprint")})
@@ -604,6 +654,7 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             note = "search_failed"  # retried once, then files anyway and says why
         match = _match_open(opened or [], fps, key)
         regression: int | None = None
+        source: int | None = None  # the closed loop issue whose close as a duplicate sends the comment to `match`
         if match is None and not failed:  # an open issue always wins; only then do closed ones count
             if (repo, "closed") not in listed:
                 listed[(repo, "closed")] = _read(host, repo, "closed")
@@ -615,11 +666,25 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             elif last is not None:
                 reason = str(last.get("state_reason") or "")
                 days = float(params.value("mute.days"))
-                if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
-                    results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
-                    continue
-                if reason == "completed" and last.get("number") is not None:
-                    regression = int(last["number"])  # ISS-B4
+                if reason == "duplicate" and isinstance(last.get("number"), int):  # BND-B1 to BND-B7
+                    got = bindings.learn(host, repo, key, last, outbox.path.parent, now)
+                    if got.state == "unreadable":  # BND-B6: no issue, no comment
+                        results.append({"op": "binding_unreadable", "cause_key": key, "repo": repo})
+                        continue
+                    if got.state == "bound":
+                        if got.learned:
+                            results.append({"op": "bound", "cause_key": key, "repo": repo, "source": int(last["number"]),
+                                            "target": int(got.number or 0)})
+                        if str(got.issue.get("state") or "") == "open":
+                            match, source = got.issue, int(last["number"])
+                        else:  # BND-B5: the closed target decides as a closed loop issue does; no chain is followed
+                            last, reason = got.issue, str(got.issue.get("state_reason") or "")
+                if match is None:
+                    if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
+                        results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
+                        continue
+                    if reason == "completed" and last.get("number") is not None:
+                        regression = int(last["number"])  # ISS-B4
         f = ds[0].candidate.finding
         if match is not None:  # ISS-B13: at most the bound of "seen again" comments to one issue in one UTC day
             ident = (repo, int(match["number"]))
@@ -628,12 +693,18 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
                 results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fps[0]})
                 continue
         if match is not None:
-            p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0],
-                 "body": comment_body(ds)}
+            text = comment_body(ds)
+            if source is not None:  # BND-B4: a comment on a target says where it comes from
+                text = bindings.opening_sentence(str(f.get("workflow")), str(f.get("cause")),
+                                                 list(dict.fromkeys(_unit(x.candidate.finding) for x in ds)),
+                                                 source) + "\n" + text
+            p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0], "body": text}
         else:
             p = {"op": "create", "repo": repo, "title": title(f), "body": body(ds, regression),
                  "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0],
-                 "comment": comment_body(ds)}  # ISS-B16: a later delivery as a comment carries the same context
+                 "comment": comment_body(ds),  # ISS-B16: a later delivery as a comment carries the same context
+                 "workflow": str(f.get("workflow")), "cause": str(f.get("cause")),  # BND-B11: ids for the opening sentence
+                 "units": list(dict.fromkeys(_unit(x.candidate.finding) for x in ds))}
         try:
             url = _deliver(host, p)
         except CodeHostError:

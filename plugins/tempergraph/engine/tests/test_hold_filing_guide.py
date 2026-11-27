@@ -66,6 +66,16 @@ def test_the_guide_says_a_duplicate_close_mutes_for_mute_days() -> None:  # ISS-
     assert "muted" in text
 
 
+def test_the_guide_says_what_a_duplicate_close_with_a_target_does() -> None:  # AC 11 (BND-B1, BND-B3, BND-B5, BND-B11)
+    text = " ".join(section().split())
+    assert "`Duplicate of #<n>`" in text
+    assert "later sightings to that issue as comments, at most one a day" in text
+    assert "a duplicate with no such comment mutes" in text and "`mute.days`" in text
+    assert "reopening the loop issue ends the binding" in text
+    assert "a closed target decides by its close reason" in text
+    assert "waiting create of a bound cause is delivered as a comment" in text
+
+
 def test_the_specs_of_the_change_name_no_workflow() -> None:  # FFD-AC1, ISS-AC12, PRP-AC16, ROP-AC12 (task AC 12)
     names = workflow_names()
     assert names

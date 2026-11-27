@@ -7,6 +7,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
 ## Depends on
 
 - `ask-unit.spec.md`: ask unit
+- `cause-bindings.spec.md`: the file that keeps a cause's binding (BND-B8)
 - `central-run-stats.spec.md`: central run stats
 - `durability-and-resume.spec.md`: wait (DUR-B5)
 - `engine-update.spec.md`: engine install and update
@@ -34,7 +35,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
 
 ### LOS-B7 State root top level
 
-WHEN a state root (layout version 1) is created THE engine SHALL lay out `manifest.json` (layout version, the engine version that created it, `created_at`), `.gitignore` holding `*`, `config/` (operator config: hooks, observers, sinks, price overrides, `observe.*` settings and `settings.json`, [RST](run-settings-and-overrides.spec.md)), `checkpoints/<workflow>.sqlite` and `locks/<workflow>/<task_id>.lock` ([DUR](durability-and-resume.spec.md)), `runs/<workflow>/<task_id>/`, `batches/<batch_id>/` (batch file and batch event file, [WSP](workspace-and-concurrency.spec.md)), `ledger.jsonl` and `filing-outbox.jsonl` (issue payloads a code host refused, [SIL](self-improvement.spec.md)), `backups/layout-<N>-<ts>/` ([MIG](state-and-run-migration.spec.md)), `upgrades/<upgrade_id>/` ([WUP](workflow-upgrade.spec.md)), `authoring/<session_id>/` (local only, [AUT](workflow-authoring.spec.md)), `engine/<YYYY-MM-DD>-<pid>.jsonl` (the code log) and `scratch/` (owner-only, removed per session, [WSP-B5](workspace-and-concurrency.spec.md)), all created owner-only (0700 for folders, 0600 for files on POSIX).
+WHEN a state root (layout version 1) is created THE engine SHALL lay out `manifest.json` (layout version, the engine version that created it, `created_at`), `.gitignore` holding `*`, `config/` (operator config: hooks, observers, sinks, price overrides, `observe.*` settings and `settings.json`, [RST](run-settings-and-overrides.spec.md)), `checkpoints/<workflow>.sqlite` and `locks/<workflow>/<task_id>.lock` ([DUR](durability-and-resume.spec.md)), `runs/<workflow>/<task_id>/`, `batches/<batch_id>/` (batch file and batch event file, [WSP](workspace-and-concurrency.spec.md)), `ledger.jsonl`, `filing-outbox.jsonl` (issue payloads a code host refused, [SIL](self-improvement.spec.md)), `filing-bindings.json` (the target of each cause bound to an issue the loop did not open, [BND-B8](cause-bindings.spec.md)), `backups/layout-<N>-<ts>/` ([MIG](state-and-run-migration.spec.md)), `upgrades/<upgrade_id>/` ([WUP](workflow-upgrade.spec.md)), `authoring/<session_id>/` (local only, [AUT](workflow-authoring.spec.md)), `engine/<YYYY-MM-DD>-<pid>.jsonl` (the code log) and `scratch/` (owner-only, removed per session, [WSP-B5](workspace-and-concurrency.spec.md)), all created owner-only (0700 for folders, 0600 for files on POSIX).
 
 - GIVEN a new state root on POSIX WHEN its files are listed THEN folders are 0700 and files 0600
 
