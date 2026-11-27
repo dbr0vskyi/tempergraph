@@ -186,6 +186,32 @@ def test_jdg_ac14_an_infra_failure_of_the_reread_ends_the_attempt_as_judge_infra
     assert set(request_kinds(ex)) <= {"step", "judge", "judge_reread"}
 
 
+def _failure(name: str) -> list[Any]:
+    """The answers of one judge session that fails in the way `name` says (a JDG-B2 re-ask follows a missing block)."""
+    from tempergraph.contracts import InfraCause, SessionResult, Usage
+
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    return {
+        "timeout": [dataclasses.replace(judge(CLEAN), timed_out=True, ok=False)],
+        "unparsed": [judge("no block"), judge("still none")],
+        "guard": [judge(CLEAN, tools=("Read", "Write"))],
+        "infra": [broken] * 12,
+    }[name]
+
+
+@pytest.mark.parametrize("name", ["timeout", "unparsed", "guard", "infra"])
+@pytest.mark.parametrize("where", ["first", "reread"])
+def test_jdg_ac4_no_judging_failure_ever_yields_proceed(repo: Path, where: str, name: str) -> None:  # AC 3
+    answers = _failure(name) if where == "first" else [judge(PARTIAL_FIRST)] + _failure(name)
+    out, ex = drive(repo, answers, steps=1)
+    assert out.exit_code is not ExitCode.FINISHED, out.message
+    expected = ExitCode.BUDGET_OR_INFRA if name == "infra" else ExitCode.PAUSED
+    assert out.exit_code is expected
+    assert request_kinds(ex).count("step") == 1 and "retry" not in request_kinds(ex)
+    if where == "first":
+        assert "judge_reread" not in request_kinds(ex)
+
+
 def test_jdg_ac9_a_reread_runs_on_the_risk_rules_model_with_one_risk_record(repo: Path) -> None:  # JDG-AC9, AC 6
     from tempergraph.api import Risk
     from tempergraph.executors.standins import standin as make
