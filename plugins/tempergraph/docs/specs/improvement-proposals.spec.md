@@ -231,11 +231,11 @@ WHEN the engine takes a pull request from a text THE engine SHALL take its code 
 
 ### PRP-B31 The operator's setting lowers the autonomy at each final exit
 
-WHEN a thread reaches a final exit ([SIL-B9](self-improvement.spec.md)) THE engine SHALL run the loop at the lowest of the workflow's declared autonomy level, the machine's `TEMPERGRAPH_AUTONOMY` and the run setting `loop_autonomy` ([RST-B20](run-settings-and-overrides.spec.md)) resolved with the settings files as they are at that moment.
+WHEN a thread reaches a final exit ([SIL-B9](self-improvement.spec.md)) THE engine SHALL run the loop at the lowest of the workflow's declared autonomy level (`record` lifted to `file` for one thread by `--no-dry-run`), the machine's `TEMPERGRAPH_AUTONOMY` and the run setting `loop_autonomy` ([RST-B20](run-settings-and-overrides.spec.md)) resolved with the settings files as they are at that moment.
 
-- GIVEN a workflow at `file` and a thread started while no settings file names `loop_autonomy` WHEN `record` is written to a settings file and the thread then reaches its final exit THEN the loop makes no issue and no comment and records each finding it decides with the reason `autonomy_record`
+- GIVEN a workflow at `file` and a thread started with no `loop_autonomy` in any settings file WHEN `record` is written to a settings file before its final exit THEN the loop makes no issue or comment and records each decided finding with the reason `autonomy_record`
 - GIVEN a workflow declared at `record` and `loop_autonomy` set to `trial` WHEN a thread reaches its final exit THEN the loop runs at `record`
-- GIVEN `loop_autonomy` set to `record` when a thread starts and removed before its final exit WHEN the thread reaches the exit THEN the loop runs at the workflow's declared level
+- GIVEN `loop_autonomy` set to `record` at a thread's start and removed before its final exit WHEN it reaches the exit THEN the loop runs at the workflow's declared level
 
 ## Acceptance criteria
 

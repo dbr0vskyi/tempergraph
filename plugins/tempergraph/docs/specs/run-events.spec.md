@@ -20,6 +20,7 @@ What the engine writes and emits while a run is live, so an observer (the `tempe
 - `judge-model-by-risk.spec.md`: judge model by risk
 - `lifecycle-hooks.spec.md`: lifecycle hooks
 - `local-observability-store.spec.md`: local observability store
+- `loop-filing-state.spec.md`: the dry run as a run setting (LFS-B1)
 - `observability-and-cost.spec.md`: logging fails safely (OBS-B3)
 - `orchestration.spec.md`: orchestration of runs
 - `overview.spec.md`: versioned schemas, tolerant readers (OVR-B14); read-only verbs call no model (OVR-B15)
@@ -68,9 +69,11 @@ WHEN a thread whose segment 0 ended at `seq` 812 with a pause is resumed THE wri
 
 ### EVT-B10 Run started
 
-WHEN a process has taken the lock and before the first unit, on start and each resume THE engine SHALL write `run_started` with `origin`; `parent` (orchestration id, node and item, [ORC](orchestration.spec.md)) and `schedule` (schedule id, fire id and slot, [TCK](schedule-ticks-and-unattended-fires.spec.md)) when one started the run; `alias`, `label`, `workflow_version` and `content_version` (the version with its content digest, [VER](version-metadata.spec.md)); `plan_digest` (the diagram model's); `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or workflow changed since the last process ([MIG](state-and-run-migration.spec.md)); `settings_digest`, `profiles` and `overridden_keys` ([RST](run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN](reruns-and-feedback.spec.md)); `dry_run` for `--dry-run`; `caller`, the caller of the call that started or resumed the segment ([PRV](caller-provenance.spec.md)); `capture_lowered` ([LOS](local-observability-store.spec.md)); and `observers` with `observers_missing` when the operator config names observers.
+WHEN a process has taken the lock and before the first unit, on start and each resume THE engine SHALL write `run_started` with `origin`; `parent` (orchestration id, node and item, [ORC](orchestration.spec.md)) and `schedule` (schedule id, fire id and slot, [TCK](schedule-ticks-and-unattended-fires.spec.md)) when one started the run; `alias`, `label`, `workflow_version` and `content_version` (the version with its content digest, [VER](version-metadata.spec.md)); `plan_digest` (the diagram model's); `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or workflow changed since the last process ([MIG](state-and-run-migration.spec.md)); `settings_digest`, `profiles` and `overridden_keys` ([RST](run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN](reruns-and-feedback.spec.md)); `dry_run` when the segment is a dry run, that is when `loop_dry_run` is `true` for it ([LFS-B1](loop-filing-state.spec.md)) or the engine started the run as one; `caller`, the caller of the call that started or resumed the segment ([PRV](caller-provenance.spec.md)); `capture_lowered` ([LOS](local-observability-store.spec.md)); and `observers` with `observers_missing` when the operator config names observers.
 
 - GIVEN a run started by a schedule WHEN `run_started` is read THEN it carries the schedule id, fire id and slot
+- GIVEN a workflow that declares `loop_dry_run` `true` WHEN a thread starts THEN its `run_started` holds `dry_run` `true`
+- GIVEN that thread WHEN a resume gives `--no-dry-run` THEN the `run_started` of that segment holds no `dry_run`
 
 ### EVT-B11 Settings and workflow changes
 
@@ -228,6 +231,7 @@ WHEN the activity journal cannot be written, the ledger row or the exit file can
 - EVT-AC8 (EVT-B24): Each hook event is read off its record, and a hook's facts file holds only the listed fields
 - EVT-AC9 (EVT-B26): A scripted-executor run whose step session ends not ok with `usage_limit` true writes an `agent_run` record with `usage_limit` true and the reported `usage_limit_resets_at`, and the `agent_run` record of a session that ends ok has `usage_limit` false and `usage_limit_resets_at` null
 - EVT-AC10 (EVT-B27): The `pause` record of a scripted-executor run paused for a usage limit holds `usage_limit_resets_at` equal to the reported reset, null when none was reported, and the `pause` record of an approval holds no such key
+- EVT-AC11 (EVT-B10): A fixture thread of a workflow that declares `loop_dry_run` `true` holds `dry_run` on the `run_started` of its first segment and none on the one of a segment resumed with `--no-dry-run`, and a fixture thread whose value is `false` holds none on any
 
 ## Open questions
 

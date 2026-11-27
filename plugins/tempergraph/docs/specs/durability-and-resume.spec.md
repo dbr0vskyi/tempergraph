@@ -10,6 +10,7 @@ A run is a durable thread in a per-workflow SQLite checkpoint under the state ro
 - `finalizer-contract.spec.md`: what it returns (FIN-B8)
 - `gate-and-human.spec.md`: what pauses for a usage limit (HUM-B14)
 - `local-observability-store.spec.md`: state root top level (LOS-B7); run folder (LOS-B8); session folder (LOS-B9)
+- `loop-summary-and-review-retries.spec.md`: the summary says how the exit filed (SIL-B52)
 - `orchestration.spec.md`: orchestration of runs
 - `reruns-and-feedback.spec.md`: rewind (RRN-B16); rerun (RRN-B17); rerun workspace (RRN-B18); thread state against action (RRN-B19)
 - `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); effective settings record (RST-B27)
@@ -98,6 +99,14 @@ WHEN `status` prints a thread in state `unfinished` THE engine SHALL add to its 
 - GIVEN a thread stopped by request WHEN `status --json` runs THEN its row shows the state `unfinished`, the exit reason `stopped_by_request` and a `resume` command that names the workflow and the thread and carries no `--decision`
 - GIVEN a thread paused at a gate WHEN `status --json` runs THEN its row holds no `resume`, and each of its `pending_gates` carries its own resume command
 
+### DUR-B17 The status row says how the loop filed
+
+WHEN `status` prints a thread whose loop child has ended THE engine SHALL add `filing` and `filing_source` to its row, the values of the thread's newest `loop_summary` record ([SIL-B52](loop-summary-and-review-retries.spec.md)), and add neither key before a loop child has ended.
+
+- GIVEN a thread whose loop child ended with `filing` `file` and `filing_source` `argument` WHEN `status --json` runs THEN its row holds those two words
+- GIVEN a thread whose final exit started no loop child WHEN `status --json` runs THEN its row holds neither key
+- GIVEN a thread whose two final exits each ended a loop child WHEN `status --json` runs THEN its row holds the words of the later summary
+
 ### DUR-B5 Wait
 
 WHEN `wait` names a thread THE engine SHALL exit when the run pauses, completes, fails or records a new gate verdict, or when the timeout passes, with the run's own exit code when it is recorded in the run folder's `exit.json` ([LOS-B7, LOS-B8, LOS-B9](local-observability-store.spec.md)), else 3 paused, 0 finished, 4 stopped or unfinished, 0 with the row for a new verdict on a running thread, and 5 with state `running` at the timeout, rebuilding a row only when a file's size or time moved.
@@ -148,3 +157,4 @@ WHEN a start gives `--alias <name>` THE engine SHALL keep it in `runs/aliases.js
 - DUR-AC12 (DUR-B14): A fixture thread a person stopped and a fixture thread stopped with its budget spent are each refused on `resume` with exit 2 and a message naming the unit and the reason `person` or `budget`, writing nothing, and a `retry` resume of each is accepted
 - DUR-AC13 (DUR-B15): The `status --json` row of a fixture thread stopped by request holds a `resume` command that a plain `resume` accepts, and the rows of a fixture paused thread and a fixture running thread hold none
 - DUR-AC14 (DUR-B16): `wait --any` over a fixture finished thread and a fixture paused thread exits with the code and row of the first named thread that is not running, a running fixture thread whose verdict changes does not end it before the timeout, which exits 5 with state `running`, and `wait` naming two threads without `--any` exits 2
+- DUR-AC15 (DUR-B17): The `status --json` row of a fixture thread whose loop child ended holds `filing` and `filing_source` equal to those of its newest `loop_summary` record, and the row of a thread with no loop child holds neither key

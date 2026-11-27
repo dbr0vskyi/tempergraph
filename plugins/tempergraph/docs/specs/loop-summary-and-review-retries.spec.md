@@ -7,6 +7,7 @@ Split from [self-improvement](self-improvement.spec.md) by capability, keeping i
 ## Depends on
 
 - `improvement-data.spec.md`: parameters with provenance (IMD-B23)
+- `loop-filing-state.spec.md`: the words `filing` and `filing_source` (LFS-B5, LFS-B6, LFS-B7)
 - `session-review.spec.md`: budget (SRV-B21); targets in priority order (SRV-B24); each review is paid for from what was reported (SRV-B25); a failed review names its error class (SRV-B29)
 
 ## Behaviours
@@ -47,8 +48,16 @@ WHEN the loop child ends, which is after the last retry of SIL-B25, THE loop chi
 - GIVEN a child whose review raised before any session ended WHEN it ends THEN `review_failed` holds `error` 1
 - GIVEN a child none of whose reviews failed WHEN it ends THEN `review_failed` is empty
 
+### SIL-B52 The summary says how the exit filed
+
+WHEN the loop child ends THE loop child SHALL write in its `loop_summary` record `filing` and `filing_source`, the two words that [LFS-B5, LFS-B6, LFS-B7](loop-filing-state.spec.md) give the thread's final exit.
+
+- GIVEN a child of a thread whose final exit the machine's hold held WHEN it ends THEN `loop_summary` has `filing` `held` and `filing_source` `machine_hold`
+- GIVEN a child of a thread that was given `--no-dry-run` and filed WHEN it ends THEN `loop_summary` has `filing` `file` and `filing_source` `argument`
+
 ## Acceptance criteria
 
 - SIL-AC14 (SIL-B22): A fixture loop child leaves one `loop_summary` record with the counts of findings recorded and filed and at most three kept observations by confidence, each with category, unit and confidence and none with note text
 - SIL-AC16 (SIL-B24): A fixture loop child that finds nothing and whose reviews all end `review_failed` as `usage_limit` leaves a `loop_summary` with `review_failed` holding `usage_limit` and their number, a review that failed and then ended `review_done` on its retry is not counted, and a child with no failed review has an empty `review_failed`
 - SIL-AC17 (SIL-B25, SIL-B26): A fixture loop child on a fake clock whose reviews all return `usage_limit` true with `resets_at` 2 hours ahead starts no retry before that instant, runs each review once more in plan order with `retry` true on every record of a retry, never a third time, and writes its summary after the last retry; with `resets_at` 40 hours ahead or none, from `improve review`, or inline, it starts no wait and no retry
+- SIL-AC63 (SIL-B52): A fixture loop child's one `loop_summary` record holds `filing` and `filing_source`, and `status <thread> --detail` shows the same two words in its `loop` block

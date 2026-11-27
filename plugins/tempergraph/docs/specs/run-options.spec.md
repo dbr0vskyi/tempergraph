@@ -14,10 +14,10 @@ The options that `run`, `resume` and `rerun` take: the generic setting options, 
 - `improvement-proposals.spec.md`: proposer is gated like any workflow (PRP-B4); draft pull request, never a merge (PRP-B8); clusters and the ranked backlog (PRP-B12); trial record and arms (PRP-B18); a/A runs (PRP-B21); show a record (PRP-B22)
 - `judge-calibration.spec.md`: score (JCL-B14); bar and label verbs (JCL-B18)
 - `orchestration.spec.md`: the supervisor's mark (ORC-B17); status, wait and other verbs (ORC-B24); attention and hooks across the state root (ORC-B26)
-- `run-settings-and-overrides.spec.md`: tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30); refusals before spend (RST-B32)
+- `run-settings-and-overrides.spec.md`: layers (RST-B22); snapshot and resume (RST-B26); tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30); refusals before spend (RST-B32)
 - `schedule-ticks-and-unattended-fires.spec.md`: fire token and caller (TCK-B17)
 - `security.spec.md`: security posture
-- `self-improvement.spec.md`: code host unreachable (SIL-B19); daily cap (SIL-B20)
+- `self-improvement.spec.md`: code host unreachable (SIL-B19); daily cap (SIL-B20); dry run files nothing (SIL-B6)
 - `workspace-and-concurrency.spec.md`: the state root outside git (WSP-B15); what needs git (WSP-B18)
 
 ## Behaviours
@@ -31,7 +31,7 @@ WHEN `run`, `resume` or `rerun` is given `--set <key>=<value>` (repeatable), `--
 
 ### ROP-B2 Named options are spellings of `--set`
 
-WHEN a named run option is given THE engine CLI SHALL set the catalog key it spells, exactly as `--set` would: `--executor` `steps.executor`, `--step-executor <step>=<name>` `<step>.executor`, `--judge-executor` `judges.executor`, `--model` `steps.model`, `--step-model <step>=<alias>` `<step>.model`, `--judge-model` `judges.model`, `--timeout` `steps.timeout_s`, `--judge-timeout` `judges.timeout_s`, `--idle` `steps.idle_s`, `--enforce-tools` `run.enforce_tools=true`, `--strict-permissions` `run.strict_permissions=true`, `--arm <switch>=<arm>` `<switch>.arm`, `--run-cost-cap` `run.run_cost_cap_usd`, `--daily-cap` `run.daily_cap_usd`, `--audit-rate` `run.audit_rate`, `--audit-executor` `run.audit_executor`, `--workspace auto|worktree|in_place` (and `--worktree`, `--in-place`) `run.workspace`, `--worktree-root`, `--worktree-base` and `--worktree-cleanup` `run.worktree.root`, `run.worktree.base` and `run.worktree.cleanup`, `--approve <step>` `<step>.approve=true`, and `--auto-reopen N` `run.auto_reopen`.
+WHEN a named run option is given THE engine CLI SHALL set the catalog key it spells, exactly as `--set` would: `--executor` `steps.executor`, `--step-executor <step>=<name>` `<step>.executor`, `--judge-executor` `judges.executor`, `--model` `steps.model`, `--step-model <step>=<alias>` `<step>.model`, `--judge-model` `judges.model`, `--timeout` `steps.timeout_s`, `--judge-timeout` `judges.timeout_s`, `--idle` `steps.idle_s`, `--enforce-tools` `run.enforce_tools=true`, `--strict-permissions` `run.strict_permissions=true`, `--dry-run` `run.loop_dry_run=true`, `--no-dry-run` `run.loop_dry_run=false`, `--arm <switch>=<arm>` `<switch>.arm`, `--run-cost-cap` `run.run_cost_cap_usd`, `--daily-cap` `run.daily_cap_usd`, `--audit-rate` `run.audit_rate`, `--audit-executor` `run.audit_executor`, `--workspace auto|worktree|in_place` (and `--worktree`, `--in-place`) `run.workspace`, `--worktree-root`, `--worktree-base` and `--worktree-cleanup` `run.worktree.root`, `run.worktree.base` and `run.worktree.cleanup`, `--approve <step>` `<step>.approve=true`, and `--auto-reopen N` `run.auto_reopen`.
 
 - GIVEN `run wf "x" --model small` and `run wf "x" --set steps.model=small` WHEN each is preflighted THEN both effective-settings records are the same
 - GIVEN `--judge-executor antigravity` WHEN the run is preflighted THEN it is refused, because the judge executor must still declare `restricts_judge_tools`
@@ -79,11 +79,13 @@ WHEN `--schedule <fire_id>` or `--parent <orchestration>/<node>[/<item>]` is giv
 - GIVEN `--schedule f1` without the fire token WHEN `run` starts THEN it is refused
 - GIVEN the supervisor's `--parent o1/n2` WHEN the run's status is read THEN it shows `parent` `o1/n2`
 
-### ROP-B9 Dry run
+### ROP-B9 Dry run and no dry run
 
-WHEN `run` is given `--dry-run` THE engine SHALL run every step and let self-improvement file nothing, recording `dry_run` on `run_started` and in the run's meta.
+WHEN `run` is given `--dry-run` or `--no-dry-run` THE engine CLI SHALL take it, listed in `run --help`, as the thread's value of `run.loop_dry_run` on the flag layer, which outranks the workflow's declaration, the settings files and the profiles ([RST-B22](run-settings-and-overrides.spec.md)).
 
-- GIVEN `--dry-run` WHEN the run's self-improvement child finds an issue THEN nothing is filed and the issue is in the run's records only
+- GIVEN a workflow that declares a dry run WHEN `run` is given `--no-dry-run` THEN the thread's loop files at its final exit
+- GIVEN a workflow that declares none WHEN `run` is given `--dry-run` THEN nothing is filed and each finding that would file is a `would_file` record ([SIL-B6](self-improvement.spec.md))
+- GIVEN `run --help` WHEN it is read THEN it lists both options
 
 ### ROP-B10 Task id and inputs
 
@@ -113,10 +115,18 @@ WHEN the self-improvement verbs are given THE engine CLI SHALL take these synops
 
 ### ROP-B14 Dry run on resume
 
-WHEN `resume` is given `--dry-run` THE engine CLI SHALL take it, listed in `resume --help`, with the meaning it has on `run` (ROP-B9): every step runs, and the thread's loop files nothing and records each finding that would file as `would_file`.
+WHEN `resume` is given `--dry-run` or `--no-dry-run` THE engine CLI SHALL take it, listed in `resume --help`, as the thread's value of `run.loop_dry_run` from that call on, the value given last winning and a resume that gives neither keeping it ([RST-B26](run-settings-and-overrides.spec.md)).
 
-- GIVEN a thread paused at a gate with a friction finding that would file WHEN `resume --dry-run` runs it to its final exit THEN no issue and no comment is made and the thread's `loop.jsonl` holds a `would_file` record for the finding
-- GIVEN `resume --help` WHEN it is read THEN it lists `--dry-run`
+- GIVEN a thread started with `--dry-run` WHEN `resume --no-dry-run` runs it to its final exit THEN the loop files at that exit
+- GIVEN a thread paused at a gate with a friction finding that would file WHEN `resume --dry-run` runs it, a second pause follows and a resume with neither option runs it to its final exit THEN no issue and no comment is made and the thread's `loop.jsonl` holds a `would_file` record for the finding
+- GIVEN a thread started with `--dry-run` WHEN `resume --unset run.loop_dry_run` runs it to its final exit THEN the value in force is the one the workflow, a settings file or a profile gives, else `false`
+
+### ROP-B15 Both options in one call are refused
+
+WHEN `run`, with or without `--check`, or `resume` is given both `--dry-run` and `--no-dry-run` THE engine CLI SHALL exit 2 before any file is created under the state root.
+
+- GIVEN `run wf "x" --dry-run --no-dry-run` WHEN it runs THEN it exits 2 and the state root is unchanged
+- GIVEN `resume wf t --no-dry-run --dry-run` WHEN it runs THEN it exits 2 and nothing is written
 
 ## Acceptance criteria
 
@@ -127,8 +137,9 @@ WHEN `resume` is given `--dry-run` THE engine CLI SHALL take it, listed in `resu
 - ROP-AC5 (ROP-B6): A breakpoint on a unit pauses before it; one on a map item is refused `not_in_release` and one on an unknown unit `breakpoint_unknown`
 - ROP-AC6 (ROP-B7): `--state-root` outside git puts the thread under the given folder, and inside git changes nothing
 - ROP-AC7 (ROP-B8): `--schedule` without its fire token is refused, and `--parent` is recorded and shown
-- ROP-AC8 (ROP-B9): A dry run files no issue and records `dry_run` on `run_started`
+- ROP-AC8 (ROP-B9): A fixture thread of a workflow that declares a dry run, started with `--no-dry-run`, files at its final exit; one of a workflow that declares none, started with `--dry-run`, files nothing and holds a `would_file` record for each finding that would file; and `run --help` lists both options
 - ROP-AC9 (ROP-B11): Two requests that differ only in whitespace resolve to the same thread id, and an empty request gives `needs`
 - ROP-AC10 (ROP-B12): `run --check`, `run`, `resume` and `rerun` refuse the same invalid options in the same words, before any spend
 - ROP-AC11 (ROP-B13): Every synopsis in ROP-B13 parses with the built CLI's argument definitions
-- ROP-AC12 (ROP-B14): `resume --help` lists `--dry-run`, and a paused fixture thread resumed with it to its final exit has no issue and no comment on a fake code host and a `would_file` record in its `loop.jsonl`
+- ROP-AC12 (ROP-B14): `resume --help` lists both options; a fixture thread started with `--dry-run` and resumed with `--no-dry-run` files at its final exit; one started with `--no-dry-run` and resumed with `--dry-run` has no issue and no comment on a fake code host and a `would_file` record in its `loop.jsonl`, also after a later resume that gives neither option; and `resume --unset run.loop_dry_run` returns a thread to the declared value
+- ROP-AC13 (ROP-B15): `run --check`, `run` and `resume` given both options each exit 2 before any file is created under the state root

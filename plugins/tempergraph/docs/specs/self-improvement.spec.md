@@ -4,6 +4,10 @@
 
 A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](feedback-and-judge-reliability.spec.md)), its data needs are [IMD](improvement-data.spec.md), what it reads from sessions is [SRV](session-review.spec.md), and how its issues are labelled, written and read back is [ISS](loop-issues.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](improvement-data.spec.md)), to be revisited with real runs.
 
+## Does not own
+
+- What decides whether an exit files, runs dry or is held, and the words that record it: `loop-filing-state.spec.md`
+
 ## Behaviours
 
 ### SIL-B8 Records on every exit
@@ -180,9 +184,9 @@ WHEN stable mode's spend for the UTC day reaches the run setting `daily_cap_usd`
 
 ### SIL-B6 Dry run files nothing
 
-WHEN the operator's dry-run switch is on THE loop SHALL show what it would file and file nothing, every step of the parent still having run and spent.
+WHEN `loop_dry_run` is `true` for a thread, or the engine started its run dry, THE loop SHALL show what it would file and file nothing, every step of the parent still having run and spent.
 
-- GIVEN `--dry-run` WHEN the child runs THEN no issue or comment is made and the would-file list is shown
+- GIVEN `loop_dry_run` `true` from an argument, a settings file or the workflow WHEN the child runs THEN no issue or comment is made and the would-file list is shown
 
 ### SIL-B5 Measurement writes nothing
 

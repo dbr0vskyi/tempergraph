@@ -70,6 +70,7 @@ WHEN a run starts THE engine SHALL give it stage `pipeline` when the caller is `
 WHEN the window is read THE engine SHALL take the last `--window` finished runs (default 20 for `pipeline`, 10 for `local-stable`, never fewer than P1's count) whose `run_started` `content_version` (the workflow version with its content digest, [VER-B14](version-metadata.spec.md)) is the package's current one, or for a workflow that is not a package its declared version; leave out runs with origin `trial`, `scenario` or `evals`, dry runs, reruns of a trial and runs that did not reach a final exit; and restart the window after a gate escape for a stage whose escape bar is 0 ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)).
 
 - GIVEN a change inside the content digest WHEN the window is read THEN it is empty and every criterion is `unmeasured`
+- GIVEN a run whose workflow declares `loop_dry_run` `true` WHEN the window is read THEN the run is left out, as a run started with `--dry-run` is
 
 ### PRO-B9 Criteria
 
@@ -97,6 +98,7 @@ WHEN a pipeline run pauses THE engine SHALL exit 3, ending the job, the question
 - PRO-AC4 (PRO-B10): A change to any file inside the content digest voids every stamp of the package
 - PRO-AC5 (PRO-B11): Live: one pipeline run on `claude` with an API key reaches the outcome gate on a scratch repository, and its pause exits 3 (probe P-PRO-1)
 - PRO-AC6 (PRO-B6): `--to pipeline` and a `pipeline` caller's stamp are refused with `not_in_release` while the `pipeline` stage is not built
+- PRO-AC7 (PRO-B8): A fixture run whose workflow declares `loop_dry_run` `true` is left out of the window of real runs, as one started with `--dry-run` is, and one started with `--no-dry-run` under that workflow is counted
 
 ## Open questions
 

@@ -4,6 +4,18 @@
 
 Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a run setting: a key in one engine catalog, set at a scope (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of fixed layers, from a flag to a machine default. The engine resolves every key alike, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR `one-catalog-of-run-settings-over-fixed-layers`](../adr/one-catalog-of-run-settings-over-fixed-layers.adr.md), [ADR `threads-snapshot-settings-and-reapply-them-on-resume`](../adr/threads-snapshot-settings-and-reapply-them-on-resume.adr.md), [research `config-overrides-and-reruns-gaps`](../research/config-overrides-and-reruns-gaps.rsrch.md)). What verifies the work is not a setting: criteria, checks, the presence of a judge, the judge's independence, flow targets, back targets and prompts cannot be overridden ([ADR `overrides-never-change-what-verifies-the-work`](../adr/overrides-never-change-what-verifies-the-work.adr.md)). Declared tools are the one part of a step a person may widen for a run, by a recorded tool grant, instead of editing the package ([ADR `a-person-may-grant-a-step-tools-for-a-run`](../adr/a-person-may-grant-a-step-tools-for-a-run.adr.md)). The model and timeout orders of [CON](contracts.spec.md) and [BUD](budgets-and-failures.spec.md) are instances of this spec's order. Operators, the CLI ([ROP](run-options.spec.md)), reruns ([RRN](reruns-and-feedback.spec.md)), orchestration, schedules and the improvement loop depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `contest-unit.spec.md`: contest slots (CTS)
+- `council-unit.spec.md`: council members and chair (CNL)
+- `map-unit.spec.md`: map items (MAP)
+- `run-options.spec.md`: the options that are flags only (ROP)
+- `script-units-and-hybrid-steps.spec.md`: a hybrid step's scripts (SCR)
+
+## Does not own
+
+- The run key `loop_dry_run`, its values and its default: `loop-filing-state.spec.md`
+
 ## Behaviours
 
 ### RST-B16 One resolver
@@ -14,7 +26,7 @@ WHEN `run --check`, `run`, `resume`, `rerun`, `config show`, `orchestrate valida
 
 ### RST-B17 Keys and scopes
 
-WHEN a key `<scope>.<name>` is read THE engine SHALL take the scope as `run` (the run as a whole), `steps` (every step-side session: steps, council members and chair, contest slots), `judges` (every judge session, the audit judge's binding only through `run.audit_executor`), `<unit>` (one unit of any kind, `<unit>/<child unit>` inside a sub-workflow, one `/` per level), `judge:<unit>`, `<unit>.member:<name>`, `<unit>.chair` or `<unit>.slot:<name>` ([CNL](council-unit.spec.md), [CTS](contest-unit.spec.md)), `<unit>.before:<n>` or `<unit>.after:<n>` (a hybrid step's n-th script from 1, [SCR](script-units-and-hybrid-steps.spec.md)), or `settings` (`settings.<name>`), a map item sharing its unit's settings with a per-item model staying the item function ([MAP](map-unit.spec.md)); and keep as flags only, never settings, `--alias`, `--label`, `--parent`, `--as-agent`, `--pause-before` and `--dry-run` ([ROP](run-options.spec.md)), the legacy flags being spellings of `--set`.
+WHEN a key `<scope>.<name>` is read THE engine SHALL take the scope as `run` (the run as a whole), `steps` (every step-side session: steps, council members and chair, contest slots), `judges` (every judge session, the audit judge's binding only through `run.audit_executor`), `<unit>` (one unit of any kind, `<unit>/<child unit>` inside a sub-workflow, one `/` per level), `judge:<unit>`, `<unit>.member:<name>`, `<unit>.chair` or `<unit>.slot:<name>` ([CNL](council-unit.spec.md), [CTS](contest-unit.spec.md)), `<unit>.before:<n>` or `<unit>.after:<n>` (a hybrid step's n-th script from 1, [SCR](script-units-and-hybrid-steps.spec.md)), or `settings` (`settings.<name>`), a map item sharing its unit's settings with a per-item model staying the item function ([MAP](map-unit.spec.md)); and keep as flags only, never settings, `--alias`, `--label`, `--parent`, `--as-agent` and `--pause-before` ([ROP](run-options.spec.md)), the legacy flags being spellings of `--set`.
 
 - GIVEN `--set plan.member:a.model=large` where `plan` is not a council WHEN validated THEN it is refused `setting_not_for_kind`
 
