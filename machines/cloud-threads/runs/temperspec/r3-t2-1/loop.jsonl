@@ -1,0 +1,7 @@
+{"ts": "2026-11-22T17:21:46.041Z", "kind": "loop_started", "ticket": "6e7ecb04a3b7401a", "lenses": {"friction": true, "outcome": false}, "findings": 2}
+{"ts": "2026-11-22T17:21:51.220Z", "kind": "loop_judged", "lens": "friction", "executor": "claude", "alias": "medium", "effort": "max", "ok": true, "parsed": true, "usage": {"input_tokens": 2, "output_tokens": 388, "cache_read_tokens": 3223, "cache_write_tokens": 2905, "thinking_tokens": null, "reported_cost_usd": 0.0158263, "estimated_cost_usd": null, "by_model": {"claude-sonnet-5-5": {"input_tokens": 2, "output_tokens": 388, "cache_read_tokens": 3223, "cache_write_tokens": 2905, "reported_cost_usd": 0.0158263}}, "turns": 1, "peak_context_tokens": null}, "session_id": "a36fac29-8eeb-4203-b415-77472750bb09"}
+{"ts": "2026-11-22T17:21:51.224Z", "kind": "loop_result", "op": "recorded", "reason": "designed", "fingerprint": "8c4f1f9417986246"}
+{"ts": "2026-11-22T17:21:51.224Z", "kind": "loop_result", "op": "recorded", "reason": "below_floor", "fingerprint": "1b372c71fe2ef2a2"}
+{"ts": "2026-11-22T17:21:51.229Z", "kind": "review_planned", "reason": "dev", "depth": "full", "targets": [{"session_key": "triage.1.step", "reason": "dev", "slices": "all"}], "skipped": [], "estimate_tokens": 1749, "cap_usd": 0.0122, "setting": "full"}
+{"ts": "2026-11-22T17:21:51.230Z", "kind": "review_skipped", "session_key": "triage.1.step", "reason": "budget"}
+{"ts": "2026-11-22T17:21:51.231Z", "kind": "loop_summary", "thread": "temperspec/r3-t2-1", "recorded": 3, "filed": 0, "top": []}

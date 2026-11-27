@@ -1,0 +1,104 @@
+{
+  "machine": "cloud-threads",
+  "collected_at": "2026-11-27T06:52:28Z",
+  "files": [
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-1/exit.json",
+      "bytes": 66,
+      "lines": 5,
+      "sha256": "4abd958087b832fa6b5aa711fa9fb7da4b4a72cb3c88981ddee137a163b1dedf",
+      "source": "loop-assessment/r3-t2-1.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-1/loop.jsonl",
+      "bytes": 1533,
+      "lines": 7,
+      "sha256": "6972d785c991173074d486880e701f3b4713c778c12c3426dfd5b45c7fc82a9c",
+      "source": "loop-assessment/r3-t2-1.txt, section \"loop.jsonl\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-1a/exit.json",
+      "bytes": 66,
+      "lines": 5,
+      "sha256": "4abd958087b832fa6b5aa711fa9fb7da4b4a72cb3c88981ddee137a163b1dedf",
+      "source": "loop-assessment/r3-t2-1a.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-1a/loop.jsonl",
+      "bytes": 12363,
+      "lines": 34,
+      "sha256": "d4828e723a92c1b0e358117f8fcca072c7efe9c001cde776e5f2e07e5c029148",
+      "source": "loop-assessment/r3-t2-1a.txt, section \"loop.jsonl\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-2/exit.json",
+      "bytes": 67,
+      "lines": 5,
+      "sha256": "d1a2557902aa027de4abb5c4a4477344f9e3de667f6b4f033213320f410f10b8",
+      "source": "loop-assessment/r3-t2-2.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-2/loop.jsonl",
+      "bytes": 10981,
+      "lines": 31,
+      "sha256": "a4459ad236c4a699bd6c43bf9616f154b7e83f17abf0358340f12e07aba8177b",
+      "source": "loop-assessment/r3-t2-2.txt, section \"loop.jsonl\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-3/exit.json",
+      "bytes": 66,
+      "lines": 5,
+      "sha256": "4abd958087b832fa6b5aa711fa9fb7da4b4a72cb3c88981ddee137a163b1dedf",
+      "source": "loop-assessment/r3-t2-3.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t2-3/loop.jsonl",
+      "bytes": 17778,
+      "lines": 52,
+      "sha256": "5a6d57f62ce0e0a4b5a2920cd9e1a001b21301562b6095fcd27eea7820bf6b52",
+      "source": "loop-assessment/r3-t2-3.txt, section \"loop.jsonl\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t3-1/exit.json",
+      "bytes": 66,
+      "lines": 5,
+      "sha256": "4abd958087b832fa6b5aa711fa9fb7da4b4a72cb3c88981ddee137a163b1dedf",
+      "source": "loop-assessment/r3-t3-1.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t3-1/loop.jsonl",
+      "bytes": 20334,
+      "lines": 56,
+      "sha256": "eba592705117afb48601b56c9e10e6977595a36af5a5037c08e879ef5c2521ca",
+      "source": "loop-assessment/r3-t3-1.txt, section \"loop.jsonl\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t5-1/exit.json",
+      "bytes": 70,
+      "lines": 5,
+      "sha256": "805aef8f5b03f365fbe70f5243b8ef3c49e2f7ccabcd5acd5386abc5d7643f7d",
+      "source": "loop-assessment/r3-t5-1.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t5-2/exit.json",
+      "bytes": 66,
+      "lines": 5,
+      "sha256": "4abd958087b832fa6b5aa711fa9fb7da4b4a72cb3c88981ddee137a163b1dedf",
+      "source": "loop-assessment/r3-t5-2.txt, section \"exit.json\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t5-2/loop.jsonl",
+      "bytes": 10169,
+      "lines": 26,
+      "sha256": "c1749b99e8fb2130b16c4f442d24dd8cf1ed5658a54a251f36e0de8a7c5ddc3f",
+      "source": "loop-assessment/r3-t5-2.txt, section \"loop.jsonl\""
+    },
+    {
+      "path": "machines/cloud-threads/runs/temperspec/r3-t8-4/loop.jsonl",
+      "bytes": 11274,
+      "lines": 57,
+      "sha256": "0a2b94c348def7bec5f71887c279f32f066a623e780fd4a395dc721e5c533b81",
+      "source": "loop-assessment/r3-t8-4.txt, section \"loop.jsonl\""
+    }
+  ]
+}
