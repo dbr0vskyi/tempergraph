@@ -83,6 +83,10 @@ def fake_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scenario: dict[
     exe.write_text(f"#!{sys.executable}\nimport runpy, sys\nsys.argv[0] = {str(STANDIN)!r}\n"
                    f"runpy.run_path({str(STANDIN)!r}, run_name='__main__')\n")
     exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
+    if sys.platform == "win32":
+        # shutil.which on Windows only finds files with PATHEXT extensions; create a .cmd wrapper
+        cmd = bindir / "claude.cmd"
+        cmd.write_text(f'@"{sys.executable}" "{STANDIN}" %*\n', encoding="utf-8")
     path = tmp_path / "scenario.json"
     path.write_text(json.dumps(scenario))
     monkeypatch.setenv("PATH", f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}")

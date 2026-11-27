@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from tempergraph.contracts import WorkflowSpec
+from tempergraph.durability import carry as carrymod
 from tempergraph.durability.status import status
 from tempergraph.run.events import records
 from tempergraph.store.layout import run_dir
@@ -30,23 +31,31 @@ def items(state_root: Path, specs: Mapping[str, WorkflowSpec], now: float | None
     out: list[dict[str, Any]] = []
     for row in status(state_root, specs)["threads"]:
         gates = row.get("pending_gates") or []
-        if row.get("state") != "paused" or not gates:
-            continue
-        wf, _, task = str(row["thread_id"]).partition("/")
-        pauses: dict[str, dict[str, Any]] = {}
-        for r in records(run_dir(state_root, wf, task) / "run.jsonl"):
-            if r.get("kind") == "pause" and r.get("unit"):
-                pauses[str(r["unit"])] = r
-        for g in gates:
-            p = pauses.get(str(g.get("unit"))) or {}
-            since = _since(p.get("ts"))
-            reason = p.get("question") or p.get("reason") or g.get("kind")
+        if row.get("state") == "paused" and gates:
+            wf, _, task = str(row["thread_id"]).partition("/")
+            pauses: dict[str, dict[str, Any]] = {}
+            for r in records(run_dir(state_root, wf, task) / "run.jsonl"):
+                if r.get("kind") == "pause" and r.get("unit"):
+                    pauses[str(r["unit"])] = r
+            for g in gates:
+                p = pauses.get(str(g.get("unit"))) or {}
+                since = _since(p.get("ts"))
+                reason = p.get("question") or p.get("reason") or g.get("kind")
+                out.append({"thread_id": row["thread_id"], "workflow": row.get("workflow"), "alias": row.get("alias"),
+                            "unit": g.get("unit"), "item": g.get("item"), "kind": g.get("kind"),
+                            "waiting_since": p.get("ts"), "age_s": round(now - since, 1) if since else None,
+                            "reason": reason, "decisions": p.get("decisions"), "command": g.get("resume"),
+                            "state_root": str(state_root),
+                            **({"schedule": row["schedule"]} if row.get("schedule") else {})})  # TCK-B4: a scheduled run's pause
+        elif row.get("carry") == "delete_failed":  # CAR-B11: remote refused the state-branch deletion at finish
+            wf, _, task = str(row["thread_id"]).partition("/")
+            branch = carrymod.branch_name(wf, task)
             out.append({"thread_id": row["thread_id"], "workflow": row.get("workflow"), "alias": row.get("alias"),
-                        "unit": g.get("unit"), "item": g.get("item"), "kind": g.get("kind"),
-                        "waiting_since": p.get("ts"), "age_s": round(now - since, 1) if since else None,
-                        "reason": reason, "decisions": p.get("decisions"), "command": g.get("resume"),
-                        "state_root": str(state_root),
-                        **({"schedule": row["schedule"]} if row.get("schedule") else {})})  # TCK-B4: a scheduled run's pause
+                        "unit": None, "item": None, "kind": "carry_delete_failed",
+                        "waiting_since": None, "age_s": None,
+                        "reason": f"remote refused deletion of {branch}",
+                        "decisions": None, "command": f"tempergraph carry drop {wf} {task}",
+                        "state_root": str(state_root)})
     return out
 
 

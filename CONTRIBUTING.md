@@ -102,7 +102,7 @@ When a pull request finishes an issue, delete or update the spec's "Not built ye
 
 ## 4. Running temperspec on this repository
 
-Much of this repository is built by running temperspec on its own issues. The run recipe (worktree mode, separate virtual environments, rules installed globally) is in [plugins/temperspec-tgraph/README.md](plugins/temperspec-tgraph/README.md).
+Much of this repository is built by running temperspec on its own issues. The run recipe (worktree mode, shared environment, `--worktree --worktree-base head`, concurrent run limits) is in [plugins/temperspec-tgraph/README.md](plugins/temperspec-tgraph/README.md).
 
 - Pass the issue's text as the run request, not its URL or a file outside the repository.
 - Each run writes its plan and task notes under the owning package's `docs/plans/` and `docs/tasks/`.

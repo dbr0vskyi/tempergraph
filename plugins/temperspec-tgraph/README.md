@@ -83,6 +83,24 @@ Six skills serve the person outside a run; no step of a run loads one. The `task
 
 Real runs, including runs on this repository's own issues, have passed in part: they finished with every gate passed and, where the repository had a remote, pushed the run's branch, but opening the draft pull request has not been shown yet. Every result, with its date, cost and what it did not show, is in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
 
+## Running on this repository
+
+Much of this repository is built by running temperspec on its own issues. The recipe below is what has worked across the batch described in the field notes.
+
+**Install once.** From `plugins/tempergraph/engine/`, run `python -m pip install -e '.[dev]'` in a single virtual environment. Do not create a separate virtual environment per run.
+
+**Engine PATH priority.** The same environment must be active when you launch each run. The editable install ensures the local `src/` is on `sys.path`, so the engine the worktree sees is the one installed in that environment, not any other copy.
+
+**Start each run in worktree mode.** Pass `--worktree --worktree-base head` to give the run its own git worktree starting at the current HEAD commit:
+
+```
+tempergraph run temperspec "<the task and its acceptance criteria>" --worktree --worktree-base head
+```
+
+Pass `--worktree-base ref:<branch>` instead when the run should start at a named branch's tip.
+
+**Concurrent run limit.** Run at most two temperspec runs at the same time. Three concurrent runs on a four-core machine pushed the full suite from 16 to 28 minutes and timed out gate checks.
+
 ## What comes next
 
 Features found useful and not built yet are [GitHub issues labelled `area: temperspec`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+temperspec%22), each with what it waits for; see [CONTRIBUTING.md](../../CONTRIBUTING.md).

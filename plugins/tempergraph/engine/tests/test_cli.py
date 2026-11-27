@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
+import subprocess
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -13,12 +15,13 @@ import pytest
 from tempergraph.catalog import Catalog, from_registry, resolve_request
 from tempergraph.cli.main import VERBS, main
 from tempergraph.constants import ExitCode
+from tempergraph.contracts import InputDeclaration
 from tempergraph.executors.registry import Registry
 from tempergraph.executors.standins import ScriptedExecutor, standin
 from tempergraph.run.runner import RunSettings
 
 from .conftest import hash_tree
-from .fixtures.packages import package_parts
+from .fixtures.packages import minimal_package, package_parts
 from .fixtures.workflows import two_step
 from .test_run import DRAFT, REVIEW, judge, records, verdict_block
 
@@ -273,3 +276,78 @@ def test_pause_before_and_dry_run(repo: Path) -> None:  # ROP-B1 to ROP-B13, FLX
     log = (repo / ".tempergraph" / "runs" / "demo" / "D-2" / "run.jsonl").read_text().splitlines()
     started = [json.loads(x) for x in log if '"run_started"' in x][0]
     assert started["dry_run"] is True and "run.auto_reopen" in started["overridden_keys"]
+
+
+# CLI-AC12
+_OVERLAP_OUTCOME: dict[str, Any] = {
+    "schema_version": 1, "revision": 1,
+    "statement": "Notes covering every requested change in the notes file.",
+    "deliverables": [{"key": "notes", "kind": "file", "where": "the run's branch"}],
+    "final": [
+        {"id": "f1", "severity": "blocker", "verified_by": "judge",
+         "text": "The notes cover every requested change accurately",
+         "check_method": "Read notes and compare with request",
+         "verifier": {"references": ["notes"], "scale": {
+             "met": "every change covered", "partial": "most covered",
+             "unmet": "a change missing", "evidence": "comparison"}}},
+        {"id": "f2", "severity": "blocker", "verified_by": "judge",
+         "text": "The notes include every requested change with accuracy",
+         "check_method": "Read notes and compare with request",
+         "verifier": {"references": ["notes"], "scale": {
+             "met": "all changes included", "partial": "most included",
+             "unmet": "a change missing", "evidence": "comparison"}}},
+    ],
+    "intermediate": {"draft": {"statement": "A draft of the notes", "criteria": [
+        {"id": "d1", "severity": "blocker", "verified_by": "judge", "serves": ["f1"],
+         "text": "The notes cover requested change",
+         "check_method": "Read draft and request",
+         "verifier": {"references": ["notes"], "scale": {
+             "met": "covered", "partial": "partial",
+             "unmet": "missing", "evidence": "diff"}}}
+    ]}},
+}
+
+
+def test_authoring_warnings_aggregated_on_check_ok(repo: Path, tmp_path: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:  # CLI-AC12
+    home = tmp_path / "home"
+    home.mkdir()
+    pkg = minimal_package(tmp_path / "pkgs")
+    (pkg / "outcome.json").write_text(json.dumps(_OVERLAP_OUTCOME))
+    (home / "registry.json").write_text(json.dumps({"schema_version": 1, "workflows": [
+        {"name": "release-notes", "kind": "local", "path": str(pkg)}]}))
+    cat = from_registry(home)
+    code, doc, _ = cli(repo, standin("claude"), "run", "release-notes", "v1.2", "--check", catalog=cat)
+    assert code == 0 and doc["status"] == "ok"
+    assert not any(w.get("code") == "criterion-overlap" for w in doc.get("warnings", []))
+    aw = doc["authoring_warnings"]
+    assert aw["counts"].get("criterion-overlap") == 2
+    assert aw["command"] == "tempergraph validate release-notes"
+
+
+def _git(cwd: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
+
+
+def test_check_and_run_refuse_file_missing_at_base(repo: Path) -> None:  # CLI-AC13
+    # Branch `b` exists and has README.md but not task.md; task.md is added on the current branch.
+    _git(repo, "checkout", "-q", "-b", "b")
+    _git(repo, "checkout", "-q", "main")
+    task = repo / "task.md"
+    task.write_text("do the thing\n")
+    _git(repo, "add", "task.md")
+    _git(repo, "commit", "-q", "-m", "add task")
+
+    file_wf = dataclasses.replace(two_step(), input=InputDeclaration(kind="file"))
+    cat = Catalog(specs={"demo": file_wf})
+    args_check = ["run", "demo", str(task), "--check", "--worktree", "--worktree-base", "ref:b"]
+    args_run = ["run", "demo", str(task), "--worktree", "--worktree-base", "ref:b"]
+
+    code, doc, _ = cli(repo, happy(), *args_check, catalog=cat)
+    assert code == ExitCode.USAGE and doc["status"] == "error"
+    assert any(r["code"] == "request_missing_at_base" for r in doc.get("refusals", []))
+    assert "task.md" in doc["refusals"][0]["message"] and "ref:b" in doc["refusals"][0]["message"]
+
+    code2, out2, err2 = cli(repo, happy(), *args_run, catalog=cat)
+    assert code2 == ExitCode.USAGE and err2
+    assert "request_missing_at_base" in err2 or "task.md" in err2

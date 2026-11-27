@@ -97,4 +97,3 @@ WHEN the remote refuses the deletion at finish THE engine SHALL record it and sh
 ## Open questions
 
 - Should a workflow be able to default carrying on? Until answered: no, a person turns it on per run. Owner: owner.
-- Not built yet: `attention` does not list a branch whose deletion the remote refused (the status row and `carry status` do). Owner: engine owner.
