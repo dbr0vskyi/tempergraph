@@ -602,7 +602,7 @@ class Stand:
         if unit == "independent_review":
             folder = work / ".tempergraph" / "review"
             seen = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).is_file() else ""
-                    for name in ("change.diff", "criteria.md")}
+                    for name in ("change.diff", "criteria.md", "files.txt")}
             self.readers.append({"prompt": req.prompt, **seen})
             lines = self.reviews[min(len(self.readers), len(self.reviews)) - 1]
             put(".tempergraph/review/findings.md", "## Findings\n\n" + "\n".join(lines) + "\n")
@@ -766,10 +766,12 @@ def test_irv_ac5_the_readers_prompt_and_values_hold_nothing_of_the_runs_other_ou
     forbidden = (PLAN_TEXT, HANDOFF_TEXT, REPORT_TEXT, ACCOUNT, "the total is wrong", "Visit:", "SENTINEL",
                  ".plan.md", ".handoff.md", ".report.md", ".triage.md", ".setup.md", ".review.md", "Earlier review")
     for held in stand.readers:
-        for name in ("prompt", "change.diff", "criteria.md"):
+        for name in ("prompt", "change.diff", "criteria.md", "files.txt"):
             for text in forbidden:
                 assert text not in held[name], (name, text)
         assert ".tempergraph/review/change.diff" in held["prompt"] and ".tempergraph/review/criteria.md" in held["prompt"]
+        assert ".tempergraph/review/files.txt" in held["prompt"]
+        assert "src/app.py" in held["files.txt"]
         assert ".tempergraph/review/findings.md" in held["prompt"]
     assert "value_" in stand.readers[0]["change.diff"] and "A thing" in stand.readers[0]["criteria.md"]
 
@@ -784,6 +786,25 @@ def test_irv_ac8_the_prompt_states_the_blocking_rule_and_the_unit_has_no_shell()
     assert step is not None and set(step.tools) == {"read", "search", "list", "write"}
     assert not step.commands and "shell" not in step.tools
     assert [s.call.qualname for s in step.before] == ["review_before"]
+
+
+# IRV-AC22, IRV-AC23 (IRV-B22, IRV-B23), AC 7
+def test_irv_ac22_ac23_the_brief_names_the_file_list_opens_it_first_and_reads_a_large_change_in_pages() -> None:
+    prompt = " ".join((ROOT / "prompts" / "independent_review.md").read_text(encoding="utf-8").lower().split())
+    assert ".tempergraph/review/files.txt" in prompt
+    assert "open the file list first" in prompt and "before the change" in prompt
+    assert "page by page" in prompt and "last line" in prompt
+    assert "does not fit one read" in prompt
+
+
+# IRV-B3, IRV-B15 to IRV-B23, IRV-AC3, IRV-AC15 to IRV-AC23 (AC 8)
+def test_irv_ac3_ac15_to_ac23_the_spec_states_the_behaviours_and_the_record_holds_the_engine_need() -> None:
+    behaviours, criteria = _ids("independent-review.spec.md", "IRV")
+    assert {f"IRV-B{n}" for n in [3, *range(15, 24)]} <= behaviours
+    assert {f"IRV-AC{n}" for n in [3, *range(15, 24)]} <= criteria
+    record = (ROOT / "docs" / "adr" / "review-independence-is-held-by-inputs-and-the-session-record.adr.md").read_text()
+    needs = record.split("The needs, each a general capability", 1)[1].split("###", 1)[0]
+    assert "A script's context carries the run's base commit" in needs
 
 
 # IRV-AC9 to IRV-AC11 (IRV-B9 to IRV-B11), AC 4, AC 9
@@ -875,7 +896,7 @@ def _ids(spec: str, prefix: str) -> tuple[set[str], set[str]]:
 
 def test_the_specs_define_each_behaviour_with_a_criterion_and_the_documents_show_the_unit() -> None:
     # IRV-AC1, RVF-AC1 (AC 1, AC 10)
-    for spec, prefix, count in (("independent-review.spec.md", "IRV", 14), ("review-findings.spec.md", "RVF", 7),
+    for spec, prefix, count in (("independent-review.spec.md", "IRV", 23), ("review-findings.spec.md", "RVF", 7),
                                 ("pull-request-description.spec.md", "PRD", 9)):
         behaviours, criteria = _ids(spec, prefix)
         assert behaviours == {f"{prefix}-B{n}" for n in range(1, count + 1)}, spec

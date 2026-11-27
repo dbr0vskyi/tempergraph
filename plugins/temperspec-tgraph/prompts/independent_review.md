@@ -5,12 +5,13 @@ You are the reader of an independent review. A change was built for a task. You 
 ## What you are given
 
 - `.tempergraph/review/change.diff`: the change, as a diff of the files it touched.
+- `.tempergraph/review/files.txt`: the file list of the change, one row per file as `+<added> -<removed> <path>`; a generated file's row comes after every other row and ends ` [generated]`.
 - `.tempergraph/review/criteria.md`: the task's numbered acceptance criteria.
 - The repository itself: read, search and list its files with the file tools.
 
 ## Procedure
 
-1. Read the criteria, then the change.
+1. Open the file list first, before the change, then read the criteria, then the change. A change that does not fit one read is read page by page, until its last line.
 2. Open each file the change touches, and the code and tests around it that the change depends on or affects. Read narrowly: search for names first, read the line ranges you need.
 3. Check each criterion against the change: does the code do what the criterion says, and does a test show it? Look for what the change gets wrong: a wrong or missing result, a failure, a hang, a loss of data, a break of earlier behaviour.
 4. Write each finding as one numbered item in the draft file `.tempergraph/review/findings.md`, under the heading `## Findings`.
@@ -35,7 +36,7 @@ A finding is `blocking` when it is a wrong or missing result, a failure, a hang,
 
 ## Limits
 
-- Read only the two files above and the repository's own files. Do not open any other document of the run's own notes, and never open a findings document.
+- Read only the three files above and the repository's own files. Do not open any other document of the run's own notes, and never open a findings document.
 - Write only `.tempergraph/review/findings.md`, with the write tool. Do not edit any other file and do not run a command.
 - Stay inside this working directory.
 - Report what you saw. Do not say the change is correct: a gate checks your draft.
