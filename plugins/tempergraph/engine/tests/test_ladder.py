@@ -258,6 +258,6 @@ def test_a_rung_the_executor_cannot_apply_is_refused_before_the_run(repo: Path) 
 def test_an_unprobed_rung_is_warned_and_runs() -> None:  # LAD-B14 row 2, pending probe P-LAD-1
     ex = standin("claude", steps=[OK], judges=[judge(MET2)])
     rep = preflight(wf(), registry(ex))
-    assert rep.refusals == [] and "effort-rung-uncertain" in [f.code for f in rep.warnings]
+    assert rep.refusals == [] and "effort-rung-uncertain" in [f.code for f in rep.authoring_warnings]
     sure = preflight(wf(effort_ladder=("low", "medium", "high")), registry(ex))
-    assert "effort-rung-uncertain" not in [f.code for f in sure.warnings]
+    assert "effort-rung-uncertain" not in [f.code for f in sure.authoring_warnings]

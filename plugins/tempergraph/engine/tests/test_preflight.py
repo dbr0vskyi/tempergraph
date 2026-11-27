@@ -120,6 +120,8 @@ def test_ecc_ac16_a_cli_that_lists_strict_mcp_config_passes(tmp_path: Path, monk
 
 
 def _operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None, **scenario: Any) -> Path:
+    import sys
+
     from .fixtures import streams as S
 
     record = tmp_path / "record.json"
@@ -131,6 +133,8 @@ def _operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | No
     if content is not None:
         (home / ".claude.json").write_text(content)
     monkeypatch.setenv("HOME", str(home))
+    if sys.platform == "win32":
+        monkeypatch.setenv("USERPROFILE", str(home))  # Path.home() on Windows reads USERPROFILE, not HOME
     monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     return record
 
@@ -205,7 +209,7 @@ def test_option_unsupported_and_effort_warning() -> None:
     r.register(bare)
     spec = with_step(two_step(default_executor="antigravity"), "draft", session_options=SessionOptions(effort="high"))
     rep = preflight_of(spec, r)
-    assert rep.ok and "effort-unsupported" in [w.code for w in rep.warnings]
+    assert rep.ok and "effort-unsupported" in [w.code for w in rep.authoring_warnings]
 
 
 def test_ssn_ac2_an_undeclared_option_is_refused_at_preflight_and_effort_only_warns() -> None:  # SSN-AC2, AC 5

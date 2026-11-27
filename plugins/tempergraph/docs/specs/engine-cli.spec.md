@@ -61,6 +61,8 @@ WHEN `run --check <workflow> <request…>` is given THE engine CLI SHALL resolve
 - GIVEN an empty request WHEN `run --check` runs THEN it prints `needs` with the question `request` and exits 2
 - GIVEN a workflow whose resolver does not load WHEN `run --check` runs THEN it prints `broken` and exits 1
 - GIVEN a request the check refuses with `error` WHEN `run` is given the same request THEN `run` refuses it with the same reason and exits 2
+- GIVEN a workflow package with authoring findings and a valid request WHEN `run --check` returns `ok` THEN the JSON carries `authoring_warnings` with counts by code and the `validate` command to view them, and `warnings` holds only run-dependent findings
+- GIVEN a file input that exists at HEAD but not at the worktree base ref WHEN `run --check --worktree --worktree-base ref:<b>` is given THEN it refuses with status `error` and code `request_missing_at_base`, naming the path and the ref, and `run` refuses with the same message
 
 ### CLI-B2 Reserved verbs
 
@@ -277,6 +279,8 @@ WHEN `improve outbox --help` or `resume --help` is given THE engine CLI SHALL sh
 - CLI-AC13 (CLI-B22, CLI-B23): `improve outbox clear --fingerprint <fp>` on a fixture outbox removes the entries of that fingerprint and keeps the others, `improve outbox clear --all` removes every entry, and `improve outbox clear` with neither option or with both exits 2 and leaves the outbox as it was
 - CLI-AC14 (CLI-B24, CLI-B25): `resume --reason` with each of the six words leaves that word on the ledger row of the resume, a resume with no `--reason` leaves none, and any other value, a sentence among them, exits 2 naming the six words and leaves the ledger and the run log as they were
 - CLI-AC15 (CLI-B26): `improve outbox --help` names `list` and `clear`, and `resume --help` names `--reason` and its six words
+- CLI-AC20 (CLI-B1): A `run --check` with status `ok` on a workflow package that has N findings of an authoring-warning code carries that code's count as N in `authoring_warnings.counts` and no full text for that code in `warnings`
+- CLI-AC21 (CLI-B1): `run --check` and `run` both refuse a file request missing at the worktree base ref with code `request_missing_at_base`, naming the path and the ref
 
 ## Open questions
 

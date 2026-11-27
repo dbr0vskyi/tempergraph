@@ -73,6 +73,7 @@ tempergraph run temperspec <request> --worktree --worktree-base head
 - **One shared environment.** One Python environment with the engine's `dev` extra serves every worktree: a worktree's test suite imports the `src` beside it, so the environment holds only the dependencies. An editable install puts its own `tempergraph` in that environment's `bin`; put the installed engine's shim before it on `PATH`, or the run uses the checkout's working tree.
 - **The rule files are the repository's own.** This repository holds them in `.claude/rules/temperspec/`, so a run installs nothing, and a copy under `~/.claude/rules/temperspec/` does not count.
 - **The launch environment is part of the run.** The suite and the step sessions see what the launching shell holds. Start from a clean shell, set `TMPDIR` to a folder on disk outside the home folder with a plain name, and export nothing the run does not need.
+- **At most two runs at once.** Three concurrent runs on a four-core machine pushed the full suite from 16 to 28 minutes and timed out gate checks.
 - **A stop is an exit.** The engine's improvement loop runs at every exit that is not a pause, a stop included. When experimenting, pass `--dry-run`, or set the workflow's level to `record` (the run setting `loop_autonomy`).
 - **A change to this package needs its stamp regenerated.** After a change to its prompts, checks or workflow code, `tempergraph author verify plugins/temperspec-tgraph` writes the stamp again; a step session cannot run it.
 

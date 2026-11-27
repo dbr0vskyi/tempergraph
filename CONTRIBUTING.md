@@ -129,7 +129,7 @@ An adapter's arguments, line parsing, failure classification and preflight are b
 
 ## 4. Running temperspec on this repository
 
-Much of this repository is built by running temperspec on its own issues. The run recipe (worktree mode, one shared environment, the launch environment) is in [plugins/temperspec-tgraph/README.md](plugins/temperspec-tgraph/README.md#running-it-on-this-repository).
+Much of this repository is built by running temperspec on its own issues. The run recipe (worktree mode, one shared environment, `--worktree --worktree-base head`, concurrent run limits, the launch environment) is in [plugins/temperspec-tgraph/README.md](plugins/temperspec-tgraph/README.md#running-it-on-this-repository).
 
 - Claim the issue when the run starts, as in section 3 step 1: assign it, add `in progress` and post the `claim` comment with the run's task id. The maintainers' runs do the same, so an open issue that is assigned and labelled `in progress` is being built; pick another one. When the run ends, post the `result` comment and remove `in progress` unless a follow-up run on the same issue starts at once.
 - Pass the issue's text or a request file inside the repository as the run request, not the issue's URL or a file outside the repository.

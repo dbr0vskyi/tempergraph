@@ -164,6 +164,26 @@ def writes_files(spec: WorkflowSpec) -> bool:
     return False
 
 
+def file_missing_at_base(main: Path, base_commit: str, base_ref: str, file_path: str) -> str | None:
+    """WTR-B21: None when the file exists at the base commit; an error message when it is absent.
+
+    Returns None when the check cannot be performed (no git, path outside the repo, empty commit).
+    """
+    if not base_commit or not file_path:
+        return None
+    top = toplevel(main)
+    if top is None:
+        return None
+    try:
+        rel = Path(file_path).relative_to(top)
+    except ValueError:
+        return None
+    result = git(["rev-parse", "--verify", "--quiet", f"{base_commit}:{rel.as_posix()}"], main, check=False).strip()
+    if result:
+        return None
+    return f"{file_path}: not found at {base_ref}"
+
+
 def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = None, *, task_id: str = "",
                       prefix: str = BRANCH_PREFIX, base: str = "head", root: str = "sibling") -> WorkspacePlan:
     """WTR-B18, WTR-B20, WTR-B21; pure and model-free (it reads git, writes and fetches nothing)."""

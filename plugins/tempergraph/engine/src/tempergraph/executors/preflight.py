@@ -21,6 +21,7 @@ from tempergraph.model.validate import Finding, validate
 class PreflightReport:
     refusals: list[Finding] = field(default_factory=list)
     warnings: list[Finding] = field(default_factory=list)
+    authoring_warnings: list[Finding] = field(default_factory=list)
     judges: dict[str, str] = field(default_factory=dict)  # unit -> judge executor
     step_executors: dict[str, str] = field(default_factory=dict)
     probes: dict[str, ProbeReport] = field(default_factory=dict)
@@ -80,7 +81,10 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
     rep = PreflightReport()
     caps = {n: registry.get(n).capabilities() for n in registry.available()}
     for f in validate(spec, caps):
-        (rep.refusals if f.severity == "error" else rep.warnings).append(f)
+        if f.severity == "error":
+            rep.refusals.append(f)
+        else:
+            rep.authoring_warnings.append(f)
 
     def probe(name: str, unit: str) -> bool:
         if name not in rep.probes:
