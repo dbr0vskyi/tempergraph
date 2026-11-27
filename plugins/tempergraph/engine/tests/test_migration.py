@@ -253,12 +253,47 @@ def test_a_pending_unit_of_another_kind_refuses() -> None:
     assert got == ["the pending unit 'review' changed kind from script to step"]
 
 
+def test_trip_back_cleared_unit_does_not_refuse() -> None:
+    # MIG-B15, MIG-AC2: a unit whose artifacts a trip back cleared is not a completed unit;
+    # its unrecorded key does not block the resume even when the workflow changed content.
+    # Scenario: draft ran (attempt 1), review ran and sent BACK to draft, clearing both units'
+    # artifacts (BUD-B4). The run stopped at attempt_cap while draft was pending (attempt 2).
+    # The workflow content changed to add "summary" produced by draft and read by review.
+    # Resume must pass — draft runs again before review reads "summary".
+    base = two_step()
+    # Both units have attempts entries; neither has recorded artifacts (trip-back cleared them).
+    # draft is the pending unit (stopped at attempt_cap after the BACK).
+    values = {
+        "attempts": {"draft": {"attempt": 2, "visit": 2}, "review": {"attempt": 1, "visit": 1}},
+        "artifacts": {},   # both cleared by the BACK to draft
+        "values": {},
+        "request": {"inputs": {}},
+    }
+    prev = {"units": ef.unit_digests(base)}
+    # the new content adds "summary" to draft's produces; review reads it
+    spec = changed(
+        draft=step_of(base, "draft", produces={**base.units["draft"].step.produces, "summary": "file"}),
+        review=step_of(base, "review", prompt="Review {notes} and {summary} for {task_id}"),
+    )
+    got = ef.breaks(prev, spec, values, ["draft"])
+    assert got == [], f"unexpected breaks: {got}"
+
+
 def test_a_completed_unit_that_is_gone_refuses(repo: Path) -> None:
     paused(repo)
     w = Workflow(order=["review"], units={"review": Step(
         prompt="Review for {task_id}", tools=["read"],
         gate=Gate(judge=Judge(stance="Verify."), criteria=[crit("c-review")]))})
     assert "the completed unit 'draft' no longer exists" in refused(repo, named(w, version="0.2.0"))
+
+
+def test_truly_missing_key_still_refuses(repo: Path) -> None:
+    # MIG-B15 done-when 2: a key a completed (not trip-back-cleared) unit never recorded still refuses.
+    paused(repo)
+    base = two_step()
+    spec = changed(draft=step_of(base, "draft", produces={**base.units["draft"].step.produces, "summary": "file"}),
+                   review=step_of(base, "review", prompt="Review {notes} and {summary} for {task_id}"))
+    assert "'draft' now produces 'summary'" in refused(repo, spec)
 
 
 def test_a_key_this_thread_never_recorded_refuses(repo: Path) -> None:

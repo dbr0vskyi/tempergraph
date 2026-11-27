@@ -257,13 +257,18 @@ def breaks(prev: Mapping[str, Any], spec: WorkflowSpec, values: Mapping[str, Any
     old = prev.get("units") or {}
     out: list[str] = []
     order = [n for n in flow.effective_order(spec) if n in spec.units]
+    pending_set = set(pending)
+    # Units ahead of the earliest pending unit in the order were cleared by a trip back (BUD-B4);
+    # they are not completed: they will run again before any reader of their keys.
+    pending_positions = [order.index(u) for u in pending if u in order]
+    earliest_pending = min(pending_positions) if pending_positions else len(order)
     for unit in pending:  # 1 the pending unit keeps its name and kind
         was = old.get(unit) or {}
         if unit not in spec.units:
             out.append(f"the pending unit {unit!r} no longer exists")
         elif was and was.get("kind") != str(spec.units[unit].kind):
             out.append(f"the pending unit {unit!r} changed kind from {was.get('kind')} to {spec.units[unit].kind}")
-    done = [u for u in (values.get("attempts") or {}) if u not in pending]
+    done = [u for u in (values.get("attempts") or {}) if u not in pending_set]
     for unit in done:  # 2 every completed unit still exists
         if unit in old and unit not in spec.units:
             out.append(f"the completed unit {unit!r} no longer exists, so a trip back cannot find it")
@@ -273,6 +278,11 @@ def breaks(prev: Mapping[str, Any], spec: WorkflowSpec, values: Mapping[str, Any
     needed = set().union(*(_reads(spec, u) for u in later)) if later else set()
     for unit in done:  # 3 a key a pending or later unit reads from a completed unit is recorded
         if unit not in spec.units or spec.units[unit].step is None:
+            continue
+        # A unit whose artifacts were cleared by a trip back (BUD-B4) has no recorded keys; it is not
+        # completed — it runs again before any reader — so its missing keys are not a break (MIG-B15).
+        unit_pos = order.index(unit) if unit in order else -1
+        if unit_pos >= earliest_pending and not recorded.get(unit):
             continue
         for key in sorted(set(spec.units[unit].step.produces or {}) & needed):  # type: ignore[union-attr]
             if key not in recorded.get(unit, set()):
