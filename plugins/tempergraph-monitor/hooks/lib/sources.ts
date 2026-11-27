@@ -111,11 +111,50 @@ export function detailArgv(threadId: string, unit?: string): readonly string[] {
   return [engine, 'status', threadId, '--detail', '--json', ...(unit ? ['--unit', unit] : [])]
 }
 
+/** A schedule id as the engine prints it: a slug and four hex digits (engine SCH). */
+const SCHEDULE = /^[a-z0-9][a-z0-9-]{0,58}-[0-9a-f]{4}$/
+const WORKFLOW = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
+
+/**
+ * The read-only subcommands of verbs that also write (MDS-B8): each shape is the exact argv after the program, a
+ * pattern standing for one value the engine printed. Every other subcommand of `schedule` and `evals` is refused.
+ */
+export const READ_ONLY_SHAPES: readonly (readonly (string | RegExp)[])[] = [
+  ['schedule', 'list', '--json'],
+  ['schedule', 'list', '--all', '--json'],
+  ['schedule', 'show', SCHEDULE, '--json'],
+  ['evals', 'bar', '--json'],
+  ['evals', 'bar', WORKFLOW, '--json'],
+]
+
+function fits(rest: readonly string[], shape: readonly (string | RegExp)[]): boolean {
+  return rest.length === shape.length && shape.every((s, i) => (typeof s === 'string' ? rest[i] === s : s.test(rest[i] ?? '')))
+}
+
+/** Every schedule on the machine, for the next slot, last fire and failures (engine SCH). */
+export function scheduleListArgv(): readonly string[] {
+  return [engine, 'schedule', 'list', '--all', '--json']
+}
+
+/** One schedule: its next ten slots and last 20 fires (engine SCH). */
+export function scheduleShowArgv(id: string): readonly string[] {
+  if (!SCHEDULE.test(id)) throw new Error(`not a schedule id: ${id}`)
+  return [engine, 'schedule', 'show', id, '--json']
+}
+
+/** Each gate's calibration state (engine JCL-B18), for one workflow or all. */
+export function evalsBarArgv(workflow?: string): readonly string[] {
+  if (workflow !== undefined && !WORKFLOW.test(workflow)) throw new Error(`not a workflow name: ${workflow}`)
+  return [engine, 'evals', 'bar', ...(workflow ? [workflow] : []), '--json']
+}
+
 /** An engine verb that only reads, or the constant `ps` listing or engine-home probe of MDS §2.1; nothing else is run. */
 export function isReadOnly(argv: readonly string[]): boolean {
   if (argv.length === PS_ARGV.length && argv.every((a, i) => a === PS_ARGV[i])) return true
   if (argv.length === HOME_ARGV.length && argv.every((a, i) => a === HOME_ARGV[i])) return true
-  if (argv[0] !== engine || !(READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')) return false
+  if (argv[0] !== engine) return false
+  if (READ_ONLY_SHAPES.some(shape => fits(argv.slice(1), shape))) return true
+  if (!(READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')) return false
   return argv[1] !== 'stats' || !argv.some(a => STATS_WRITES.includes(a))
 }
 
@@ -161,7 +200,8 @@ export function keepTail(held: readonly RunRecord[], added: readonly RunRecord[]
 
 // -- poll rates (MDS §2.1, MDS-B1) -------------------------------------------------------------------------------
 
-export const RATES = { live: 5_000, idle: 30_000, change: 1_000, detail: 2_000 } as const
+/** `rowDetail`: a live run's detail document is read again this often for its list row, log growth or not. */
+export const RATES = { live: 5_000, idle: 30_000, change: 1_000, detail: 2_000, rowDetail: 10_000 } as const
 
 /** How long to wait before the next `status` call. */
 export function statusEvery(anyAlive: boolean, paneOpen: boolean): number {

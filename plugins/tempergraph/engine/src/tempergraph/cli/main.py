@@ -156,7 +156,7 @@ def _parser() -> _Parser:
     fa.add_argument("selector")
     gr = sub.add_parser("graph", help="the workflow diagram")
     gr.add_argument("workflow")
-    gr.add_argument("--format", choices=("mermaid", "md", "json"), default="mermaid")
+    gr.add_argument("--format", choices=("mermaid", "md", "json", "svg"), default="mermaid")
     gr.add_argument("--overlay", metavar="THREAD", help="a thread's counts on the diagram (OBS-B15); read-only")
     wa = sub.add_parser("wait", help="block until a thread's outcome")
     wa.add_argument("selector")
@@ -850,6 +850,10 @@ def cmd_graph(env: Env, a: argparse.Namespace) -> int:
         model["overlay"] = overlay(_root(env), spec.name, split_thread(tid)[1])
     if a.format == "json":
         _emit(env, model)
+    elif a.format == "svg":
+        from tempergraph.model.diagram import to_svg
+
+        env.out.write(to_svg(model))
     else:
         text = to_mermaid(model)
         env.out.write(f"```mermaid\n{text}\n```\n" if a.format == "md" else text + "\n")

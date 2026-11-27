@@ -44,7 +44,9 @@
       },
       "exit_code": 3,
       "exit_reason": "escalation",
-      "engine": "0.0.1"
+      "engine": "0.0.1",
+      "engine_digest": "b739e12972d7",
+      "program": "/opt/tempergraph/bin/tempergraph"
     }
   ]
 }

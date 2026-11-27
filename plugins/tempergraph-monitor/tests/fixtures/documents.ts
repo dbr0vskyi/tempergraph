@@ -46,7 +46,9 @@ export const status = {
       },
       "exit_code": 3,
       "exit_reason": "escalation",
-      "engine": "0.0.1"
+      "engine": "0.0.1",
+      "engine_digest": "b739e12972d7",
+      "program": "/opt/tempergraph/bin/tempergraph"
     }
   ]
 } as const
@@ -97,6 +99,8 @@ export const detailPaused = {
     "exit_code": 3,
     "exit_reason": "escalation",
     "engine": "0.0.1",
+    "engine_digest": "b739e12972d7",
+    "program": "/opt/tempergraph/bin/tempergraph",
     "segment": 0,
     "last_seq": 59,
     "run_dir": "/work/repo/.tempergraph/runs/demo/T-1",

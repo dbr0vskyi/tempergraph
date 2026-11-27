@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. The record envelope and observer record kinds are owned by [EVT](run-events.spec.md), where session logs live by [LOS](local-observability-store.spec.md), and export by [CST](central-run-stats.spec.md) and [TEL](telemetry-export.spec.md); design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
+What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. Design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Depends on
 
@@ -23,6 +23,13 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 - `supervision-cost.spec.md`: supervision cost
 - `supervision-metrics.spec.md`: supervision metrics
 - `workflow-lessons.spec.md`: workflow lessons
+
+## Does not own
+
+- The record envelope and the observer record kinds: `run-events.spec.md`
+- Where session logs live: `local-observability-store.spec.md`
+- Export of run rows to a shared sink: `central-run-stats.spec.md`
+- Export of telemetry: `telemetry-export.spec.md`
 
 ## Behaviours
 
@@ -126,9 +133,10 @@ WHEN one session repeats the same tool with the same input five times in a row T
 
 ### OBS-B17 Run overlay
 
-WHEN an operator runs `graph <workflow> --overlay <thread> [--format mermaid|md|json]` THE engine SHALL draw on the workflow diagram, per unit, its visits, sessions, repeats, gate verdicts and money, and each routing edge with the times it was taken (`retry`, `back`, `proceed`), counts and words only; routes into a human node SHALL be counted in JSON and not drawn.
+WHEN an operator runs `graph <workflow> --overlay <thread> [--format mermaid|md|json|svg]` THE engine SHALL draw on the workflow diagram, per unit, its visits, sessions, repeats, gate verdicts and money, and each routing edge with the times it was taken (`retry`, `back`, `proceed`), counts and words only; routes into a human node SHALL be counted in JSON and not drawn.
 
 - GIVEN a thread whose unit was retried twice WHEN the overlay is drawn as md THEN that unit's retry edge shows 2
+- GIVEN the same thread WHEN the overlay is drawn as svg THEN one standalone SVG document holds each unit's box with the counts the mermaid overlay shows for it
 
 ### OBS-B18 Stats rows
 
@@ -143,7 +151,3 @@ WHEN a run segment exits THE engine SHALL write one stats row per run with user,
 - OBS-AC3 (OBS-B2, OBS-B11, OBS-B12, OBS-B13): The cost report reproduces a hand-computed fixture of mixed-executor sessions exactly
 - OBS-AC4 (OBS-B1, OBS-B7, OBS-B8, OBS-B9): The analyzer counts only `agent_run` records as model calls, and each record kind is written with its fields by a fixture run
 - OBS-AC5 (OBS-B4, OBS-B5, OBS-B6, OBS-B14, OBS-B15, OBS-B16, OBS-B17, OBS-B18): Each report row reproduces a hand-computed fixture, including a cut-off first attempt and a gate escape
-
-## Open questions
-
-- Not built yet: `graph --overlay --format svg`. Owner: engine owner.

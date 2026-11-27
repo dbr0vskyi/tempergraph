@@ -394,3 +394,32 @@ def test_reading_never_migrates_and_the_first_write_does(repo: Path, monkeypatch
     assert hash_tree(root) == before
     assert cli(repo, "resume", "demo", "T-1", "--decision", "proceed")[0] == 0
     assert json.loads((root / "manifest.json").read_text())["layout"] == 1 and (root / "notes").is_dir()
+
+
+def test_dur_ac7_two_copies_of_one_version_show_different_builds(repo: Path, monkeypatch: Any) -> None:
+    # DUR-AC7 (DUR-B11), issue 158: the status row names the build and the program of the thread's engine
+    from tempergraph.durability import engine_file as ef
+    from tempergraph.durability.status import row
+    from tempergraph.store.layout import state_root_path
+
+    from .fixtures.workflows import two_step
+    from .test_cli import cli, happy
+
+    builds = iter(["aaa111", "bbb222"])
+    for task in ("C-1", "C-2"):
+        build = next(builds)
+        monkeypatch.setattr(ef, "this_engine", lambda b=build: {"engine_version": ENGINE_VERSION, "engine": None,
+                                                                "engine_digest": b, "program": f"/copy-{b}/tempergraph"})
+        code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", task)
+        assert code == 0, err
+    rows = {t: row(state_root_path(repo), two_step(), f"demo/{t}") for t in ("C-1", "C-2")}
+    assert rows["C-1"]["engine"] == rows["C-2"]["engine"] == ENGINE_VERSION
+    assert (rows["C-1"]["engine_digest"], rows["C-2"]["engine_digest"]) == ("aaa111", "bbb222")
+    assert rows["C-2"]["program"] == "/copy-bbb222/tempergraph"
+
+
+def test_dur_ac7_this_engine_names_a_build_and_a_program() -> None:  # DUR-AC7 (DUR-B11)
+    from tempergraph.durability import engine_file as ef
+
+    eng = ef.this_engine()
+    assert eng["engine_digest"] and eng["program"]

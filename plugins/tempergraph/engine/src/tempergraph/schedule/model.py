@@ -28,7 +28,7 @@ Clock = Callable[[], datetime]
 DAYS = ("MO", "TU", "WE", "TH", "FR", "SA", "SU")
 FREQS = ("MINUTELY", "HOURLY", "DAILY", "WEEKLY", "MONTHLY")
 MIN_INTERVAL_MIN = 15
-HORIZON_DAYS = 400  # SCH-B15: a first slot more than 400 days ahead is `when_too_far`
+HORIZON_DAYS = 400  # SCH-B35: a first slot more than 400 days ahead is `when_too_far`
 
 
 class ScheduleError(Exception):

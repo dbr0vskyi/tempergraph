@@ -8,6 +8,7 @@ release record and the kept engines, so every row of MIG's tables is a test with
 from __future__ import annotations
 
 import contextlib
+import functools
 import hashlib
 import json
 import sys
@@ -38,10 +39,34 @@ def read(root: Path, workflow: str, task_id: str) -> dict[str, Any]:
 
 
 def this_engine() -> dict[str, Any]:
-    """The engine this process runs on: its version, and its environment folder when it is a managed one."""
+    """The engine this process runs on: its version, its environment folder when it is a managed one, its build
+    (the source digest) and the program that runs it (DUR-B11), so two copies of one version are told apart."""
     env = Path(sys.prefix)
     managed = env.parent.name == "engines"
-    return {"engine_version": ENGINE_VERSION, "engine": env.name if managed else None}
+    return {"engine_version": ENGINE_VERSION, "engine": env.name if managed else None,
+            "engine_digest": _build(env.name if managed else None), "program": _program()}
+
+
+@functools.lru_cache(maxsize=1)
+def _build(managed: str | None) -> str | None:
+    """A managed engine's digest is the end of its folder name; an engine run from its source tree hashes that
+    tree (VER-B7); None when neither is known."""
+    if managed:
+        return managed.rsplit("-", 1)[-1]
+    from tempergraph.install.environment import source_digest, staged_engine
+
+    src = staged_engine()
+    try:
+        return source_digest(src)[:12] if src is not None else None
+    except OSError:
+        return None
+
+
+def _program() -> str | None:
+    """The path of the program that started this process (local only, like `log_path`)."""
+    arg = sys.argv[0] if sys.argv and sys.argv[0] else ""
+    p = Path(arg)
+    return str(p.resolve()) if arg and p.exists() else (sys.executable or None)
 
 
 def checkpoint_format() -> int:

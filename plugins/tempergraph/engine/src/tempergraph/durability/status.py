@@ -211,6 +211,8 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     eng = engine_file.read(state_root, spec.name, split_thread(tid)[1])  # MIG-B8
     if (eng.get("last_on") or {}).get("engine_version"):
         r["engine"] = eng["last_on"]["engine_version"]
+        r["engine_digest"] = eng["last_on"].get("engine_digest")  # the build and program of the last process
+        r["program"] = eng["last_on"].get("program")
     if eng.get("pinned"):
         r["engine_pin"] = dict(eng["pinned"])
     if snap.next and state is ThreadState.UNFINISHED:

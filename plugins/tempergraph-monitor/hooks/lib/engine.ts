@@ -13,7 +13,9 @@ export type Cost = {
   incomplete?: boolean
 }
 
-export type PendingGate = { unit: string; item?: string | null; kind: string; resume: string }
+/** An `input` gate (an ask) also counts its questions and the required ones still unanswered (engine ASK-B4). */
+export type PendingGate = { unit: string; item?: string | null; kind: string; resume: string; questions?: number;
+  unanswered?: number }
 
 export type StatusRow = {
   thread_id: string
