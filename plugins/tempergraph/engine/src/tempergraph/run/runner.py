@@ -44,7 +44,7 @@ from tempergraph.model.diagram import diagram_model
 from tempergraph.model.validate import Finding
 from tempergraph.run import gate as gatemod
 from tempergraph.run import outcome_record, subrun, supervision
-from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record
+from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record, legacy_dry_run
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
 from tempergraph.security.scrub import clip, scrub
@@ -586,10 +586,24 @@ def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary
             held = None
     names = list(judges.values())
     executor = max(set(names), key=names.count) if names else spec.default_executor
-    # `--dry-run` holds for the thread: any segment that started with it
-    dry = (settings is not None and settings.dry_run) or last_record(
-        run_dir(root, spec.name, task_id) / "run.jsonl", "run_started", dry_run=True) is not None
+    # LFS-B1, LFS-B3, LFS-B5: the thread's value of `run.loop_dry_run` (its snapshot, no file read), else the legacy rule
+    value, layer = False, ""
+    if options is not None:
+        try:
+            res = rst.resolve(spec, options)
+            value = res.values.get("run.loop_dry_run") is True
+            layer = next((r.layer for r in res.rows if r.key == "run.loop_dry_run"), "")
+        except Exception:  # noqa: BLE001 - best effort: an unreadable snapshot leaves the setting unread
+            value, layer = False, ""
+    legacy = (settings is not None and settings.dry_run) or legacy_dry_run(run_dir(root, spec.name, task_id) / "run.jsonl")
+    dry = value or legacy
+    source = ("argument" if layer in ("flag",) else "settings" if layer in rst.OPERATOR_LAYERS
+              else "workflow" if layer.startswith("workflow:") else "default")
+    if dry and not value:
+        source = "argument"  # the engine's own flag or a log written before the setting
+    lift = layer == "flag" and not value
     if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor,
+                      dry_source=source, lift=lift,
                       operator_review=operator_review, run_cost_usd=run_cost_usd,
                       trial=settings is not None and settings.origin == "trial", daily_cap_usd=daily_cap_usd,
                       loop_model=loop_model, loop_effort=loop_effort, trigger=trigger, loop_autonomy=held) is None:

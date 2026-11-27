@@ -91,6 +91,24 @@ def autonomy(spec: WorkflowSpec, machine: str | None = None, setting: str | None
     return declared
 
 
+def filing_level(spec: WorkflowSpec, machine: str | None = None, setting: str | None = None,
+                 lift: bool = False) -> tuple[str, str]:
+    """LFS-B4, LFS-B6: the level at a final exit and why it is held, if it is: `autonomy` unchanged, except that a
+    declared `record` is lifted to `file` when `lift` (the argument `--no-dry-run`) and neither the machine nor the
+    setting holds `record`. The reason is `machine_hold`, `declared_record`, `declared` (lifted) or `none`; the level
+    is never raised above `file` by the lift."""
+    level = autonomy(spec, machine, setting)
+    held = machine == "record" or setting == "record"
+    declared = autonomy(spec) == "record"
+    if level == "record" and held:
+        return level, "machine_hold"
+    if level == "record" and declared:
+        if lift:
+            return "file", "declared"  # no other value of the hold is below `file`
+        return level, "declared_record"
+    return level, "none"
+
+
 # -- clusters and backlog (PRP-B12) -------------------------------------------------------------------------
 
 def _findings(root: Path, workflow: str) -> list[dict[str, Any]]:

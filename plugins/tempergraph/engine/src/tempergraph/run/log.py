@@ -314,6 +314,29 @@ def last_record(path: Path, kind: str, **match: Any) -> dict[str, Any] | None:
     return found
 
 
+def legacy_dry_run(path: Path) -> bool:
+    """LFS-B3: the log holds a `run_started` with `dry_run` and no `settings_resolved` row for `run.loop_dry_run`: a
+    thread the engine started dry or one written before the setting. A missing file is false."""
+    dry = False
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(rec, dict):
+                    continue
+                if rec.get("kind") == "run_started" and rec.get("dry_run"):
+                    dry = True
+                elif rec.get("kind") == "settings_resolved" and any(
+                        isinstance(r, dict) and r.get("key") == "run.loop_dry_run" for r in rec.get("rows") or ()):
+                    return False
+    except OSError:
+        return False
+    return dry
+
+
 def _jsonable(v: Any) -> Any:
     if isinstance(v, Usage):
         return v.to_json()

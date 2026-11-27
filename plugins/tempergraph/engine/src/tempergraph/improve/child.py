@@ -112,7 +112,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
              loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None,
-             loop_autonomy: str | None = None) -> Path | None:
+             loop_autonomy: str | None = None, dry_source: str = "default", lift: bool = False) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
     outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none;
     a `signals` review whose plan has no depth (a clean first-pass stable run) writes none (SIL-B1, SRV-B4)."""
@@ -141,7 +141,11 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
                 depth = "off"
         except Exception:  # noqa: BLE001 - the loop is best effort: when the plan cannot be made, keep the setting
             pass
-    level = prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY"), loop_autonomy)
+    # LFS-B2, LFS-B4, LFS-B6: the level, the dry run and the hold decide the filing; the improvement mode has no part
+    level, why = prp.filing_level(spec, os.environ.get("TEMPERGRAPH_AUTONOMY"), loop_autonomy, lift)
+    held = level == "record"
+    filing = "held" if held else "dry_run" if dry_run else "file"
+    filing_source = (why if why in ("machine_hold", "declared_record") else "declared_record") if held else dry_source
     # PRP-B26: a final exit of a workflow with a proposal to watch reads its pull request, a clean exit included
     watch = final and not dry_run and not trial and level != "record" and (
         prp.watching(root, spec.name) or bool(pr_later.pending(root, spec.name)))  # OUT-B23: a recorded pull request too
@@ -157,7 +161,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "outcome_calibrated": outcome and has_score(spec, "outcome", root), "at": now_iso(),
               "review": depth, "review_reason": reason, "run_cost_usd": round(float(run_cost_usd or 0.0), 6),
               "units": unit_decls(spec) if depth != "off" else {},
-              "autonomy": level, "watch_only": not (friction or outcome) and depth == "off",
+              "autonomy": level, "filing": filing, "filing_source": filing_source, "watch_only": not (friction or outcome) and depth == "off",
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
               "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT, "trigger": trigger,
               "package_root": str(spec.package_root) if spec.package_root else None,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
@@ -67,10 +68,14 @@ def held_then_lifted(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, how
     """A thread stopped at its gap pause under a hold (`how` is `record` or `dry_run`), drained, re-opened with
     `proceed` and finished without it, then drained again; returns the fingerprint, the judge's prompts and the host."""
     monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
-    ex = paused_on_gap(repo, task, monkeypatch)  # the dry run is a setting of the run, so the first segment is redone
+    declared = dataclasses.replace(two_step(), loop_dry_run=True)  # SIL-AC57: a dry run the declaration makes
+    ex = paused_on_gap(repo, task, monkeypatch, spec=declared if how == "declared" else None)
     if how == "record":
         monkeypatch.setenv("TEMPERGRAPH_AUTONOMY", "record")
         assert stop(repo, task, ex).exit_code is ExitCode.STOPPED
+    elif how == "declared":
+        assert resume(declared, task, repo, registry(ex), decision="stop", settings=NO_SLEEP).exit_code \
+            is ExitCode.STOPPED
     else:
         assert resume(two_step(), task, repo, registry(ex), decision="stop",
                       settings=__import__("dataclasses").replace(NO_SLEEP, dry_run=True)).exit_code is ExitCode.STOPPED
@@ -87,7 +92,7 @@ def held_then_lifted(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, how
     return fp, seen, drain(ask)
 
 
-@pytest.mark.parametrize("how", ["record", "dry_run"])
+@pytest.mark.parametrize("how", ["record", "dry_run", "declared"])
 def test_a_finding_a_held_child_only_recorded_is_handed_again_and_judged_once(
         repo: Path, monkeypatch: pytest.MonkeyPatch, how: str) -> None:  # SIL-AC57, AC 3
     fp, seen, host = held_then_lifted(repo, f"H-{how}", monkeypatch, how)
