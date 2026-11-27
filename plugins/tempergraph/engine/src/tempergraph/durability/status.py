@@ -189,6 +189,13 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
                           "manual_steps": list(fin.get("manual_steps") or [])}
     r.update(_settings(state_root, spec, run.get("options")))
     r.update(_lineage(state_root, spec.name, tid, run))
+    try:  # DUR-B17: the two filing words of the newest loop summary; none before a child has ended
+        from tempergraph.improve import loop_summary
+
+        newest = loop_summary.thread_newest(state_root, spec.name, split_thread(tid)[1]) or {}
+        r.update({k: newest[k] for k in ("filing", "filing_source") if newest.get(k)})
+    except Exception:  # noqa: BLE001 - a status row never fails on the loop's files (DUR-B10)
+        pass
     ws = (snap.values.get("workspace") or {})
     if ws:
         r["workspace"] = {k: ws.get(k) for k in ("mode", "path", "branch", "state") if k in ws}

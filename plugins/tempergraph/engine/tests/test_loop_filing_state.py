@@ -239,6 +239,66 @@ def test_lfs_ac4_the_hold_wins_over_the_argument(repo: Path, monkeypatch: pytest
     assert files_nothing(out, host) and {r["reason"] for r in out["results"]} == {"autonomy_record"}
 
 
+def newest_summary(repo: Path, task: str) -> dict[str, Any]:
+    lines = child.loop_log(repo / ".tempergraph", "demo", task).read_text().splitlines()
+    found = [json.loads(ln) for ln in lines if json.loads(ln).get("kind") == "loop_summary"]
+    assert found
+    return found[-1]
+
+
+# LFS-AC5, LFS-AC6, SIL-AC63
+def test_lfs_ac5_ac6_sil_ac63_the_summary_holds_filing_and_its_source_without_a_hold(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for task, want, spec, argv in (("S-default", ("file", "default"), None, ()),
+                                   ("S-workflow", ("dry_run", "workflow"), two_step(loop_dry_run=True), ()),
+                                   ("S-argument", ("dry_run", "argument"), None, ("--dry-run",)),
+                                   ("S-filed", ("file", "argument"), two_step(loop_dry_run=True), ("--no-dry-run",))):
+        lifted_thread(repo, monkeypatch, task, spec=spec, run_argv=argv)
+        s = newest_summary(repo, task)
+        assert (s["filing"], s["filing_source"]) == want, task
+    settings_file(loop_dry_run=True)
+    lifted_thread(repo, monkeypatch, "S-settings")
+    s = newest_summary(repo, "S-settings")
+    assert (s["filing"], s["filing_source"]) == ("dry_run", "settings")
+
+
+# LFS-AC5, LFS-AC6, SIL-AC63
+def test_lfs_ac5_ac6_sil_ac63_a_held_exit_leaves_held_with_or_without_a_dry_run(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    declare_record(repo, monkeypatch)
+    for task, source, argv in (("S-held", "declared_record", ()), ("S-held-dry", "declared_record", ("--dry-run",)),
+                               ("S-lifted", "argument", ("--no-dry-run",))):
+        _, out, host = lifted_thread(repo, monkeypatch, task, run_argv=argv)
+        s = newest_summary(repo, task)
+        want = "file" if task == "S-lifted" else "held"
+        assert (s["filing"], s["filing_source"]) == (want, source), task
+        assert "would_file" not in ops(out)
+    settings_file(loop_autonomy="record")
+    lifted_thread(repo, monkeypatch, "S-machine", run_argv=("--no-dry-run",))
+    s = newest_summary(repo, "S-machine")
+    assert (s["filing"], s["filing_source"]) == ("held", "machine_hold")
+
+
+# DUR-AC15
+def test_dur_ac15_status_shows_the_two_words_of_the_newest_summary(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    thread(repo, monkeypatch, "R-1", None, ("--dry-run",))
+    code, st, _ = cli(repo, None, "status", "demo/R-1", "--json")
+    (row,) = [r for r in st["threads"] if r["thread_id"] == "demo/R-1"]
+    assert "filing" not in row and "filing_source" not in row  # no child has ended yet
+    (path,) = tickets()
+    drained(path)
+    for argv in (("--json",), ()):
+        code, st, _ = cli(repo, None, "status", "demo/R-1", *argv)
+        (row,) = [r for r in st["threads"] if r["thread_id"] == "demo/R-1"]
+        assert (row["filing"], row["filing_source"]) == ("dry_run", "argument")
+    log = child.loop_log(repo / ".tempergraph", "demo", "R-1")  # a later exit that started no child adds no summary
+    before = log.read_text()
+    code, st, _ = cli(repo, None, "status", "demo/R-1", "--json")
+    (row,) = st["threads"]
+    assert log.read_text() == before and row["filing"] == "dry_run"
+
+
 # LFS-AC4
 def test_lfs_ac4_the_level_function_lifts_only_a_declared_record(tmp_path: Path) -> None:
     pkg = tmp_path / "pkg"

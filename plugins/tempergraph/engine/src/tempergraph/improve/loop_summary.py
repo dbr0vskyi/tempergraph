@@ -47,13 +47,19 @@ def _review_failed(records: Sequence[Mapping[str, Any]]) -> dict[str, int]:
     return counts
 
 
-def build(root: Path, workflow: str, task_id: str, results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """The `loop_summary` record of the child that has just handled the thread's ticket."""
+def build(root: Path, workflow: str, task_id: str, results: Sequence[Mapping[str, Any]], *,
+          filing: str | None = None, filing_source: str | None = None) -> dict[str, Any]:
+    """The `loop_summary` record of the child that has just handled the thread's ticket (LFS-B5, LFS-B6, SIL-B52)."""
     records = _jsonl(run_dir(root, workflow, task_id) / "loop.jsonl")
-    return {"ts": now_iso(), "kind": "loop_summary", "thread": f"{workflow}/{task_id}",
-            "recorded": len(read_findings(root, workflow, task_id)),
-            "filed": sum(1 for r in results if r.get("op") in FILED_OPS), "top": _top(records),
-            "review_failed": _review_failed(records)}
+    out = {"ts": now_iso(), "kind": "loop_summary", "thread": f"{workflow}/{task_id}",
+           "recorded": len(read_findings(root, workflow, task_id)),
+           "filed": sum(1 for r in results if r.get("op") in FILED_OPS), "top": _top(records),
+           "review_failed": _review_failed(records)}
+    if filing is not None:
+        out["filing"] = filing
+    if filing_source is not None:
+        out["filing_source"] = filing_source
+    return out
 
 
 def thread_newest(root: Path, workflow: str, task_id: str) -> dict[str, Any] | None:

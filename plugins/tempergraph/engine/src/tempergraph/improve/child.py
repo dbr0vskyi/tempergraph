@@ -557,7 +557,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     try:  # SIL-B22: one summary per ticket for `attention` and the detail document; never stops the loop
         from tempergraph.improve import loop_summary
 
-        append_jsonl(log, loop_summary.build(root, wf, task, results))
+        append_jsonl(log, loop_summary.build(root, wf, task, results, filing=t.get("filing"),
+                                                  filing_source=t.get("filing_source")))
     except Exception:  # noqa: BLE001 - best effort (SIL-B1)
         pass
     Ledger(path=root / "ledger.jsonl").append({"kind": "loop", "thread_id": thread, "workflow": wf,
