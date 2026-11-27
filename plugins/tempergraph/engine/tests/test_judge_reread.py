@@ -311,6 +311,55 @@ def test_jdg_ac15_the_detail_document_files_the_reread_with_the_judge_sessions(r
     assert [s["kind"] for s in att["step"]["sessions"]] == ["step"]
 
 
+def test_los_ac1_a_run_with_a_reread_has_the_stated_session_folders(repo: Path) -> None:  # LOS-AC1, AC 5
+    import os
+    import sys
+
+    from tempergraph.store.layout import run_dir, state_root_path
+
+    reread_run(repo)
+    sessions = run_dir(state_root_path(repo), "demo", "T-1") / "sessions"
+    names = sorted(p.name for p in sessions.iterdir() if p.name.startswith("draft."))
+    assert names == ["draft.1.judge", "draft.1.judge_reread", "draft.1.step"]
+    for name in names:
+        folder = sessions / name
+        assert (folder / "meta.json").is_file(), name  # the stand-in executor writes no raw.jsonl
+        if sys.platform != "win32":
+            for p in [folder, *folder.iterdir()]:
+                assert os.stat(p).st_mode & 0o077 == 0, p
+
+
+def test_obs_ac4_only_agent_run_records_count_as_model_calls_and_the_reread_has_its_fields(repo: Path) -> None:  # AC 5
+    from tempergraph.observe import report as rep
+    from tempergraph.store.layout import state_root_path
+
+    _, ex = reread_run(repo)
+    runs = [r for r in records(repo) if r["kind"] == "agent_run"]
+    assert len(runs) == len(ex.calls)  # one record for every model call: step, judge and judge_reread
+    doc = rep.report(state_root_path(repo), None)
+    sj = doc["steps_and_judges"]
+    assert sj["steps"]["sessions"] + sj["judges"]["sessions"] == len(runs)
+    (own,) = [r for r in runs if r["session_kind"] == "judge_reread"]
+    for field in ("session_key", "session_kind", "alias", "usage", "unit", "attempt"):
+        assert own.get(field) not in (None, "", {}), field
+    assert own["alias"] == [r for r in runs if r["session_kind"] == "judge"][0]["alias"]
+
+
+def test_ssn_ac2_the_reread_request_holds_the_fields_of_a_session_request(repo: Path) -> None:  # SSN-AC2, AC 5
+    from tempergraph.executors.claude import judge_argv
+
+    _, ex = reread_run(repo)
+    call = [c for c in ex.calls if c.request.kind == "judge_reread"][0]
+    req = call.request
+    assert req.kind == "judge_reread" and req.prompt.strip() and req.workdir.is_absolute()
+    assert req.alias and req.timeout_s > 0 and req.options is not None
+    assert isinstance(req.tools, tuple) and isinstance(req.commands, tuple)
+    assert req.session_key.endswith("draft.1.judge_reread")
+    assert call.views is not None and call.views.tools
+    argv = judge_argv(call.views, None, isolated=False)
+    assert not any(req.prompt in a or a in req.prompt and len(a) > 40 for a in argv)
+
+
 def test_jdg_ac15_the_digest_knows_the_reread_as_a_judge_kind() -> None:  # AC 5
     from tempergraph.improve import digest
 
