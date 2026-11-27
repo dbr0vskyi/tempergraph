@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
+import subprocess
 import textwrap
 from pathlib import Path
 from typing import Any
 
 import pytest
-
-import dataclasses
-import subprocess
 
 from tempergraph.catalog import Catalog, from_registry, resolve_request
 from tempergraph.cli.main import VERBS, main

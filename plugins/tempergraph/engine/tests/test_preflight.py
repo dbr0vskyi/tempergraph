@@ -121,6 +121,7 @@ def test_ecc_ac16_a_cli_that_lists_strict_mcp_config_passes(tmp_path: Path, monk
 
 def _operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None, **scenario: Any) -> Path:
     import sys
+
     from .fixtures import streams as S
 
     record = tmp_path / "record.json"
