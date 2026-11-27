@@ -1,4 +1,4 @@
-The answer to a pause is a finding: what a decision overrode, confirmed or repeated is recorded with ids, given a cause code and filed by the count (issue: to be filed)
+The answer to a pause is a finding: what a decision overrode, confirmed or repeated is recorded with ids, given a cause code and filed by the count (issue: #255)
 
 Owner's direction of 2026-11-27: the loop must notice what a person had to do in a run and report it. The measurement is in `batch-queue/loop-automation-gap.md`: seven operator touches on four threads in one night, none filed, none with a cause that names what was overridden. This run builds stage S1 of that file. The area is the engine only (`plugins/tempergraph`): specs `friction-causes`, `supervision-metrics`, `loop-issues`, `engine-cli` (CLI-B24), `check-contract-and-command-runs` (CHK-B14). The engine names no workflow.
 
