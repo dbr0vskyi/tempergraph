@@ -6,7 +6,7 @@ The view catalog is keyed by full executor tool name; nothing is inferred from a
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from tempergraph.contracts import Capabilities, Deferred, StepSpec, ToolCall, ViewSet
@@ -49,16 +49,35 @@ def view_set(step: StepSpec, step_calls: Sequence[ToolCall], judge_caps: Capabil
     return ViewSet(tools=tuple(dict.fromkeys(names)), deferred=tuple(deferred))
 
 
+def _filter_owned(fp: Fingerprint, owned: Sequence[str]) -> Fingerprint:
+    """EXI-B30, GRD-B3: strip launcher-owned paths from a git status fingerprint before comparing."""
+    if not owned or fp.manifest:
+        return fp
+    lines = [ln for ln in fp.status.splitlines()
+             if not any(ln[3:].startswith(p) for p in owned)]
+    return replace(fp, status="\n".join(lines))
+
+
+def filter_owned_changed_paths(paths: tuple[str, ...], owned: Sequence[str]) -> tuple[str, ...]:
+    """EXI-B30, CHK-B10: exclude launcher-owned paths from the changed_paths a check receives."""
+    if not owned:
+        return paths
+    return tuple(p for p in paths if not any(p.startswith(o) for o in owned))
+
+
 def guard(views: ViewSet, judge_calls: Sequence[ToolCall], before: Fingerprint, after: Fingerprint, *,
           workspace_mode: str, step_session_id: str | None, judge_session_id: str | None,
-          reports_actions: bool = True) -> GuardResult:
+          reports_actions: bool = True, launcher_owned_paths: Sequence[str] = ()) -> GuardResult:
     if judge_session_id and step_session_id and judge_session_id == step_session_id:
         return GuardResult(status="discarded", reason="same_session")  # GRD-B4, EXI-B9
     allowed = set(views.tools)
     for call in judge_calls:
         if not call.name or call.name not in allowed or call.subagent:
             return GuardResult(status="discarded", reason=f"outside_call:{call.name or '<unnamed>'}")
-    if before != after:
+    # EXI-B30, GRD-B3: exclude launcher-owned paths before comparing fingerprints
+    before_cmp = _filter_owned(before, launcher_owned_paths)
+    after_cmp = _filter_owned(after, launcher_owned_paths)
+    if before_cmp != after_cmp:
         if workspace_mode == "worktree":
             return GuardResult(status="discarded", reason="workspace_changed")
         return GuardResult(status="warned", reason="workspace_changed")

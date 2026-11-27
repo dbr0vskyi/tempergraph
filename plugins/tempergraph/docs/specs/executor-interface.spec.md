@@ -201,6 +201,13 @@ WHEN a start is preflighted THE engine SHALL time one interpreter spawn and a wa
 
 - GIVEN a host whose timing totals 4.2 s WHEN preflight runs THEN a warning names 4.2 s and the run starts
 
+### EXI-B30 Launcher-owned workspace paths
+
+WHEN an executor route declares `launcher_owned_paths` THE engine SHALL, before and after each session, exclude those paths from the workspace fingerprint and from `changed_paths`, remove them after the session when they did not exist before the session, and refuse at preflight any declaration whose path would cover a tracked or already-existing file.
+
+- GIVEN a route that declares `launcher_owned_paths: [".codemie/"]` and a launcher that creates `.codemie/` WHEN the judge guard compares fingerprints THEN the path is excluded and the judgement is not discarded for it
+- GIVEN a route whose declared path covers a tracked file WHEN preflighted THEN the run exits 2 naming the path
+
 ## Acceptance criteria
 
 - EXI-AC1 (EXI-B16): No module outside the executor package imports a concrete executor, by a source scan

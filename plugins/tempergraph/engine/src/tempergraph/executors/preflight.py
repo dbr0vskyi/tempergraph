@@ -184,6 +184,13 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
                                             f"step {unit!r} declares MCP server(s) {', '.join(missing_servers)} that "
                                             "the operator's own MCP configuration does not define; define them there "
                                             "(a repository `.mcp.json` does not count)"))
+        for _owned in c.launcher_owned_paths:  # EXI-B30: a declared path must not cover a tracked or pre-existing file
+            rep.warnings.append(Finding("launcher-owned-path", unit,
+                                        f"executor {ex!r} declares launcher_owned_paths={c.launcher_owned_paths!r}; "
+                                        "preflight cannot check tracked files without a workspace — "
+                                        "the guard will exclude these paths from fingerprints",
+                                        "warning"))
+            break  # one warning per unit is enough
         if u.gate.judge is not None:
             judge_of(unit, ex, u.gate.judge, st.tools)
     return rep

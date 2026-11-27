@@ -4,6 +4,10 @@
 
 A judge can read every system its step can change and can change nothing. The engine derives each judge attempt's view set from the step's declared and actually called tools, using an engine-owned catalog keyed per executor; the judge executor enforces the set as far as it declares it can, and after the session the guard compares what the judge called and changed with what it was allowed and discards the judgement on any difference, without depending on any executor's permission layer ([ADR `judge-isolation-per-executor`](../adr/judge-isolation-per-executor.adr.md), [ADR `cross-executor-judging`](../adr/cross-executor-judging.adr.md)). The judge ([JDG](judge-and-verdict.spec.md)), the executors and security ([SEC](security.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `executor-interface.spec.md`: launcher-owned workspace paths (EXI-B30)
+
 ## Behaviours
 
 ### GRD-B1 Derived, not authored
@@ -22,9 +26,10 @@ WHEN a judge's tool log shows a name outside its view set, including a subagent 
 
 ### GRD-B3 Workspace fingerprint
 
-WHEN the workspace's head and status differ before and after the judge THE guard SHALL discard the judgement in an engine worktree and only warn in place, where another writer may exist.
+WHEN the workspace's head and status differ before and after the judge THE guard SHALL discard the judgement in an engine worktree and only warn in place, where another writer may exist; paths declared as launcher-owned ([EXI-B30](executor-interface.spec.md)) are excluded from both the before and after fingerprint.
 
 - GIVEN an engine worktree whose status changed during the judge WHEN guarded THEN the judgement is discarded
+- GIVEN a route with `launcher_owned_paths: [".codemie/"]` and a judge that leaves `.codemie/` changed WHEN guarded THEN the judgement is not discarded for that path
 
 ### GRD-B4 Same session
 
@@ -67,6 +72,7 @@ WHEN a judgement is guarded THE engine SHALL record in the run log the view set 
 
 - GRD-AC1 (GRD-B1, GRD-B7): Every catalog entry is keyed by full executor tool name; a source test forbids pattern matching in the catalog
 - GRD-AC2 (GRD-B2, GRD-B3, GRD-B4, GRD-B5, GRD-B6, GRD-B8): Each guard case is covered for every executor's tool names
+- GRD-AC7 (GRD-B3, EXI-B30): A declared launcher-owned path that changes during a judge session does not cause the guard to discard the judgement
 - GRD-AC3 (GRD-B9): A discarded judgement never routes PROCEED
 - GRD-AC4 (GRD-B9): The run log records, per judgement, the view set used and the guard status
 - GRD-AC5 (GRD-B2): A planted subagent call in a judge stream is detected on the stream fixtures of every executor that maps `subagent`

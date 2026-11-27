@@ -13,6 +13,7 @@ Where a run's files live, how runs and writing units stay apart, and how many ru
 - `judge-model-by-risk.spec.md`: judge model by risk
 - `local-observability-store.spec.md`: state root top level (LOS-B7); run folder (LOS-B8); session folder (LOS-B9)
 - `orchestration.spec.md`: orchestration of runs
+- `executor-interface.spec.md`: launcher-owned workspace paths (EXI-B30)
 - `run-state-on-a-branch.spec.md`: run state carried on a branch
 - `worktree-mode.spec.md`: resolving auto (WTR-B18); workflow declaration (WTR-B19); locations and names (WTR-B20); records (WTR-B24)
 
