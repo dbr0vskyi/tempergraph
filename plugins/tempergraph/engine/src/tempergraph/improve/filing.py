@@ -306,6 +306,39 @@ def _figures(ds: Sequence[Decision]) -> list[str]:
     return rows
 
 
+_ANSWERED_ID = re.compile(r"^[A-Za-z0-9_.:@+\-]{1,64}$")  # ISS-B10: an id, enum or number, never free text
+
+
+def _counts(v: Any) -> str:
+    if not isinstance(v, Mapping):
+        return ""
+    return ", ".join(f"`{k}` {n}" for k, n in sorted(v.items(), key=lambda kv: str(kv[0]))
+                     if (_ANSWERED_ID.match(str(k)) or k == "not given") and isinstance(n, int | float) and not isinstance(n, bool))
+
+
+def _answered(ds: Sequence[Decision]) -> list[str]:
+    """ISS-B19: one line for each unit of what was answered: ids, enums and numbers only."""
+    rows = []
+    for x in ds:
+        f = x.candidate.finding
+        parts = []
+        for label, key in (("decisions", "decisions"), ("reasons", "reasons"), ("criteria", "criteria")):
+            text = _counts(f.get(key))
+            if text:
+                parts.append(f"{label} {text}")
+        for label, key in (("items", "items"), ("median wait (s)", "wait_s_median")):
+            v = f.get(key)
+            if isinstance(v, int | float) and not isinstance(v, bool):
+                parts.append(f"{label} {v}")
+        from_unit = f.get("from_unit")
+        if isinstance(from_unit, str) and _ANSWERED_ID.match(from_unit):
+            parts.append(f"from unit `{from_unit}`")
+        if x.counts:
+            parts.append("runs " + str(x.counts.get("runs", 0)))
+        rows.append(f"- `{_unit(f)}`: " + ("; ".join(parts) or "nothing recorded") + ".")
+    return rows
+
+
 def body(d: Decision | Sequence[Decision], regression_of: int | None = None) -> str:
     """ISS-B2: the hidden lines, then Summary, Environment, Run, Steps to reproduce, Run log, Evidence, Fingerprint
     and Suggested remedy; ISS-B4: a closed issue the finding may be a regression of is named in the Summary; ISS-B7:
@@ -318,7 +351,10 @@ def body(d: Decision | Sequence[Decision], regression_of: int | None = None) -> 
     rows = [*hidden, "", "## Summary", *_summary(ds, regression_of), "", "## Environment", *_env_rows(ctx, f), "",
             "## Run", *(_run_rows(ctx) or ["- No run record was found when the loop ran."]), "",
             "## Steps to reproduce", *_steps(ds), "", "## Run log", *_log_rows(ctx), "", "## Evidence",
-            *_figures(ds), "", "## Fingerprint", *(f"`{fp}`" for fp in fps), f"Cause key `{cause_key(f)}`.", "",
+            *_figures(ds), "",
+            *(["## What was answered", *_answered(ds), ""]
+              if str(f.get("cause") or "").split(":", 1)[0] in {*COUNT_CAUSES, THREAD_COUNT_CAUSE} else []),
+            "## Fingerprint", *(f"`{fp}`" for fp in fps), f"Cause key `{cause_key(f)}`.", "",
             "## Suggested remedy", f"{f.get('remedy')}", "",
             "An issue is evidence, not an order: a person decides (SIL-B8)."]
     return "\n".join(rows)
