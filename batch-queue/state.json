@@ -1,0 +1,374 @@
+{
+  "schema_version": 1,
+  "branch": "claude/issue-queue-2026-11-25",
+  "pull_request": 138,
+  "engine": "0.2.0",
+  "updated": "2026-11-25",
+  "items": [
+    {
+      "order": 1,
+      "task_id": "i71",
+      "issues": [
+        71,
+        51
+      ],
+      "state": "merged",
+      "thread": "temperspec/i71",
+      "branch": "tg/temperspec/i71",
+      "cost_usd": 11.06,
+      "exit": 0,
+      "note": "merge f1894ea8; run PR #146; follow-ups on #71"
+    },
+    {
+      "order": 2,
+      "task_id": "i7",
+      "issues": [
+        7
+      ],
+      "state": "merged",
+      "thread": "temperspec/i7",
+      "branch": "tg/temperspec/i7",
+      "cost_usd": 8.03,
+      "exit": 0,
+      "note": "merge c55ff552; last stage pushed, no PR (#143)"
+    },
+    {
+      "order": 2.1,
+      "task_id": "i21",
+      "issues": [
+        21
+      ],
+      "state": "merged",
+      "thread": "temperspec/i21",
+      "branch": "tg/temperspec/i21",
+      "cost_usd": 14.12,
+      "exit": 0,
+      "note": "merge d60ebaac; follow-ups in tasks/i21b.md; engine build 0.2.0-da9985a63404 installed"
+    },
+    {
+      "order": 2.15,
+      "task_id": "i21b",
+      "issues": [
+        165
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "must land before the PR is ready"
+    },
+    {
+      "order": 2.2,
+      "task_id": "i144",
+      "issues": [
+        144
+      ],
+      "state": "merged",
+      "thread": "temperspec/i144",
+      "branch": "tg/temperspec/i144",
+      "cost_usd": 17.49,
+      "exit": 0,
+      "note": "merge 766e99de (i144 + i144b); follow-up #167; .venv not reinstalled"
+    },
+    {
+      "order": 2.3,
+      "task_id": "i148",
+      "issues": [
+        148,
+        149
+      ],
+      "state": "stopped",
+      "thread": "temperspec/i148",
+      "branch": "tg/temperspec/i148",
+      "cost_usd": 12.09,
+      "exit": 4,
+      "note": "stopped_by_request after phase p1; branch pushed de5290b1; resume --decision retry"
+    },
+    {
+      "order": 3,
+      "task_id": "i134a",
+      "issues": [
+        134
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 4,
+      "task_id": "i134b",
+      "issues": [
+        134
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 5,
+      "task_id": "i114",
+      "issues": [
+        114,
+        117
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 6,
+      "task_id": "i123",
+      "issues": [
+        123
+      ],
+      "state": "stopped",
+      "thread": "temperspec/i123",
+      "branch": "tg/temperspec/i123",
+      "cost_usd": 24.15,
+      "exit": 4,
+      "note": "stopped_by_request; outcome BACK to plan on ts-traced (#151); branch pushed 96c4f980; resume --decision retry or review as it stands"
+    },
+    {
+      "order": 6.5,
+      "task_id": "i141",
+      "issues": [
+        141
+      ],
+      "state": "merged",
+      "thread": "temperspec/i141",
+      "branch": "tg/temperspec/i141",
+      "cost_usd": 23.22,
+      "exit": 0,
+      "note": "merge e5b13e9e; follow-ups moved to i145"
+    },
+    {
+      "order": 6.6,
+      "task_id": "i145",
+      "issues": [
+        142,
+        145
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "after i141"
+    },
+    {
+      "order": 7,
+      "task_id": "i62",
+      "issues": [
+        62
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 8,
+      "task_id": "i103",
+      "issues": [
+        103
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 9,
+      "task_id": "i130",
+      "issues": [
+        130
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 10,
+      "task_id": "i104",
+      "issues": [
+        104
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 11,
+      "task_id": "i32",
+      "issues": [
+        32
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 12,
+      "task_id": "i76",
+      "issues": [
+        76
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 13,
+      "task_id": "i136",
+      "issues": [
+        136
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 14,
+      "task_id": "i135",
+      "issues": [
+        135
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 15,
+      "task_id": "i22",
+      "issues": [
+        22
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 16,
+      "task_id": "i10",
+      "issues": [
+        10
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 17,
+      "task_id": "i14",
+      "issues": [
+        14
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    }
+  ],
+  "by_hand": [
+    {
+      "issue": 139,
+      "what": "commit fails on git 2.39 when .tempergraph/ is ignored",
+      "commit": "19ac3d42"
+    },
+    {
+      "issue": 143,
+      "what": "last stage's gh pr create refused: absolute --body-file path",
+      "commit": "5e924254"
+    }
+  ],
+  "todo_before_ready": [
+    "run i21b (#165), then the operator's live probe",
+    "run i145 (monitor timeout regression of #141's fix)",
+    "finish or review i123 and i148",
+    "restamp temperspec",
+    "reinstall .venv from this branch, then stats forget (backup first)",
+    "decide where runs' notes live (#159)",
+    "TS-L2 row and cost per step (#51)",
+    "delete batch-queue/"
+  ],
+  "issues_filed": [
+    139,
+    140,
+    141,
+    142,
+    143,
+    144,
+    145,
+    148,
+    149,
+    150,
+    151,
+    152,
+    153,
+    154,
+    155,
+    156,
+    157,
+    158,
+    159,
+    160,
+    161,
+    162,
+    163,
+    165,
+    166,
+    167,
+    169,
+    170,
+    171,
+    172,
+    173,
+    174,
+    175,
+    176
+  ],
+  "engine_build": "0.2.0-da9985a63404",
+  "stopped_at": "2026-11-25 17:50 CET",
+  "ci_passed_on": "30e2e8f3",
+  "live_runs": []
+}
