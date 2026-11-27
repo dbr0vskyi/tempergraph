@@ -7,6 +7,7 @@ A repository manages its work as issues: one triage queue, one set of labels, an
 ## Depends on
 
 - `cause-bindings.spec.md`: a close as a duplicate that names an issue binds the cause to it (BND-B1, BND-B2, BND-B5)
+- `friction-causes.spec.md`: the causes whose issues say what was answered (FRC-B7 to FRC-B12)
 - `improvement-data.spec.md`: parameters with provenance (IMD-B23)
 - `runs-without-a-final-exit.spec.md`: the friction judge is told what answered a pause (SIL-B37)
 - `self-improvement.spec.md`: de-duplication by cause (SIL-B2); pattern rule (SIL-B3); fault sides (SIL-B11); filing by attribution or by count (SIL-B18); code host unreachable (SIL-B19)
@@ -25,9 +26,9 @@ WHEN the loop opens an issue THE loop SHALL give it the labels of `issue_labels`
 
 ### ISS-B2 Body sections
 
-WHEN the loop opens an issue THE loop SHALL write its body as the hidden line of [SIL-B18](self-improvement.spec.md), the cause line of ISS-B7 and the hidden lines of any further fingerprints, followed by the sections `## Summary` (the cause, its side, the workflow and every unit), `## Environment`, `## Run`, `## Steps to reproduce` and `## Run log` (ISS-B8, ISS-B10), `## Evidence` (each unit's counts and pattern figures), `## Fingerprint` (the fingerprints and cause key as text) and `## Suggested remedy` (the cause's drafted remedy), in that order.
+WHEN the loop opens an issue THE loop SHALL write its body as the hidden line of [SIL-B18](self-improvement.spec.md), the cause line of ISS-B7 and the hidden lines of any further fingerprints, then `## Summary` (the cause, its side, the workflow and every unit), `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log` (ISS-B8, ISS-B10), `## Evidence` (ISS-B12), `## What was answered` (ISS-B19, for its causes), `## Fingerprint` and `## Suggested remedy`, in that order.
 
-- GIVEN a filed workflow-side finding WHEN its issue body is read THEN its first line is the hidden line, its second the cause line, and its headings are `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, each with text under it
+- GIVEN a filed workflow-side finding of a cause other than those of ISS-B19 WHEN its issue body is read THEN its first line is the hidden line, its second the cause line, and its headings are `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, each with text under it
 - GIVEN that body WHEN its `## Fingerprint` section is read THEN it shows the fingerprint of the hidden line, and its `## Suggested remedy` section shows the cause's drafted remedy
 
 ### ISS-B3 A close as not planned or as a duplicate that names no target mutes the fingerprint
@@ -154,6 +155,14 @@ WHEN the loop delivers an entry of the outbox that was first queued more than `o
 - GIVEN an entry first queued 29 days earlier WHEN the next filing delivers it THEN it is delivered
 - GIVEN an entry that holds no time of its first queue WHEN the next filing delivers it THEN it is not dropped for its age
 
+### ISS-B19 An issue says what was answered
+
+WHEN the loop opens an issue for a finding of cause `answer_overrode`, `upstream_confirmed`, `retry_passed_unchanged`, `retry_same_failure` or `resume_no_progress` ([FRC-B7 to FRC-B12](friction-causes.spec.md)) THE loop SHALL write after `## Evidence` a section `## What was answered` that shows, for each unit, its decisions by word, operator reasons by word, criterion ids with counts, numbers of items and of runs and the median wait, as ids, enums and numbers only.
+
+- GIVEN a filed issue for an `answer_overrode:check` finding of two `proceed` decisions, one with the operator reason `plan` and one with none, over the criteria `c1` twice and `c2` once, on two items in three runs, whose pauses waited 60 and 100 seconds WHEN its body is read THEN the section shows decisions `proceed` 2, reasons `plan` 1 and `not given` 1, criteria `c1` 2 and `c2` 1, 2 items, 3 runs and a median wait of 80
+- GIVEN a decision whose feedback text and ruling text hold a canary word WHEN the issue files THEN the canary is in no section of its body
+- GIVEN a filed issue for a finding of another cause WHEN its body is read THEN it has no `## What was answered`
+
 ## Acceptance criteria
 
 - ISS-AC1 (ISS-B1): Against a fake code host, a workflow-side, an engine-side and an executor-side finding each open an issue with the default labels and their side label, a workflow's declared `issue_labels` replaces the default list for its workflow-side findings only, and a declared value that is not a list of names leaves the default labels
@@ -173,6 +182,7 @@ WHEN the loop delivers an entry of the outbox that was first queued more than `o
 - ISS-AC15 (ISS-B16): Against a fake code host, an outbox entry that would open an issue is delivered as one comment on the open issue that holds its fingerprint line, and on the open issue that holds only its cause line, and opens no issue; with that issue's comment of the UTC day made it leaves one `loop_result` record with op `comment_capped` that holds the issue's number and no text; the entry has left the outbox in each case
 - ISS-AC16 (ISS-B17): Against a fake code host that holds an issue of the entry's fingerprint closed as not planned or as a duplicate whose comments name no target 10 days earlier and none open, an outbox entry that would open an issue is dropped with one `loop_result` record with op `outbox_dropped` and reason `muted` that holds its fingerprint and no text, and nothing is sent; with the close 31 days earlier, or with a search of closed issues that fails twice, it opens a new issue
 - ISS-AC17 (ISS-B18): Against a fake code host, an outbox entry of each kind (one that would open an issue, a comment, a reopen) first queued 31 days earlier is dropped with one `loop_result` record with op `outbox_dropped` and reason `expired` and sends nothing, also when an open issue holds its cause; one first queued 29 days earlier is delivered; one that a refused delivery put back keeps its first time; and one that holds no time is not dropped for its age
+- ISS-AC18 (ISS-B19): Against a fake code host, the issue of a fixture `answer_overrode:check` finding shows under `## What was answered` its decisions by word, its operator reasons with `not given` for a decision that gave none, its criterion ids with counts, its numbers of items and runs and its median wait; the issue of each of the other four causes holds the section; an issue of another cause holds none; and a canary in a decision's feedback or ruling text is in no issue body
 
 ## Open questions
 

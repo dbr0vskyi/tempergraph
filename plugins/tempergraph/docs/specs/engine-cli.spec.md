@@ -241,7 +241,7 @@ WHEN `improve outbox clear` is given neither `--all` nor `--fingerprint`, or bot
 WHEN `resume` is given `--reason` with one of `engine_defect`, `judge_error`, `environment`, `plan`, `request` and `other` THE engine CLI SHALL record that word as the `operator_reason` of the ledger row of the resume ([HUM-B6](gate-and-human.spec.md)).
 
 - GIVEN a thread paused at a gate WHEN `resume --decision proceed --reason engine_defect` runs THEN the ledger row of the resume holds the `operator_reason` `engine_defect`
-- GIVEN the same pause WHEN `resume --decision retry` runs with no `--reason` THEN the ledger row holds no `operator_reason`
+- GIVEN the same pause WHEN a person runs `resume --decision retry` with no `--reason` THEN the ledger row holds no `operator_reason`
 
 ### CLI-B25 Any other operator reason is refused
 
@@ -256,6 +256,13 @@ WHEN `improve outbox --help` or `resume --help` is given THE engine CLI SHALL sh
 
 - GIVEN `improve outbox --help` WHEN it runs THEN it exits 0 and names `list` and `clear`
 - GIVEN `resume --help` WHEN it runs THEN it names `--reason` and `engine_defect`, `judge_error`, `environment`, `plan`, `request` and `other`
+
+### CLI-B30 An agent's decision at a pause names its reason
+
+WHEN `resume` carries a decision at a pause and its decider is an agent ([PRV-B14](caller-provenance.spec.md)) THE engine CLI SHALL refuse it with exit 2, before any write, naming `--reason` and the six words of CLI-B24, unless `--reason` gives one of them.
+
+- GIVEN a thread paused at a gate WHEN an agent runs `resume --decision proceed` with no `--reason` THEN it exits 2 naming `--reason` and the six words, and the ledger, the run log and the thread are as they were
+- GIVEN the same pause WHEN a person runs `resume --decision proceed` with no `--reason` THEN the decision is accepted and the ledger row holds no `operator_reason`
 
 ## Acceptance criteria
 
@@ -275,8 +282,9 @@ WHEN `improve outbox --help` or `resume --help` is given THE engine CLI SHALL sh
 - CLI-AC11 (CLI-B20): After a fixture loop child that recorded no finding and no observation and whose reviews all failed as `usage_limit` has ended, `attention` shows its thread with the failed reviews counted by error class and `--json` carries `review_failed` in its `loop[]` entry, and a fixture summary with no finding, no observation and no failed review shows nothing
 - CLI-AC12 (CLI-B21): `improve outbox list` on a fixture outbox of a payload that opens an issue, a comment and a reopen prints one entry for each, oldest first and any entry with no queue time last, with its op, repository, title or issue number, fingerprint and age in days and no body, leaves the state root's hash unchanged, and prints no entry for an absent outbox
 - CLI-AC13 (CLI-B22, CLI-B23): `improve outbox clear --fingerprint <fp>` on a fixture outbox removes the entries of that fingerprint and keeps the others, `improve outbox clear --all` removes every entry, and `improve outbox clear` with neither option or with both exits 2 and leaves the outbox as it was
-- CLI-AC14 (CLI-B24, CLI-B25): `resume --reason` with each of the six words leaves that word on the ledger row of the resume, a resume with no `--reason` leaves none, and any other value, a sentence among them, exits 2 naming the six words and leaves the ledger and the run log as they were
+- CLI-AC14 (CLI-B24, CLI-B25): `resume --reason` with each of the six words leaves that word on the ledger row of the resume, a person's resume with no `--reason` leaves none, and any other value, a sentence among them, exits 2 naming the six words and leaves the ledger and the run log as they were
 - CLI-AC15 (CLI-B26): `improve outbox --help` names `list` and `clear`, and `resume --help` names `--reason` and its six words
+- CLI-AC19 (CLI-B30): A fixture agent's `resume --decision proceed` at a paused gate with no `--reason` exits 2 naming `--reason` and the six words and leaves the ledger and the run log as they were, the same with `--reason plan` is accepted and leaves `operator_reason` `plan`, and a person's resume with no `--reason` is accepted
 
 ## Open questions
 

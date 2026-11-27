@@ -9,9 +9,11 @@ The gate only routes. The human node is the single place a run pauses, and only 
 - `ask-unit.spec.md`: answering (ASK-B8)
 - `budgets-and-failures.spec.md`: a usage limit spends no counter (BUD-B17)
 - `caller-provenance.spec.md`: the caller block (PRV-B16); where the block is written (PRV-B17)
+- `check-contract-and-command-runs.spec.md`: the check record's failing criteria (CHK-B26)
 - `council-unit.spec.md`: no decision (CNL-B13)
 - `durability-and-resume.spec.md`: durability and resume
 - `effort-ladder-and-model-escalation.spec.md`: escalation conditions (LAD-B12)
+- `engine-cli.spec.md`: the operator reason of a decision (CLI-B24)
 - `flow-extensions.spec.md`: deadlines (FLX-B8); operator breakpoints (FLX-B10)
 - `judge-and-verdict.spec.md`: an upstream claim is judged on its own (JDG-B9)
 - `map-unit.spec.md`: what is refused (MAP-B11)
@@ -151,6 +153,21 @@ WHEN a workflow is validated THE engine SHALL refuse `on_fail: back` on a gate t
 - GIVEN `on_fail: back` on a map's gate WHEN the workflow validates THEN it is refused with its own finding code
 - GIVEN `on_fail: back` on a gate with no judge and no back target, or two back targets, WHEN the workflow validates THEN it is refused with its own finding code, and with one back target that is an earlier unit it validates
 
+### HUM-B19 The intervention row holds what the decision answered
+
+WHEN a resume that carries a decision at a pause is accepted THE engine SHALL put on its ledger row the pause's `item` (`none` for no item) and `answered`: `check`, `failed` ([CHK-B26](check-contract-and-command-runs.spec.md)) and `environmental` of the last check record, and `blockers`, `gap`, `guard` and `claim` of the last judgement record, of the unit and item in the visit that paused, each `not recorded` when the log holds none and `claim` `none` for no claim.
+
+- GIVEN a map paused at its item `i2` whose last check result for that item was a FAIL naming the criteria `c1` and `c2`, answered `proceed`, WHEN the row is written THEN it holds `item` `i2`, `check` `FAIL`, `failed` `c1` and `c2` and `environmental` false
+- GIVEN a unit with no items whose last judgement named the blocker `c3`, raised the gap flag and claimed the unit `a`, and whose visit holds no check record, answered `back:a`, WHEN the row is written THEN it holds `item` `none`, `blockers` `c3`, `gap` true, `claim` `a` and `check` `not recorded`
+- GIVEN a check finding whose message holds a canary word WHEN the row of the decision is written THEN the row holds the canary in no field
+
+### HUM-B20 The resume command of a pause names the reason option
+
+WHEN the engine prints the resume command of a pause at which a decision is allowed THE engine SHALL name in it the option `--reason` and the six operator reasons of [CLI-B24](engine-cli.spec.md).
+
+- GIVEN an escalation WHEN the process exits 3 THEN the payload's resume command names `--reason`, `engine_defect`, `judge_error`, `environment`, `plan`, `request` and `other`
+- GIVEN a pause for a usage limit, whose resume command carries no `--decision`, WHEN the process exits 3 THEN its resume command names no `--reason`
+
 ## Acceptance criteria
 
 - HUM-AC1 (HUM-B1): A source test asserts the interrupt is the first statement of the human node
@@ -166,3 +183,5 @@ WHEN a workflow is validated THE engine SHALL refuse `on_fail: back` on a gate t
 - HUM-AC11 (HUM-B15, HUM-B16): An engine fixture with a script unit whose check fails once with two findings sends the run back to the declared target with the two findings, numbered, as the reason of its visit, and does not retry the script unit; a check marked environmental pauses with kind `escalation` and sends nothing back; a check that fails with no finding retries
 - HUM-AC12 (HUM-B17): The same fixture with a check that fails on both passes pauses with kind `budget` showing the findings of the second failure under `ask` and stops with exit 5 under `stop`, and a check that passes after the trip back leaves the run unpaused
 - HUM-AC13 (HUM-B18): Each refusal of HUM-B18 has a fixture that fails validation with its own finding code, and a gate with no judge and one earlier back target validates
+- HUM-AC14 (HUM-B19): A fixture run paused at a map's item whose last check result is a FAIL of two criteria and answered `proceed` leaves a ledger row with that `item`, `check` `FAIL`, the two `failed` ids and `environmental`; a fixture pause whose last judgement holds blockers, the gap flag and a claim leaves `blockers`, `gap`, `guard` and `claim`; a visit with no check record leaves `not recorded` for the check facts and a judgement with no claim leaves `claim` `none`; and a canary in a check finding's message is in no field of the row
+- HUM-AC15 (HUM-B20): A fixture escalation prints a payload whose resume command names `--reason` and the six words, and a fixture pause for a usage limit prints one that names no `--reason`

@@ -4,6 +4,10 @@
 
 A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](feedback-and-judge-reliability.spec.md)), its data needs are [IMD](improvement-data.spec.md), what it reads from sessions is [SRV](session-review.spec.md), and how its issues are labelled, written and read back is [ISS](loop-issues.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](improvement-data.spec.md)), to be revisited with real runs.
 
+## Depends on
+
+- `friction-filing-decisions.spec.md`: findings that file by the count alone (FFD-B7, FFD-B8)
+
 ## Behaviours
 
 ### SIL-B8 Records on every exit
@@ -131,7 +135,7 @@ WHEN the loop child asks the friction judge about findings THE loop child SHALL 
 
 ### SIL-B18 Filing by attribution or by count
 
-WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings to the engine repository, workflow findings to the workflow's `issue_repository`, and a friction finding only when its judge attributed it (confirmed the side it names) and either its confidence is at or above `friction.file_confidence` (0.75) or its fingerprint meets the pattern rule of SIL-B3 on the answers of FFD-B1, opening each issue body with the hidden line `<!-- tempergraph:fp=<fingerprint> -->`.
+WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings to the engine repository, workflow findings to the workflow's `issue_repository`, and a friction finding (not FFD-B7 or FFD-B8) only when its judge attributed it (its side confirmed) and either its confidence is at or above `friction.file_confidence` (0.75) or its fingerprint meets SIL-B3's pattern rule on FFD-B1's answers, opening each issue body with the hidden line `<!-- tempergraph:fp=<fingerprint> -->`.
 
 - GIVEN a friction finding attributed at 0.6 whose fingerprint is recorded in two runs WHEN filing runs THEN it is recorded and not filed
 - GIVEN a friction finding attributed at 0.5 in each of three runs with three distinct requests in 30 days WHEN filing runs THEN one issue is filed
@@ -139,7 +143,7 @@ WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings t
 
 ### SIL-B35 A finding its judge gave no answer for is not filed
 
-WHEN the friction judge gave no answer for a friction finding (its session failed, its reply could not be read, the daily cap skipped the judge, or the reply left the finding out) THE loop SHALL record the finding `not_judged` and file nothing for it, even when its fingerprint meets the pattern rule of SIL-B3.
+WHEN the friction judge gave no answer for a friction finding other than those of FFD-B7 and FFD-B8 (its session failed, its reply could not be read, the daily cap skipped the judge, or the reply left the finding out) THE loop SHALL record the finding `not_judged` and file nothing for it, even when its fingerprint meets the pattern rule of SIL-B3.
 
 - GIVEN a friction finding whose fingerprint is recorded in three runs with three distinct requests and a judge session that failed WHEN filing runs THEN the finding is recorded `not_judged` and no issue or comment is made
 - GIVEN stable mode with the day's spend at `daily_cap_usd` and such a finding WHEN the loop child runs THEN the judge is skipped, the finding is recorded `not_judged` and nothing is filed

@@ -37,12 +37,7 @@ WHEN a gate's check, the callable `check(ctx: CheckContext) -> CheckResult` name
 WHEN a gate's check runs after an attempt whose step session reported the capability of at least one tool call and whose activity journal kept every tool line THE engine SHALL give the check `session`, the calls the session made since it last started (an infra try starts it again, [BUD-B1](budgets-and-failures.spec.md); a session woken after it ended its turn keeps its session id and continues) in call order, each with `name`, `capability` (`read`, `search`, `list`, `edit`, `write`, `shell` or another capability of [EVT-B21](run-events.spec.md), null for an unknown tool), `target` (the call's input summary of EVT-B21: the path relative to the workspace for `read`, `list`, `edit` and `write`, `<outside workspace>` for a path outside it, the pattern for `search`; null for a call that names none and for every call under `observe.tool_inputs = off`, [EVT-B6](run-events.spec.md)) and `ok` (true when the call finished without an error), as a copy that no run-log record, ledger row, stats row, export or filed text carries ([decision](../adr/a-check-is-given-the-tool-calls-of-the-attempts-session.adr.md)).
 
 - GIVEN a session that opened `docs/a.md`, searched for `plan`, edited `src/b.py` and wrote `tests/c.py` WHEN its check runs THEN `session` lists the four calls in that order with the capabilities `read`, `search`, `edit` and `write` and the targets `docs/a.md`, `plan`, `src/b.py` and `tests/c.py`
-- GIVEN a call that ended with an error WHEN its check runs THEN that call reads `ok` false
-- GIVEN attempt 1 that opened `docs/a.md` and a retry attempt of the same visit that opened `docs/b.md` WHEN the check runs after the retry THEN `session` lists the one call on `docs/b.md`
-- GIVEN a session that ended with `broken_pipe` after one call and started again WHEN the check runs THEN `session` lists the calls since the second start only
 - GIVEN a session that made one call, ended its turn while a background command ran, was woken with the same session id and made a second call WHEN the check runs THEN `session` lists both calls
-- GIVEN `observe.tool_inputs = off` WHEN the check runs THEN every call has its `capability` and a null `target`
-- GIVEN a read of a file outside the workspace WHEN the check runs THEN its `target` is `<outside workspace>`
 
 ### CHK-B25 No session record
 
@@ -131,6 +126,13 @@ WHEN a check runs THE engine SHALL run it in a child engine process, the check w
 
 - GIVEN a check whose code hangs WHEN the limit plus 30 s passes THEN the worker and its tree are ended
 
+### CHK-B26 The check record names the criteria that failed
+
+WHEN the engine writes the record of a check THE engine SHALL put in it `failed`: the criterion ids of the findings with status `fail`, each once, in the order the check returned them, at most 20, an empty list when none of those findings names an id, and no message, place or fix.
+
+- GIVEN failing findings of the criteria `b`, `a` and `b` again, a failing finding with no criterion and a passing finding of `c` WHEN the record is written THEN `failed` is `b`, `a`
+- GIVEN failing findings of 25 criteria WHEN the record is written THEN `failed` holds the first 20
+
 ### CHK-B1 Mechanical failure costs no judge
 
 WHEN a check FAILs a `mechanical` criterion THE engine SHALL start no judge session and list each finding with its place and fix under the rejection reason in the retry prompt.
@@ -217,6 +219,7 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC17 (CHK-B25): A check that reads `session` sees `None` after a stand-in session that reported tool names only, after a session that made no tool call, after a session whose journal dropped a tool line, and as a preview
 - CHK-AC18 (CHK-B9): The same check, one that reads neither `session` nor `visit_session`, run on one workspace after steps of two executors gets the same context other than those two, the same runs and the same result
 - CHK-AC19 (CHK-B24): The check run after a session that reported a second start with the session id of its first sees the calls made before and after that second start, in call order; with a different session id on the second start it sees only the calls since it
+- CHK-AC20 (CHK-B26): A fixture check that returns failing findings of the criteria `b`, `a` and `b`, one failing finding with no criterion and a passing finding of `c` leaves a record whose `failed` is `b`, `a`; failing findings of 25 criteria leave the first 20; a FAIL with no criterion id leaves an empty list; and no record holds the message, place or fix of a finding
 
 ## Open questions
 
