@@ -44,6 +44,12 @@ Beside the units: [judge reading](judge-reading.spec.md), what each judge is tol
 - [ ] ts-spec-sync No behaviour in a spec the run edited contradicts a behaviour in a spec it links to
 - [ ] ts-accepted Each acceptance criterion of the task is achieved by the run's commits
 
+## 7. Package layout and authoring classification
+
+temperspec ships its rule sets as skills (one per artifact type), its agents as `agents/*.md`, its checks in `workflow/temperspec/checks.py`, its finalizer in `workflow/temperspec/finalizer.py`, its outcome in `outcome.json`, and one spec per unit in its `docs/specs/` folder; its plugin is named `temperspec-tgraph` and its workflow name is `temperspec`.
+
+When temperspec is authored from its own blueprint as the solution, its mechanical review rules are `check` criteria with `existing:review_rule`, its reading judgements are `judge` criteria, and a judgement only a reviewer outside the run can make is `none` with the reason naming where it is reviewed.
+
 ## Open questions
 
 - No step or judge uses the large model tier; each states its effort and the reason ([`model-and-effort-per-unit`](../adr/model-and-effort-per-unit.adr.md)).
