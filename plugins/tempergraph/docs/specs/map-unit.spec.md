@@ -75,9 +75,10 @@ WHEN a run stopped by the attempt cap during an item resumes THE engine SHALL co
 
 ### MAP-B6 Resume one item
 
-WHEN a person resumes a map with several pending item pauses without naming one THE engine SHALL refuse with every exact command ([HUM-B3](gate-and-human.spec.md)), the named item's `stop` stopping the map and its `retry` rerunning only that item.
+WHEN a person resumes a map with several pending item pauses without naming one THE engine SHALL refuse with every exact command ([HUM-B3](gate-and-human.spec.md)), the named item's `stop` stopping the map and its `retry` rerunning only that item; an answered item pause, whether it was pending alone or with others, lets the map go on.
 
 - GIVEN pauses at `phase.p2` and `phase.p5` WHEN resumed without an item THEN it is refused with both commands, and `phase.p5` with `retry` reruns only p5
+- GIVEN one pending pause at `phase.p2`, every other item passed WHEN `phase.p2` is answered with `proceed` THEN the join starts, and with `retry` p2 alone runs again before it
 
 ### MAP-B11 What is refused
 
@@ -110,3 +111,4 @@ WHEN the check of MAP-B12 fails THE engine SHALL end the map blocked, not retrie
 - MAP-AC7 (MAP-B6): With pauses at `phase.p2` and `phase.p5` pending, a resume naming no item is refused with both exact commands, and a `retry` named for `phase.p5` runs only p5
 - MAP-AC8 (MAP-B12): In a concurrent map whose step declares `write`, a gate check that records its calls is called once with the run's worktree as its working directory and no item, after the last merge and before the next unit's first session, besides the one call per item attempt in that item's own worktree
 - MAP-AC9 (MAP-B13): When the gate check run on the joined result of a concurrent map whose step declares `write` fails, the run pauses at the map listing the failing finding, spends no retry, the run branch still holds the merge commits, and no item or model session starts
+- MAP-AC10 (MAP-B6): In a concurrent map where p2 alone is paused and every other item has passed, a resume that names `phase.p2`, or names no item, with `proceed` ends the run as finished after the join, a `retry` runs p2 alone again first, and no other item starts a session

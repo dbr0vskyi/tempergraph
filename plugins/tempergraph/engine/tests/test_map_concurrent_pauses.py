@@ -1,5 +1,7 @@
 """Item pauses of a concurrent map: each item has its own retry budget, a spent item pauses addressed by unit and item
-while the others keep their results, and a resume names the item it answers (MAP-AC6, MAP-AC7, MAP-B6, MAP-B10, HUM-B3)."""
+while the others keep their results, and a resume names the item it answers (MAP-AC6, MAP-AC7, MAP-AC10, MAP-B6, MAP-B10,
+HUM-B3). A thread stopped inside a concurrent map, by request or by the attempt cap, goes on at a plain resume
+(RCT-AC12, RCT-B11)."""
 
 from __future__ import annotations
 
@@ -7,15 +9,18 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.durability import engine_file
 from tempergraph.durability.checkpoint import observer_graph, open_readonly, snapshot
-from tempergraph.durability.status import row
+from tempergraph.durability.control import request_stop
+from tempergraph.durability.status import classify, row
 from tempergraph.run.runner import resume
 from tempergraph.store.layout import state_root_path
 
-from .test_map import FAIL, NO_SLEEP
+from .test_map import FAIL, NO_SLEEP, p2_fails_once
 from .test_map_concurrent import ByItem, concurrent, go
 from .test_run import registry
 
@@ -94,6 +99,80 @@ def test_retry_of_one_item_reruns_only_that_item(repo: Path) -> None:  # MAP-AC7
     for item in ("p1", "p2", "p3", "p4"):
         assert ex.sessions[f"phase.{item}"] == before[f"phase.{item}"], item
     assert "join" not in [u for _, u, _ in ex.calls]
+
+
+@pytest.mark.parametrize("decision", ["proceed", "retry"])
+def test_one_pending_item_pause_is_answered_by_its_slot(repo: Path, decision: str) -> None:  # MAP-AC10 (MAP-B6)
+    spec = concurrent(concurrency=3, retry_budget=1)
+    ex = ByItem(FIVE[:3], judges={"phase.p2": [FAIL, FAIL]})  # p2 alone is spent; p1 and p3 pass
+    out = go(repo, spec, ex)
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    (only,) = gates(repo, spec)
+    assert only["unit"] == "phase.p2"  # one pending pause, no other item waiting
+    before = dict(ex.sessions)
+    done = answer_item(repo, spec, ex, "phase.p2", decision)
+    assert done.exit_code is ExitCode.FINISHED, done.message  # the thread went on; it was not left with nothing pending
+    assert classify(state_root_path(repo), spec, "M-1") == "finished"
+    assert ex.steps("p2") == (2 if decision == "proceed" else 3)  # `retry` ran p2 again, `proceed` passed it as it was
+    for item in ("p1", "p3"):
+        assert ex.sessions[f"phase.{item}"] == before[f"phase.{item}"], item
+    assert ex.calls[-2:] == [("step", "join", None), ("judge", "join", None)]  # the join ran, once the map had passed
+
+
+def test_one_pending_item_pause_is_answered_without_naming_it(repo: Path) -> None:  # MAP-AC10 (MAP-B6, HUM-B3)
+    spec = concurrent(concurrency=2, retry_budget=1)
+    ex = ByItem(FIVE, judges={"phase.p2": [FAIL, FAIL]})
+    assert go(repo, spec, ex).exit_code is ExitCode.PAUSED
+    done = answer_item(repo, spec, ex, None, "proceed")  # one gate pending: it needs no `--unit`
+    assert done.exit_code is ExitCode.FINISHED, done.message
+    assert [ex.steps(i) for i in ("p1", "p2", "p3", "p4", "p5")] == [1, 2, 1, 1, 1]
+
+
+class Stopping(ByItem):
+    """Asks the run to stop (`drain`) from inside one session of one item, while the run holds its lock."""
+
+    def __init__(self, root: Path, when: tuple[str, str], *a: Any, **k: Any) -> None:
+        super().__init__(*a, **k)
+        self.root, self.when, self.fired = root, when, False
+
+    def _ask(self, kind: str, req: Any) -> None:
+        if (kind, self.whose(req)[1]) == self.when and not self.fired:
+            self.fired = True
+            request_stop(self.root, "demo", "M-1", "drain")
+
+    def run_step(self, req: Any, sink: Any) -> Any:
+        self._ask("step", req)
+        return super().run_step(req, sink)
+
+    def run_judge(self, req: Any, views: Any, sink: Any) -> Any:
+        self._ask("judge", req)
+        return super().run_judge(req, views, sink)
+
+
+@pytest.mark.parametrize("when", [("step", "p1"), ("judge", "p1"), ("judge", "p3"), ("step", "p4")])
+@pytest.mark.parametrize("concurrency", [2, 3])
+def test_a_drain_inside_a_concurrent_map_resumes_with_no_decision(repo: Path, when: tuple[str, str],
+                                                                  concurrency: int) -> None:  # RCT-AC12 (RCT-B11)
+    root = state_root_path(repo)
+    spec = concurrent(concurrency=concurrency)
+    ex = Stopping(root, when, FIVE, hold_s=0.05)
+    out = go(repo, spec, ex)
+    assert (out.exit_code, out.reason) == (ExitCode.STOPPED, "stopped_by_request"), out.message
+    assert classify(root, spec, "M-1") == "unfinished"
+    back = resume(spec, "M-1", repo, registry(ex), settings=NO_SLEEP)
+    assert back.exit_code is ExitCode.FINISHED, back.message  # as the run would have ended without the stop
+    assert [ex.steps(i) for i in ("p1", "p2", "p3", "p4", "p5")] == [1, 1, 1, 1, 1]  # every item ran, none twice
+    assert ex.calls[-2:] == [("step", "join", None), ("judge", "join", None)]
+
+
+def test_an_attempt_cap_stop_inside_a_concurrent_map_resumes_with_no_decision(repo: Path) -> None:  # DUR-B9, CMP-B20
+    spec = concurrent(concurrency=2, check=p2_fails_once)
+    ex = ByItem(FIVE, hold_s=0.05)
+    out = go(repo, spec, ex, flags={"run.attempt_cap": 1})
+    assert (out.exit_code, out.reason) == (ExitCode.STOPPED, "attempt_cap"), out.message
+    back = resume(spec, "M-1", repo, registry(ex), settings=NO_SLEEP)
+    assert back.exit_code is ExitCode.FINISHED, back.message
+    assert [ex.steps(i) for i in ("p1", "p2", "p3", "p4", "p5")] == [1, 2, 1, 1, 1]
 
 
 def interrupt_ids(spec: WorkflowSpec, repo: Path) -> dict[str, str]:
