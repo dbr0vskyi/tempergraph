@@ -37,13 +37,16 @@ End your answer with one fenced JSON block:
 ```json
 {"criteria": [{"n": 1, "id": "<id or null>", "status": "MET|PARTIAL|UNMET|N/A|UNVERIFIABLE",
   "evidence": "<what you saw, with file and line>", "place": "<where>", "fix": "<one line>",
-  "defect_in": null, "no_change": false}],
- "gap": false, "confidence": 0.0, "summary": "<one line>"}
+  "defect_in": null, "no_change": false, "unread": false}],
+ "gap": false, "gap_unread": false, "confidence": 0.0, "summary": "<one line>"}
 ```
 Confidence: 1.0 you checked every criterion directly; 0.75 most, with small gaps; 0.5 several criteria rest on
 indirect evidence; 0.25 you could check little. Set `gap` true when something you needed was out of reach.
 Use `defect_in` with an earlier artifact key when the defect is in that earlier output. Use `no_change` when the
 step's own output cannot fix it (a missing source, a person's decision, an outside system).
+Set `unread` true on a PARTIAL or UNVERIFIABLE grade, and `gap_unread` true beside `gap`, when the grade or the gap
+rests on a place your own tools can open and you did not open it. Give the path and lines to open in that
+finding's `fix` (in `summary` for a gap no finding carries). Never mark a place that is out of reach for your tools.
 This line is an example and not valid JSON: {criteria: [n: 1, status: MET]}"""
 
 
@@ -219,9 +222,10 @@ def parse_judgement(text: str, gate: GateSpec) -> Judgement:
         findings.append(CriterionFinding(
             n=n, status=status, id=rid or None, evidence=str(row.get("evidence") or ""),  # type: ignore[arg-type]
             place=str(row.get("place") or ""), fix=str(row.get("fix") or ""),
-            defect_in=row.get("defect_in") or None, no_change=bool(row.get("no_change"))))
+            defect_in=row.get("defect_in") or None, no_change=bool(row.get("no_change")),
+            unread=bool(row.get("unread"))))
     conf = data.get("confidence")
-    return Judgement(criteria=tuple(findings), gap=bool(data.get("gap")),
+    return Judgement(criteria=tuple(findings), gap=bool(data.get("gap")), gap_unread=bool(data.get("gap_unread")),
                      confidence=float(conf) if isinstance(conf, int | float) else 0.0,
                      summary=str(data.get("summary") or "")[:300],
                      coverage=dict(data["coverage"]) if isinstance(data.get("coverage"), dict) else {})
@@ -245,17 +249,13 @@ class Outcome:
                 "back_to": self.back_to, "reason": self.reason, "statuses": self.statuses}
 
 
-def derive(judgement: Judgement | None, gate: GateSpec, check: CheckResult | None,
-           back_units: Mapping[str, str] | None = None) -> Outcome:
-    """JDG-B13. ``back_units``: artifact key -> producing unit, for the allowed back targets on this path."""
-    if judgement is None:
-        return Outcome(verdict=Verdict.ESCALATE, gap=True, confidence=0.0, confidence_source="engine_placeholder",
-                       reason="unparsed")
+def _graded(judgement: Judgement, gate: GateSpec,
+            check: CheckResult | None) -> list[tuple[int, Criterion, CriterionFinding | None, str]]:
+    """JDG-B13: each criterion of the gate with its finding and the status the engine reads it as (MET with no
+    evidence is PARTIAL, N/A with no evidence and no check reason is UNMET, a missing finding is UNMET)."""
     by_n = {f.n: f for f in judgement.criteria}
     na_reasons = {f.criterion for f in (check.findings if check else []) if f.status == "n_a" and f.message}
-    failing: list[tuple[Criterion, CriterionFinding, str]] = []
-    escalate = judgement.gap
-    out = Outcome(verdict=Verdict.PROCEED, gap=judgement.gap, confidence=judgement.confidence)
+    rows: list[tuple[int, Criterion, CriterionFinding | None, str]] = []
     for i, c in enumerate(gate.criteria, 1):
         f = by_n.get(i)
         status = f.status if f else "UNMET"
@@ -263,6 +263,67 @@ def derive(judgement: Judgement | None, gate: GateSpec, check: CheckResult | Non
             status = "PARTIAL"
         if f and status == "N/A" and not f.evidence.strip() and c.id not in na_reasons:
             status = "UNMET"
+        rows.append((i, c, f, status))
+    return rows
+
+
+@dataclass(kw_only=True)
+class Marking:
+    """JDG-B15: the failing blockers of a judgement (numbers of the gate's criteria) that count as the judge's own
+    reading (`marked`) and those that do not (`unmarked`), and whether its `gap` is marked."""
+    marked: list[int] = field(default_factory=list)
+    unmarked: list[int] = field(default_factory=list)
+    gap_marked: bool = False
+
+
+def marked_reading(judgement: Judgement, gate: GateSpec, check: CheckResult | None) -> Marking:
+    out = Marking(gap_marked=bool(judgement.gap and judgement.gap_unread))
+    for i, c, f, status in _graded(judgement, gate, check):
+        if status in ("MET", "N/A") or c.severity != "blocker":
+            continue
+        (out.marked if f is not None and f.unread and status in ("PARTIAL", "UNVERIFIABLE") else out.unmarked).append(i)
+    return out
+
+
+def reread_needed(judgement: Judgement, gate: GateSpec, check: CheckResult | None) -> bool:
+    """JDG-B17: a failing blocker or a `gap`, no failing blocker unmarked, and the `gap`, if set, marked."""
+    m = marked_reading(judgement, gate, check)
+    if m.unmarked or (judgement.gap and not m.gap_marked):
+        return False
+    return bool(m.marked) or judgement.gap
+
+
+def reread_prompt(first_prompt: str, judgement: Judgement, marked: Sequence[int], gate: GateSpec) -> str:
+    """JDG-B18: the first prompt with one added section before the answer format: the first `summary`, the `fix` of
+    each marked criterion, and the instruction to open those places and grade every criterion of the gate."""
+    by_n = {f.n: f for f in judgement.criteria}
+    lines = []
+    for i, c in enumerate(gate.criteria, 1):
+        if i in marked:
+            f = by_n.get(i)
+            lines.append(f"- {i}. [{c.id or '-'}]: {(f.fix if f else '').strip() or 'open the place it names'}")
+    if judgement.gap and judgement.gap_unread:
+        lines.append(f"- gap: {judgement.summary}")
+    section = ("## Your first review marked places you did not open\n"
+               f"Your summary: {judgement.summary}\n" + "\n".join(lines)
+               + "\nOpen each of these places with the read tool now, then grade every criterion of the gate again "
+               "from what you read. This is the last review: it alone gives the verdict.")
+    head, sep, tail = first_prompt.rpartition(ANSWER_FORMAT)
+    if not sep:
+        return first_prompt + "\n\n" + section + "\n"
+    return head + section + "\n\n" + ANSWER_FORMAT + tail
+
+
+def derive(judgement: Judgement | None, gate: GateSpec, check: CheckResult | None,
+           back_units: Mapping[str, str] | None = None) -> Outcome:
+    """JDG-B13. ``back_units``: artifact key -> producing unit, for the allowed back targets on this path."""
+    if judgement is None:
+        return Outcome(verdict=Verdict.ESCALATE, gap=True, confidence=0.0, confidence_source="engine_placeholder",
+                       reason="unparsed")
+    failing: list[tuple[Criterion, CriterionFinding, str]] = []
+    escalate = judgement.gap
+    out = Outcome(verdict=Verdict.PROCEED, gap=judgement.gap, confidence=judgement.confidence)
+    for i, c, f, status in _graded(judgement, gate, check):
         out.statuses.append({"n": i, "id": c.id, "status": status})
         if status in ("MET", "N/A"):
             continue

@@ -12,6 +12,7 @@ The compiler turns a validated workflow into a durable state graph with four nod
 - `council-unit.spec.md`: council unit
 - `flow-extensions.spec.md`: deadlines (FLX-B8)
 - `gate-and-human.spec.md`: gate and human nodes
+- `judge-and-verdict.spec.md`: the re-read of a judgement that marks its own reading (JDG-B17)
 - `map-unit.spec.md`: map unit
 - `measured-switches.spec.md`: measured switches
 - `observability-and-cost.spec.md`: observability and cost
@@ -31,7 +32,7 @@ WHEN a workflow is compiled THE compiler SHALL name each unit's nodes `<unit>.st
 
 ### CMP-B9 What each node does
 
-WHEN a unit runs THE engine SHALL let the step node render the prompt, resolve the alias and limits for this attempt, call the executor and record usage, never grading; let the judge node run the check, then, unless the check failed, the judge session and its one re-ask, then the guard, then derive and store the verdict, never pausing; let the gate node read the stored judgement, apply budgets and policy and write a routing token and, when needed, a pause payload, never calling a model or pausing; and let the human node interrupt as its first statement, applying the decision once after it, with no log, spend or write before the interrupt.
+WHEN a unit runs THE engine SHALL let the step node render the prompt, resolve the alias and limits for this attempt, call the executor and record usage, never grading; let the judge node run the check, then, unless the check failed, the judge session and its one re-ask, then the guard, then at most one re-read of a judgement that marks its own reading ([JDG-B17](judge-and-verdict.spec.md)), then derive and store the verdict, never pausing; let the gate node read the stored judgement, apply budgets and policy and write a routing token and, when needed, a pause payload, never calling a model or pausing; and let the human node interrupt as its first statement, applying the decision once after it, with no log, spend or write before the interrupt.
 
 - GIVEN a unit whose check fails WHEN its judge node runs THEN no judge session starts
 - GIVEN a gate WHEN it routes THEN no executor is called

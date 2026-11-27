@@ -17,7 +17,7 @@ from typing import Any
 from tempergraph.run.events import records as read_records
 
 STEP_KINDS = ("step", "retry")
-JUDGE_KINDS = ("judge", "judge_reask", "grouping")
+JUDGE_KINDS = ("judge", "judge_reask", "judge_reread", "grouping")
 LOOP_REPEAT = 5
 
 
@@ -141,6 +141,8 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
                 first_seen.add(key)
             elif sk == "judge_reask":
                 cause = "re-ask"
+            elif sk == "judge_reread":
+                cause = "re-read"
             t.sessions.append(Session(thread_id=t.thread_id, workflow=t.workflow, version=t.version, unit=unit,
                                       attempt=r.get("attempt"), visit=v, kind=sk, executor=r.get("executor"),
                                       usage=r.get("usage") or {}, timed_out=bool(r.get("timed_out")),

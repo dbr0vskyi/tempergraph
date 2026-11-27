@@ -131,6 +131,29 @@ def test_jdg_ac9_a_refused_reask_derives_no_verdict(repo: Path) -> None:  # JDG-
     assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reask"]
 
 
+REREAD_FIRST = (
+    "Reviewed.\n```json\n" + json.dumps({"criteria": [{"n": 1, "status": "PARTIAL", "evidence": "not opened",
+                                                       "place": "notes.md", "fix": "open notes.md lines 1-9",
+                                                       "unread": True}],
+                                         "gap": False, "confidence": 0.8, "summary": "did not open notes"}) + "\n```")
+
+
+def test_jdg_ac9_a_refused_reread_derives_no_verdict(repo: Path) -> None:
+    # JDG-AC9, BUD-AC15 (task AC 6): a re-read the limit ends writes no judgement and starts no later judge session
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT], judges=[judge(REREAD_FIRST), refused(at), judge()])
+    _judge_refused_checks(repo, ex, at)
+    assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reread"]
+
+
+def test_jdg_ac9_a_refused_reask_of_the_reread_derives_no_verdict(repo: Path) -> None:
+    # JDG-AC9, BUD-AC15 (task AC 6): the re-read has no block, its JDG-B2 re-ask is refused
+    at = time.time() + 3600
+    ex = standin("claude", steps=[DRAFT], judges=[judge(REREAD_FIRST), judge("no block"), refused(at), judge()])
+    _judge_refused_checks(repo, ex, at)
+    assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reread", "judge_reask"]
+
+
 def test_jdg_ac9_a_refused_step_starts_no_judge_session(repo: Path) -> None:  # JDG-AC9 (task AC 6)
     at = time.time() + 3600
     ex = standin("claude", steps=[refused(at, error_kind="model")], judges=[judge()])

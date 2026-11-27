@@ -10,5 +10,6 @@ The check evidence under What to grade says whether the document is well formed,
 - In the evidence of an UNMET, list each blocking finding by its number, file, line and text, in the order of the document, as the document writes it, and list no finding that is not blocking: that text is what the step sent back is told.
 - Do not judge whether a blocking finding is right. The reader judged the change; you only report what the document says, so that the finding reaches the step.
 - A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself.
-- Behind every MET, quote the line you relied on, with its path and line number. Without evidence, grade PARTIAL. When you searched and then read the file around the line, quote the line from the file you read.
+- Behind every MET, quote the line you relied on, with its path and line number. Without evidence, grade PARTIAL. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read.
+- Open with the read tool the file a row or a criterion names before you grade it. Lines a search printed are not a reading of that file. When a grade fails only because you did not open a place you could open, set unread true and give the path and lines to open as its fix.
 - Grade only the criteria listed. Wording, layout and style are not defects.

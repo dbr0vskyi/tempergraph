@@ -285,9 +285,9 @@ def test_outcome_json_words_the_pause_and_carries_revision_29() -> None:  # OGT-
     text = " ".join(doc["assumptions"])
     assert "a person starts the task again" not in text
     assert "outcome gate pauses" in text and "ts-spec-fresh" in text and "retry" in text
-    assert doc["revision"] == 29
-    last = doc["revisions"][-1]
-    assert last["revision"] == 29 and last["origin"] == "authored" and "issue 197" in last["note"]
+    assert doc["revision"] == doc["revisions"][-1]["revision"] >= 29
+    last = next(e for e in doc["revisions"] if e["revision"] == 29)
+    assert last["origin"] == "authored" and "issue 197" in last["note"]
     assert "outcome-gate" in last["note"] and "side-by-side-runs" in last["note"]
     for name in ("outcome-gate", "side-by-side-runs"):
         path = ROOT / "docs" / "specs" / f"{name}.spec.md"

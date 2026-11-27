@@ -96,7 +96,7 @@ WHEN a unit's check fails on two attempts in a row of one visit and item with th
 
 ### BUD-B17 A usage limit spends no counter
 
-WHEN a session of a unit's attempt (a step, retry, council member or chair session, a judge session that grades the attempt, or that judge's re-ask) ends not ok with `usage_limit` true ([SSN-B11](session-contract.spec.md)) THE engine SHALL spend no retry and no infra try on it, whatever its `error_kind` or `infra_cause`.
+WHEN a session of a unit's attempt (a step, retry, council member or chair session, a judge session that grades the attempt, or that judge's re-ask or re-read) ends not ok with `usage_limit` true ([SSN-B11](session-contract.spec.md)) THE engine SHALL spend no retry and no infra try on it, whatever its `error_kind` or `infra_cause`.
 
 - GIVEN a step session that ends not ok with `usage_limit` true and `error_kind` `model` WHEN its gate decides THEN the retry budget is unchanged
 - GIVEN a step session that ends not ok with `usage_limit` true and `infra_cause` `throttled` WHEN the attempt ends THEN the session is not rerun after a backoff, no infra try is spent and the run does not end as an infra failure
