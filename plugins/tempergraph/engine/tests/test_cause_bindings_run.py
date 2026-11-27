@@ -228,6 +228,34 @@ def test_two_causes_bound_to_one_target_share_the_comment_of_the_day(  # BND-AC6
     assert [r["op"] for r in third] == ["commented"] and [c["number"] for c in host.comments] == [1, 1]
 
 
+def test_two_causes_of_two_workflows_bound_to_one_target_share_the_comment_of_the_day(  # BND-AC6
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tempergraph.improve import record
+
+    host = MemoryCodeHost()
+    seed(host, [("person", "duplicate of #1")], closed_days_ago=31)  # the cause of workflow `demo`
+    host.create(REPO, "[loop] other: slow_step", "x", [LOOP_LABEL])  # the cause of workflow `other`
+    other_key = filing.cause_key({"side": "workflow", "workflow": "other", "cause": "slow_step"})
+    host.issues[-1]["body"] = f"{filing._cause_line(other_key)}\nbody"
+    host.add_comment(REPO, len(host.issues), "duplicate of #1", "person", iso(40))
+    host.close(REPO, len(host.issues), "duplicate", iso(31))
+    first, root = run_one(tmp_path, monkeypatch, host, 1)
+    fp = record.fingerprint("workflow", "other", "slow_step", "draft")
+    row = {"kind": "finding", "thread": "other/F-2", "workflow": "other", "unit": "draft", "cause": "slow_step",
+           "class": "fault", "side": "workflow", "count": 1, "remedy": "r", "fingerprint": fp,
+           "at": datetime.now(UTC).isoformat(timespec="seconds"), "request_digest": "r2", "machine": "m"}
+    path = record.findings_path(root, "other", "F-2")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema_version": 1, "thread": "other/F-2", "findings": [row]}))
+    t = {**friction_ticket(root, 2), "thread": "other/F-2", "workflow": "other", "task_id": "F-2",
+         "fingerprints": [fp]}
+    reg = registry(standin("claude", judges=[judge_says(0.9) for _ in range(4)]))
+    second = child.process(t, reg, host)["results"]
+    assert [r["op"] for r in first] == ["commented"]
+    assert [r["op"] for r in second if r["op"] != "bound"] == ["comment_capped"]
+    assert [c["number"] for c in host.comments] == [1]  # one comment on the target in the UTC day, over both workflows
+
+
 def test_a_target_closed_as_completed_opens_a_regression_issue(  # BND-AC7
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     host = MemoryCodeHost()

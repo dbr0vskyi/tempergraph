@@ -524,8 +524,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                    for d in decisions]
     else:
         filed_at = filing_clock()
-        try:  # ISS-B13: the "seen again" comments each issue got today; a failed read passes none
-            today: dict[tuple[str, int], int] | None = filing.comments_by_day(root, wf, filed_at)
+        try:  # ISS-B13, BND-B3: the "seen again" comments each issue got today over every workflow's runs; a failed read passes none
+            today: dict[tuple[str, int], int] | None = filing.comments_by_day(root, None, filed_at)
         except Exception:  # noqa: BLE001 - best effort (SIL-B1)
             today = None
         results = filing.file(decisions, host, filing.Outbox.at(root), dry_run=bool(t.get("dry_run")),

@@ -454,12 +454,14 @@ def _match_open(issues: Sequence[Mapping[str, Any]], fps: Sequence[str], key: st
     return next((i for i in order if _holds(i, [_cause_line(key)])), None)
 
 
-def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> dict[tuple[str, int], int]:
-    """ISS-B13: the `issue_commented` records of the workflow's runs in the state root dated on `now`'s UTC day,
-    counted per (repo, issue number). An unreadable file or line is skipped."""
+def comments_by_day(root: Path, workflow: str | None, now: datetime | None = None) -> dict[tuple[str, int], int]:
+    """ISS-B13, BND-B3: the `issue_commented` records of the workflow's runs in the state root (of every workflow
+    when `workflow` is None) dated on `now`'s UTC day, counted per (repo, issue number). An unreadable file or line
+    is skipped."""
     day = (now or datetime.now(UTC)).astimezone(UTC).date()
     out: dict[tuple[str, int], int] = {}
-    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+    pattern = "*/*/loop.jsonl" if workflow is None else f"{workflow}/*/loop.jsonl"
+    for path in sorted((root / "runs").glob(pattern)):
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
