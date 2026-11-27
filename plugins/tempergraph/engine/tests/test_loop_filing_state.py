@@ -90,6 +90,7 @@ def files_nothing(out: dict[str, Any], host: MemoryCodeHost) -> bool:
     return not host.issues and not host.comments and not (ops(out) & {"filed", "commented"})
 
 
+# LFS-AC2
 def test_lfs_ac2_a_workflow_declaring_nothing_files_in_dev_and_in_stable(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     for mode in ("dev", "stable"):
@@ -100,6 +101,7 @@ def test_lfs_ac2_a_workflow_declaring_nothing_files_in_dev_and_in_stable(
         assert files(out, host), mode
 
 
+# LFS-AC2
 def test_lfs_ac2_the_ticket_holds_the_same_filing_in_both_modes(tmp_path: Path) -> None:
     pkg = tmp_path / "pkg"
     pkg.mkdir()
@@ -125,6 +127,7 @@ def test_lfs_ac2_the_ticket_holds_the_same_filing_in_both_modes(tmp_path: Path) 
             assert seen[0][1] == "settings"
 
 
+# LFS-AC7
 def test_lfs_ac7_a_declared_dry_run_files_nothing_at_every_exit(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     doc, out, host = drained(thread(repo, monkeypatch, "D-1", two_step(loop_dry_run=True)))
     assert doc["dry_run"] is True and doc["filing"] == "dry_run" and doc["filing_source"] == "workflow"
@@ -136,6 +139,7 @@ def test_lfs_ac7_a_declared_dry_run_files_nothing_at_every_exit(repo: Path, monk
     assert "would_file" in ops(out) and files_nothing(out, host)
 
 
+# LFS-AC7, ROP-AC8
 def test_lfs_ac7_rop_ac8_the_argument_overrides_the_declaration_in_both_directions(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     doc, out, host = drained(thread(repo, monkeypatch, "O-1", two_step(loop_dry_run=True), ("--no-dry-run",)))
@@ -145,6 +149,7 @@ def test_lfs_ac7_rop_ac8_the_argument_overrides_the_declaration_in_both_directio
     assert "would_file" in ops(out) and files_nothing(out, host)
 
 
+# LFS-AC3, ROP-AC12
 def test_lfs_ac3_rop_ac12_the_value_given_last_wins_across_a_resume(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     doc, out, host = drained(thread(repo, monkeypatch, "W-1", None, ("--dry-run",), ("--no-dry-run",)))
@@ -171,6 +176,7 @@ def exit_of(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, log: list[di
     return json.loads(path.read_text())
 
 
+# LFS-AC3
 def test_lfs_ac3_a_thread_with_a_dry_run_start_and_no_value_runs_dry_until_a_call_gives_one(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     legacy = {"kind": "run_started", "dry_run": True}
@@ -184,6 +190,7 @@ def test_lfs_ac3_a_thread_with_a_dry_run_start_and_no_value_runs_dry_until_a_cal
     assert t["dry_run"] is False and t["filing"] == "file" and t["filing_source"] == "default"
 
 
+# LFS-AC3
 def test_lfs_ac3_a_thread_the_engine_started_dry_stays_dry(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     t = exit_of(repo, "G-2", monkeypatch, [{"kind": "run_started"}], RunOptions(), RunSettings(dry_run=True))
     assert t["dry_run"] is True and t["filing_source"] == "argument"
@@ -195,6 +202,7 @@ def lifted_thread(repo: Path, monkeypatch: pytest.MonkeyPatch, task: str, *, run
     return drained(thread(repo, monkeypatch, task, spec, run_argv, resume_argv))
 
 
+# LFS-AC4, PRP-AC16
 def test_lfs_ac4_prp_ac16_no_dry_run_lifts_a_declared_record_for_one_thread(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     before = declare_record(repo, monkeypatch)
@@ -217,6 +225,7 @@ def test_lfs_ac4_prp_ac16_no_dry_run_lifts_a_declared_record_for_one_thread(
     assert (repo / "pkg" / "tempergraph.json").read_bytes() == before
 
 
+# LFS-AC4
 def test_lfs_ac4_the_hold_wins_over_the_argument(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     declare_record(repo, monkeypatch)
     settings_file(loop_autonomy="record")
@@ -230,6 +239,7 @@ def test_lfs_ac4_the_hold_wins_over_the_argument(repo: Path, monkeypatch: pytest
     assert files_nothing(out, host) and {r["reason"] for r in out["results"]} == {"autonomy_record"}
 
 
+# LFS-AC4
 def test_lfs_ac4_the_level_function_lifts_only_a_declared_record(tmp_path: Path) -> None:
     pkg = tmp_path / "pkg"
     pkg.mkdir()
