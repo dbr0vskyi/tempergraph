@@ -490,6 +490,38 @@ def _expired(p: Mapping[str, Any], now: datetime) -> bool:
     return now - at > timedelta(days=float(params.value("outbox.max_age_days")))
 
 
+def _comment_bound(p: dict[str, Any], got: bindings.Binding, source: int, host: CodeHost, outbox: Outbox,
+                   results: list[dict[str, Any]], comments_today: Mapping[tuple[str, int], int] | None,
+                   sent_now: dict[tuple[str, int], int]) -> None:
+    """BND-B11: a waiting create of a bound cause is one comment on the open target within the day bound (BND-B3);
+    its opening sentence is built from the payload, or from its title and `Seen again` line when it lacks the fields."""
+    repo = str(p.get("repo"))
+    fp = p.get("fingerprint")
+    ident = (repo, int(got.number or 0))
+    if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+            params.value("seen_again.max_per_issue_per_day")):
+        results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fp})
+        return
+    comment = str(p.get("comment") or "")
+    m = re.match(r"\[loop\] (.*?): (.*)$", str(p.get("title") or ""))
+    workflow = str(p.get("workflow") or (m.group(1) if m else ""))
+    cause = str(p.get("cause") or (m.group(2) if m else ""))
+    units = p.get("units")
+    if not isinstance(units, list):
+        seen = re.search(r"\*\*Seen again\*\*: .*? at (.*)\.$", comment, re.MULTILINE)
+        units = re.findall(r"`([^`]+)`", seen.group(1)) if seen else []
+    sentence = bindings.opening_sentence(workflow, cause, [str(u) for u in units], source)
+    c = {"op": "comment", "repo": repo, "number": ident[1], "fingerprint": fp,
+         "body": sentence + "\n" + (comment or "**Seen again**"), "queued_at": p.get("queued_at")}
+    try:
+        url = _deliver(host, c)
+    except CodeHostError:
+        outbox.add(p)
+        return
+    sent_now[ident] = sent_now.get(ident, 0) + 1
+    results.append({"op": "commented", "url": url, "fingerprint": fp, "repo": repo, "number": ident[1]})
+
+
 def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[dict[str, Any]], now: datetime,
                comments_today: Mapping[tuple[str, int], int] | None,
                listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]],
@@ -534,6 +566,22 @@ def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[
             closed, cfailed = listed[(repo, "closed")]
             mine = [i for i in closed or [] if _holds(i, lines)]
             last = max(mine, key=_closed_at) if mine and not cfailed else None
+            key = next((ln[len("<!-- tempergraph:cause="):-len(" -->")] for ln in lines
+                        if ln.startswith("<!-- tempergraph:cause=")), "")
+            if (last is not None and key and str(last.get("state_reason") or "") == "duplicate"
+                    and isinstance(last.get("number"), int)):  # BND-B11: a bound cause's waiting create
+                got = bindings.learn(host, repo, key, last, outbox.path.parent, now)
+                if got.state == "unreadable":
+                    outbox.add(p)  # back with its queue time; it expires by ISS-B18
+                    return
+                if got.state == "bound":
+                    if got.learned:
+                        results.append({"op": "bound", "cause_key": key, "repo": repo, "source": int(last["number"]),
+                                        "target": int(got.number or 0)})
+                    if str(got.issue.get("state") or "") == "open":
+                        _comment_bound(p, got, int(last["number"]), host, outbox, results, comments_today, sent_now)
+                        return
+                    last = got.issue  # BND-B5: the closed target decides as a closed loop issue does
             if (last is not None and str(last.get("state_reason") or "") in ("not_planned", "duplicate")
                     and now - _closed_at(last) < timedelta(days=float(params.value("mute.days")))):
                 results.append({"op": "outbox_dropped", "reason": "muted", "fingerprint": p.get("fingerprint")})
@@ -652,7 +700,9 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
         else:
             p = {"op": "create", "repo": repo, "title": title(f), "body": body(ds, regression),
                  "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0],
-                 "comment": comment_body(ds)}  # ISS-B16: a later delivery as a comment carries the same context
+                 "comment": comment_body(ds),  # ISS-B16: a later delivery as a comment carries the same context
+                 "workflow": str(f.get("workflow")), "cause": str(f.get("cause")),  # BND-B11: ids for the opening sentence
+                 "units": list(dict.fromkeys(_unit(x.candidate.finding) for x in ds))}
         try:
             url = _deliver(host, p)
         except CodeHostError:
