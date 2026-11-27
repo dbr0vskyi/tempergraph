@@ -59,12 +59,6 @@ WHEN a new conversation calls `author show <id>` on a stopped session THE skill 
 
 - GIVEN a session stopped after phase 4 WHEN `author show` runs in a new conversation THEN the skill continues at phase 5
 
-### AUT-B8 A program as the solution
-
-WHEN a delivery process with gates, rule sets and reviewers is authored from its own blueprint as the solution THE skill SHALL make its mechanical review rules `check` criteria with `existing:review_rule`, its reading judgements `judge` criteria, and a judgement only a reviewer outside the run can make `none` with the reason naming where it is reviewed, nothing in the engine naming the workflow ([ADR `the-engine-names-no-workflow`](../adr/the-engine-names-no-workflow.adr.md)).
-
-- GIVEN a blueprint whose final outcome is reviewed in a pull request WHEN it is authored THEN "the change is the right one for the product" is `none` with reason "reviewed in the pull request"
-
 ### AUT-B9 A vague outcome
 
 WHEN `author check` finds a vague word with no measure in the statement THE engine SHALL report `criterion-vague` for each, and the skill SHALL offer observable rewrites and not end phase 2 until one is chosen.
@@ -169,7 +163,7 @@ WHEN a workflow's outcome is revised THE engine SHALL open with `author start <w
 
 ## Acceptance criteria
 
-- AUT-AC1 (AUT-B1, AUT-B2, AUT-B3, AUT-B4, AUT-B6, AUT-B8, AUT-B13, AUT-B16, AUT-B17, AUT-B18): A rubric scenario per entry path reaches an approved blueprint with every criterion classified and every `none` explained
+- AUT-AC1 (AUT-B1, AUT-B2, AUT-B3, AUT-B4, AUT-B6, AUT-B13, AUT-B16, AUT-B17, AUT-B18): A rubric scenario per entry path reaches an approved blueprint with every criterion classified and every `none` explained
 - AUT-AC2 (AUT-B14, AUT-B15): The inventory detects each candidate kind on a fixture repository and records no source text in `authoring.json` (scan test)
 - AUT-AC3 (AUT-B5, AUT-B18): In every scenario, a criterion an inventory candidate decides is classified `check` with `existing:<kind>`, unless a recorded decision says otherwise
 - AUT-AC4 (AUT-B11, AUT-B17, AUT-B22, AUT-B23): Nothing under the package folder exists before phase 7's approval (scenario test with a file watch)

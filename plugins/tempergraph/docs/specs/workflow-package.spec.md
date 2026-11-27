@@ -78,12 +78,6 @@ WHEN a step declares a `skill:<plugin>:<name>` capability THE engine SHALL give 
 
 - GIVEN a step declaring `skill:release-notes-tgraph:style` WHEN it runs on `messages-api` THEN it is refused before spend with `capability_unmapped: skill`
 
-### PKG-B8 A delivery workflow as a package
-
-WHEN a workflow ships rule sets, agents, checks and a finalizer THE package SHALL hold its rule sets as skills (one per artifact type), its agents as `agents/*.md`, its checks in `workflow/<module>/checks.py`, its finalizer in `workflow/<module>/finalizer.py`, its outcome in `outcome.json` and one spec per unit in its docs half, its plugin named `<workflow>-tgraph` and its workflow name short, with nothing in the engine naming it (OVR-B10, [ADR `the-engine-names-no-workflow`](../adr/the-engine-names-no-workflow.adr.md)).
-
-- GIVEN any package under `plugins/` WHEN the engine's source and tests are scanned THEN neither names it
-
 ### PKG-B9 Docs drift
 
 WHEN a criterion's text changed in `outcome.json` and not in its unit's spec THE engine SHALL warn `docs-drift` in `dev` mode with the criterion id and both files, and refuse the workflow in `stable` mode.
@@ -204,7 +198,7 @@ WHEN `validate` reads a package whose `tempergraph.json` maps a package-relative
 - PKG-AC6 (PKG-B9, PKG-B21, PKG-B22): The docs check passes on the scaffold's output, and fails with `docs-drift` on each of a unit without a spec, a missing criterion id, an unknown id and a changed text
 - PKG-AC7 (PKG-B21): The content digest changes when any of `outcome.json`, a prompt, a brief, a skill, an agent, a file declared in `step_files`, a Python source or `pyproject.toml` dependencies changes, and not when only `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or a file of another folder that `step_files` does not declare changes
 - PKG-AC9 (PKG-B26): A fixture package whose template is above its `text_budgets` glob's budget fails `validate` with `text-over-budget` and passes under a larger budget, and a negative budget stops the manifest
-- PKG-AC8 (PKG-B8, PKG-B10, PKG-B14): A package whose plugin name lacks the `-tgraph` suffix (or carries `.tgflow`, `-tg-graph`) fails to load with `plugin-name-suffix`; each workflow name rule has a fixture; `run <workflow>-tgraph` starts the same workflow as `run <workflow>`; the scaffold writes `<name>-tgraph`; and no engine source or test names a package
+- PKG-AC8 (PKG-B10, PKG-B14): A package whose plugin name lacks the `-tgraph` suffix (or carries `.tgflow`, `-tg-graph`) fails to load with `plugin-name-suffix`; each workflow name rule has a fixture; `run <workflow>-tgraph` starts the same workflow as `run <workflow>`; the scaffold writes `<name>-tgraph`
 
 ## Open questions
 

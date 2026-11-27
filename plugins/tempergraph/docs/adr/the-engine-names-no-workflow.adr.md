@@ -42,5 +42,4 @@ We will keep every workflow outside the engine, and let a workflow's request int
 - `tests/test_workflow_packages.py` replaces the test that named the examples; the document workflow's scenarios moved into its package; the scans read the names from the repository.
 - The engine's live-check list has one row for "every package's own list"; the delivery workflow's two rows moved into its package.
 - Requests already taken this way: a step's claim about an earlier step is judged instead of pausing ([JDG-B9](../specs/judge-and-verdict.spec.md)); a newer outcome revision records the stamp's audit list anew ([WUP-B19](../specs/workflow-upgrade.spec.md)). Neither names a workflow.
-- Known debt: two engine behaviours describe one workflow, PKG-B8 and AUT-B8. They are examples of the general rules beside them and move to that workflow's package when the engine's specs are migrated to the new spec format. Other specs name that workflow only inside scenarios.
 - Limits a package has found and the engine has not yet answered stay listed in the package's README until an engine change, stated generally, removes them.
