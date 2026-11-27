@@ -76,7 +76,8 @@ def test_agent_rescue_reaches_stats_row_and_report(repo: Path) -> None:  # SUP-B
     seen = Seen()
     ex = paused(repo, "S-1", seen)
     ex.steps, ex.judges = [seen(DRAFT), seen(REVIEW)], [seen(judge()), seen(judge())]
-    code, _, err = cli(repo, ex, "resume", "demo", "S-1", "--decision", "proceed", signals=(CC, False))
+    code, _, err = cli(repo, ex, "resume", "demo", "S-1", "--decision", "proceed", "--reason", "other",
+                       signals=(CC, False))
     assert code == 0, err
     rows = [json.loads(x) for p in sorted((home_path() / "stats").glob("*.jsonl")) for x in p.read_text().splitlines()]
     last = rows[-1]
