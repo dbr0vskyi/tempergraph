@@ -1,0 +1,2 @@
+# EVS-AC7: the fixtures' review record is not ignored by the repository's .gitignore
+!.tempergraph/

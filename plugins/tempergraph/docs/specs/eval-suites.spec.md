@@ -24,9 +24,10 @@ WHEN a workflow package holds suites THE engine SHALL read each with one kind, `
 
 ### EVS-B9 Check cases
 
-WHEN check cases are read from `evals/checks/<unit>/must-pass|must-fail/` THE engine SHALL take each fixture's artifacts, workspace state and git facts, expect `PASS`, `MAYBE` or `FAIL` (for `FAIL` the criterion id the evidence must name).
+WHEN check cases are read from `evals/checks/<unit>/must-pass|must-fail/` THE engine SHALL take each fixture's artifacts, workspace state and git facts, expect `PASS`, `MAYBE` or `FAIL` (for `FAIL` the criterion id the evidence must name). A fixture's git facts are the fields of `GitFacts` in a `git.json` at the top of its folder (`base`, `changed_paths`, and the rest); the file is neither an artifact nor a file of the check's workspace, a fixture with no `git.json` gets the default facts, and a `git.json` that is not a JSON object of `GitFacts` fields is an error that names it.
 
 - GIVEN a must-fail case WHEN its check returns `FAIL` naming another criterion THEN the case fails
+- GIVEN a fixture folder whose `git.json` names a `base` and `changed_paths` WHEN its check runs THEN the check's git facts carry that base and its changed paths; a fixture with no `git.json` gives the check the default facts
 
 ### EVS-B2 Line endings
 
@@ -133,7 +134,7 @@ WHEN `upgrade-check --stamp` runs for a workflow whose `check` regression suite 
 - EVS-AC4 (EVS-B16, EVS-B4): A `needs_person` result counts in no rate and leaves a regression suite `incomplete`
 - EVS-AC5 (EVS-B14): A live suite record contains no request, output or model text, by a canary test
 - EVS-AC6 (EVS-B18): `evals report` and `evals grade` make no model call
-- EVS-AC7 (EVS-B1, EVS-B2, EVS-B6, EVS-B7, EVS-B8, EVS-B9, EVS-B10, EVS-B11, EVS-B12): Fixtures cover a check without a fail case, both line endings, step and workflow trials, each assertion form, graduation, the cap and the stamp refusal
+- EVS-AC7 (EVS-B1, EVS-B2, EVS-B6, EVS-B7, EVS-B8, EVS-B9, EVS-B10, EVS-B11, EVS-B12): Fixtures cover a check without a fail case, both line endings, a fixture's git facts, step and workflow trials, each assertion form, graduation, the cap and the stamp refusal
 
 ## Open questions
 

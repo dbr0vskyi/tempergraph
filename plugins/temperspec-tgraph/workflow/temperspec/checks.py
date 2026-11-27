@@ -2081,10 +2081,51 @@ def _review_session(ctx: Any, criterion: str) -> list[CheckFinding]:
     return unique or [_ok(criterion)]
 
 
+def _read_input(ctx: Any, rel: str) -> str | None:
+    try:
+        return (Path(ctx.workdir) / rel).read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _review_inputs(ctx: Any, changed: list[str]) -> list[CheckFinding]:
+    """IRV-B15 to IRV-B18: `ts-rev-form` fails when the reader was not given the change of the run: a recorded git
+    failure, no base commit, inputs built from another base, or an empty change over a changed file."""
+    fix = "the inputs are rebuilt at the start of the reader's attempt; retry the review"
+    failed = _read_input(ctx, review.FAILED)
+    if failed is not None:
+        return [_find("fail", "ts-rev-form", review.FAILED, f"the reader's inputs could not be built: {failed.strip()}", fix)]
+    base = str(getattr(ctx.git, "base", "") or "") if ctx.git is not None else ""
+    if not base:
+        return [_find("fail", "ts-rev-form", review.BASE, "the run has no base commit, so the reader was given no change",
+                      "run the review in a worktree of a branch, where the engine records the base commit")]
+    found: list[CheckFinding] = []
+    built = (_read_input(ctx, review.BASE) or "").strip()
+    if not built:
+        found.append(_find("fail", "ts-rev-form", review.BASE,
+                           f"the inputs record no base commit; the check's commit is {base} and none was recorded", fix))
+    elif built != base:
+        found.append(_find("fail", "ts-rev-form", review.BASE,
+                           f"the inputs were built from {built}, the check's base commit is {base}", fix))
+    if changed and not (_read_input(ctx, review.CHANGE) or "").strip():
+        found.append(_find("fail", "ts-rev-form", review.CHANGE,
+                           "the reader was given no change although the run changed " + ", ".join(changed[:3]), fix))
+    return found
+
+
 def review_check(ctx: Any) -> Any:
     """ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step: the form of the findings document, the session record,
     commit state, and the step a blocking finding goes back to, as a finding the judge reads (IRV-B9, IRV-B10, IRV-B12)."""
     found: list[CheckFinding] = []
+    base = str(getattr(ctx.git, "base", "") or "") if ctx.git is not None else ""
+    task = str((ctx.request or {}).get("task_id") or "task")
+    try:
+        prepared = set(review.prepared_files(Path(ctx.workdir), base, task)) if base else set()
+    except review.GitFailed:
+        prepared = set()
+    all_changed = [p for p in (ctx.git.changed_paths if ctx.git is not None else ())
+                   if not review.HAND_OVER.search(p) and p not in prepared and not p.startswith(".tempergraph/")]
+    found += _review_inputs(ctx, all_changed)
     text, path = _read(ctx, "findings")
     evidence: list[str] = []
     if text is None:
@@ -2097,11 +2138,7 @@ def review_check(ctx: Any) -> Any:
                   for place, message in problems] or [_ok("ts-rev-form", path)]
         if not problems:
             doc = review.parse_document(text)
-            task = str((ctx.request or {}).get("task_id") or "task")
-            prepared = review.run_base(Path(ctx.workdir), task)[1]
-            changed = [p for p in (ctx.git.changed_paths if ctx.git is not None else ())
-                       if not review.HAND_OVER.search(p) and p not in prepared and not p.startswith(".tempergraph/")]
-            step = review.choose_step(doc.findings, changed)
+            step = review.choose_step(doc.findings, all_changed)
             if step and doc.earlier:
                 step = _first_trip(ctx) or step
             if step:

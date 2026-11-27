@@ -8,6 +8,7 @@ Model-free work in a workflow: a script unit runs a declared command or a workfl
 
 - `audit-rule-catalog.spec.md`: audit rule catalog
 - `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `check-contract-and-command-runs.spec.md`: the base commit a check reads as `git.base` (CHK-B10, CHK-B19)
 - `contracts.spec.md`: shared contracts
 - `gate-and-human.spec.md`: gate and human nodes
 - `local-observability-store.spec.md`: local observability store
@@ -76,6 +77,14 @@ WHEN a script unit runs in a workflow whose model steps use any executor THE eng
 
 - GIVEN one workflow run with every model step on `claude` and again on `antigravity` WHEN a script unit runs THEN its argv, environment rules and records are identical
 
+### SCR-B10 A callable is given the run's base commit
+
+WHEN the engine calls the callable of a script, whether of a script unit or of a `before` or `after` script of a step, THE engine SHALL give it the run's base commit as `git.base`, the commit that a check of the same run reads as `git.base` ([CHK-B10](check-contract-and-command-runs.spec.md)), and the empty string when the run has no base commit ([CHK-B19](check-contract-and-command-runs.spec.md)).
+
+- GIVEN a worktree run that started at commit A WHEN a script unit's callable and the check of a later gate each read `git.base` THEN both read A
+- GIVEN a hybrid step in the same run WHEN the callables of its `before` and `after` scripts read `git.base` THEN each reads A
+- GIVEN a run in place or outside git WHEN a callable reads `git.base` THEN it reads the empty string
+
 ## Acceptance criteria
 
 - SCR-AC1 (SCR-B6, SCR-B5): Every refusal of SCR-B6 has a fixture workflow that fails validation with its own finding code
@@ -83,3 +92,4 @@ WHEN a script unit runs in a workflow whose model steps use any executor THE eng
 - SCR-AC3 (SCR-B2, SCR-B7, SCR-B8): Every scenario of SCR-B2 holds in an offline test
 - SCR-AC4 (SCR-B9, SCR-B3): A cache hit and a miss are told apart in the run log, and a changed input always misses
 - SCR-AC5 (SCR-B7): The run detail document shows each script with phase, exit code, duration and `cached` ([RDD](run-detail-document.spec.md))
+- SCR-AC6 (SCR-B10): In an engine fixture run on a git repository, the callable of a script unit, the callables of a step's `before` and `after` scripts and a gate's check each read the same `git.base`, the commit the run's worktree started from, and in a run in place a callable reads an empty `git.base`
