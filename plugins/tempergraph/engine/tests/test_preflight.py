@@ -222,7 +222,7 @@ def test_ssn_ac2_an_undeclared_option_is_refused_at_preflight_and_effort_only_wa
     assert "option-unsupported" in codes(preflight_of(spec, r))
     spec = with_step(two_step(default_executor="antigravity"), "draft", session_options=SessionOptions(effort="high"))
     rep = preflight_of(spec, r)
-    assert rep.ok and "effort-unsupported" in [w.code for w in rep.warnings]
+    assert rep.ok and "effort-unsupported" in [w.code for w in rep.authoring_warnings]
     assert "option-unsupported" not in codes(rep)
 
 
