@@ -334,6 +334,18 @@ def failing(res: CheckResult) -> list[dict[str, str]]:
             for f in res.findings if f.status == "fail"]
 
 
+MAX_FAILED = 20
+
+
+def failed_ids(res: CheckResult) -> list[str]:
+    """CHK-B26: the criterion ids of the findings with status `fail`, each once, in the check's order, at most 20."""
+    out: list[str] = []
+    for f in res.findings:
+        if f.status == "fail" and f.criterion and f.criterion not in out:
+            out.append(str(f.criterion))
+    return out[:MAX_FAILED]
+
+
 def repeat_key(findings: Sequence[Mapping[str, Any]], evidence: str) -> tuple[Any, ...]:
     """BUD-B16: what two failures must share to be the same: the failing findings by criterion, place and message,
     or the scrubbed evidence text when the check returned no finding."""

@@ -1398,8 +1398,50 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
            "cause": "auto_reopen" if engine else reason or kind}
     if settings.operator_reason:
         row["operator_reason"] = settings.operator_reason
+    if decision is None and not engine:  # HUM-B19: a decision at a pause holds what it answered
+        item = pause.get("item") if pause and kind != "breakpoint" else None
+        row["item"] = str(item) if item else "none"
+        row["answered"] = _answered(run_dir(root, spec.name, task_id) / "run.jsonl", owner, inner, item,
+                                    lookup=kind != "breakpoint")
     Ledger(path=root / "ledger.jsonl").append(row)
     return row
+
+
+ANSWERED_FACTS = ("check", "failed", "environmental", "blockers", "gap", "guard", "claim")
+
+
+def _answered(log: Path, child: str, unit: str, item: Any, *, lookup: bool = True) -> dict[str, Any]:
+    """HUM-B19: the last `check` and `judgement` records of the unit, child and item after the unit's last
+    `unit_entered`, as ids, enums, booleans and numbers; `not recorded` for each fact the log does not hold."""
+    out: dict[str, Any] = {k: "not recorded" for k in ANSWERED_FACTS}
+    if not lookup:
+        return out
+    from tempergraph.run.events import records as log_records
+
+    def mine(r: Mapping[str, Any]) -> bool:
+        return r.get("unit") == unit and (r.get("child") or "") == child
+
+    recs = [r for r in log_records(log) if mine(r)]
+    entered = [i for i, r in enumerate(recs) if r.get("kind") == "unit_entered"]
+    visit = recs[entered[-1] + 1:] if entered else recs
+    same = [r for r in visit if (r.get("item") or None) == (item or None)]
+    check = next((r for r in reversed(same) if r.get("kind") == "check"), None)
+    judged = next((r for r in reversed(same) if r.get("kind") == "judgement"), None)
+    if check is not None:
+        out["check"] = str(check.get("result") or "not recorded")
+        if isinstance(check.get("failed"), list):
+            out["failed"] = [str(x) for x in check["failed"]]
+        if isinstance(check.get("environmental"), bool):
+            out["environmental"] = check["environmental"]
+    if judged is not None:
+        if isinstance(judged.get("blockers"), list):
+            out["blockers"] = [str(x) for x in judged["blockers"]]
+        if isinstance(judged.get("gap"), bool):
+            out["gap"] = judged["gap"]
+        if judged.get("guard") is not None:
+            out["guard"] = str(judged["guard"])
+        out["claim"] = str(judged.get("claim") or "none")
+    return out
 
 
 def _last_unit(values: Mapping[str, Any]) -> str:

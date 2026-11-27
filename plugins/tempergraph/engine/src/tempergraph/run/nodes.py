@@ -1134,7 +1134,8 @@ class EngineNodes:
             cres, notes = self._check(unit, state, {**record, "item": None}, Path(str(merged["path"])))
             record["check"] = checkmod.to_json(cres)
             self.ctx.log.write("check", unit=unit, item=None, attempt=None, result=cres.result,
-                               environmental=cres.environmental, evidence=clip(cres.evidence, 200), notes=notes)
+                               environmental=cres.environmental, failed=checkmod.failed_ids(cres),
+                               evidence=clip(cres.evidence, 200), notes=notes)
             if cres.facts:
                 writes.setdefault("facts", {}).setdefault(unit, {}).update(cres.facts)
             if cres.result == "FAIL":  # MAP-B13: blocked, not retried, the merge kept
@@ -1511,7 +1512,7 @@ class EngineNodes:
         write: dict[str, Any] = {"attempts": {unit: att},
                                  "facts": {unit: facts} if iid and facts else {} if iid else {unit: facts or None}}
         self.ctx.log.write("check", unit=unit, item=iid, attempt=att.get("attempt") if iid else None,  # per item
-                           result=cres.result, environmental=cres.environmental,
+                           result=cres.result, environmental=cres.environmental, failed=checkmod.failed_ids(cres),
                            evidence=clip(cres.evidence, 200), notes=notes)
         if cres.result == "FAIL":
             if cres.environmental:
