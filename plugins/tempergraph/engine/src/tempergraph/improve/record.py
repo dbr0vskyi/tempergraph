@@ -155,6 +155,9 @@ def _child_owner(spec: WorkflowSpec, path: Any, kids: Mapping[str, Any]) -> dict
             "child": str(path), "issue_repository": repo, "issue_labels": labels}
 
 
+ANSWER_FIELDS = ("criteria", "items", "reasons", "decisions", "wait_s_median", "from_unit")
+
+
 def _side(code: str, executor: str | None) -> str:
     side = causemod.cause_of(code).side
     return f"executor:{executor or 'unknown'}" if side == "executor" else side
@@ -287,6 +290,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       "at": at, "request_digest": digest,
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),
+                      **{k: f[k] for k in ANSWER_FIELDS if k in f},  # FRC-B8, FRC-B9, FRC-B13: ids, enums, numbers
                       **({"rerun_of": rerun_of} if rerun_of else {})})
     final = int(row.get("exit_code") or 0) in FINAL_EXITS
     stop = int(row.get("exit_code") or 0) == 4 and row.get("reason") == "person"

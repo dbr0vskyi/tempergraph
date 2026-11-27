@@ -6,6 +6,7 @@ carry one `:<detail>` part (a refusal class, a criterion id, an infra cause, a p
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -56,6 +57,21 @@ CAUSES: dict[str, Cause] = {
                           remedy="The step ran out of time: split it or raise its timeout"),
     "agent_decided": Cause(klass="fault", side="workflow",
                            remedy="An agent answered this pause on its own: add a check or an environmental cause"),
+    "answer_overrode": Cause(klass="fault", side="workflow",
+                             remedy="A decision let this gate's failure through: add or tighten the check or gate "
+                                    "criterion that it overrode"),
+    "upstream_confirmed": Cause(klass="fault", side="workflow",
+                                remedy="A decision confirmed an upstream claim: strengthen the gate criterion or "
+                                       "check of the claimed unit so the fault is caught there"),
+    "retry_passed_unchanged": Cause(klass="fault", side="workflow",
+                                    remedy="A retry passed with nothing changed: the check or gate criterion gives "
+                                           "different answers for one result; make it decide the same way each time"),
+    "retry_same_failure": Cause(klass="fault", side="workflow",
+                                remedy="A retry paused at the same unit again: the check or gate criterion cannot "
+                                       "be met by retrying; change what it asks"),
+    "resume_no_progress": Cause(klass="fault", side="engine",
+                                remedy="A resume started no work and ended where it began: report the engine's "
+                                       "resume of this thread state"),
     "pushback": Cause(klass="fault", side="workflow",
                       remedy="A person rewound, ruled or declined: the gate let this through"),
     "tool_repeat": Cause(klass="fault", side="workflow",
@@ -130,6 +146,112 @@ def cause_of(code: str) -> Cause:
 
 def _unit(session_key: str) -> str:
     return str(session_key).split(".", 1)[0]
+
+
+_WORD = re.compile(r"[^A-Za-z0-9_.:-]")
+_UNCHANGED = ("prepared", "reused", "attached")  # the workspace actions that say nothing changed (WTR-B28)
+
+
+def _median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    v = sorted(values)
+    mid = len(v) // 2
+    return v[mid] if len(v) % 2 else (v[mid - 1] + v[mid]) / 2
+
+
+def _answers(seg: Sequence[Mapping[str, Any]], ivs: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """FRC-B7 to FRC-B13, FRC-B15: the findings of the decisions that answered a pause and started this segment. A
+    row that lacks the fact a cause needs (`answered`, `item`) makes no finding of that cause."""
+    from tempergraph.improve.pause_facts import OPERATOR_REASONS
+
+    groups: dict[tuple[str, str, str], list[Mapping[str, Any]]] = {}
+
+    def put(unit: str, code: str, iv: Mapping[str, Any], from_unit: str = "") -> None:
+        groups.setdefault((unit, code, from_unit), []).append(iv)
+
+    def named(r: Mapping[str, Any], unit: str, child: str, item: str) -> bool:
+        return str(r.get("unit") or "") == unit and str(r.get("child") or "") == child \
+            and str(r.get("item") or "") == item
+
+    workspace = next((r for r in seg if r.get("kind") == "workspace" and r.get("mode") != "in_place"
+                      and r.get("action") in (*_UNCHANGED, "external_change")), None)
+    worked = any(r.get("kind") in ("attempt_start", "script") for r in seg)
+    ended = next((r for r in reversed(seg) if r.get("kind") == "run_exit"), None)
+    idle: list[Mapping[str, Any]] = []  # the decisions of a segment that went nowhere
+    for iv in ivs:
+        word = str(iv.get("decision") or "")
+        base, _, target = word.partition(":")
+        unit = str(iv.get("unit") or "")
+        a = iv.get("answered")
+        if not unit or not base or ("item" not in iv and not isinstance(a, Mapping)):
+            continue  # no decision at a pause: a deadline row, an infra re-open, a row of an older engine
+        reason = _WORD.sub("", str(iv.get("cause") or iv.get("pause_kind") or ""))[:80]
+        if isinstance(a, Mapping):
+            if base == "proceed":
+                kind = None
+                if a.get("check") == "FAIL" and a.get("environmental") is False:
+                    kind = "check"
+                elif a.get("check") == "FAIL" and a.get("environmental") is True:
+                    kind = "environment"
+                elif a.get("gap") is True or iv.get("cause") == "unresolved_gap":
+                    kind = "gap"
+                elif iv.get("pause_kind") == "budget":
+                    kind = "budget"
+                if kind:
+                    put(unit, f"answer_overrode:{kind}", iv)
+            elif base == "back" and target and a.get("claim") == target:
+                put(target, f"upstream_confirmed:{target}", iv, from_unit=unit)
+        if "item" not in iv or base == "stop":
+            continue
+        owner, _, inner = unit.rpartition("/")
+        item = "" if iv.get("item") in (None, "", "none") else str(iv["item"])
+        if base == "retry":
+            for r in seg:
+                if r.get("kind") == "gate" and named(r, inner, owner, item) \
+                        and "PROCEED" in (r.get("token"), r.get("verdict")):
+                    if workspace is not None and workspace.get("action") in _UNCHANGED and reason:
+                        put(unit, f"retry_passed_unchanged:{reason}", iv)
+                    break
+                if r.get("kind") == "pause" and named(r, inner, owner, item):
+                    put(unit, "retry_same_failure", iv)
+                    break
+        if not worked and ended is not None and (
+                ended.get("exit_code") == 4 or any(
+                    r.get("kind") == "pause" and named(r, inner, owner, item)
+                    and str(r.get("reason") or r.get("pause_kind") or "") == str(iv.get("cause") or "")
+                    for r in seg)):
+            idle.append(iv)
+    if idle:
+        groups[(str(idle[0].get("unit")), "resume_no_progress", "")] = idle
+    out = []
+    for (unit, code, from_unit), rows in groups.items():
+        facts = [r["answered"] for r in rows if isinstance(r.get("answered"), Mapping)]
+        f: dict[str, Any] = {"unit": unit, "cause": code, "count": 1 if code == "resume_no_progress" else len(rows)}
+        if code.startswith("answer_overrode"):
+            crit: dict[str, int] = {}
+            for fact in facts:
+                ids = {str(x) for k in ("failed", "blockers") for x in (fact.get(k) if isinstance(fact.get(k), list)
+                                                                        else ())}
+                for cid in ids:
+                    crit[cid] = crit.get(cid, 0) + 1
+            f["criteria"] = dict(sorted(crit.items()))
+            f["items"] = len({str(r["item"]) for r in rows if r.get("item") not in (None, "", "none")})
+        if from_unit:
+            f["from_unit"] = from_unit
+        decisions: dict[str, int] = {}
+        reasons: dict[str, int] = {}
+        waits = []
+        for r in rows:
+            w = str(r.get("decision") or "").split(":", 1)[0]
+            decisions[w] = decisions.get(w, 0) + 1
+            given = r.get("operator_reason")
+            why = given if given in OPERATOR_REASONS else "not given"
+            reasons[why] = reasons.get(why, 0) + 1
+            if isinstance(r.get("wait_s"), int | float) and not isinstance(r.get("wait_s"), bool):
+                waits.append(float(r["wait_s"]))
+        out.append({**f, "decisions": decisions, "reasons": reasons, "wait_s_median": _median(waits)})
+    return out
 
 
 def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping[str, Any]] = (),
@@ -252,7 +374,8 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
         child = t["child"]
         add(t["unit"], f"trip_back:{t['to']}", n=t["count"])
     child = ""  # an intervention or a grant belongs to the run's own unit of that name
-    for iv in interventions:
+    ivs = list(interventions)
+    for iv in ivs:
         c = iv.get("caller") or {}
         rescue = any(t.get("class") == "rescue" for t in iv.get("touches") or [])
         steer = [t for t in iv.get("touches") or [] if t.get("class") == "steer"]
@@ -272,7 +395,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
         add(str(g.get("unit") or ""), f"grant_missing:{g.get('capability') or g.get('prefix')}" if g.get("used")
             else f"grant_unused:{g.get('capability') or g.get('prefix')}")
     return [{"unit": u, "cause": code, "count": n, **({"child": ch} if ch else {}),
-             **({"executor": ex} if ex else {}),
-             **({"class": classes[(ch, u, code, ex)]} if (ch, u, code, ex) in classes else {}),
-             **({"executor_version": versions[(ch, u, code, ex)]} if (ch, u, code, ex) in versions else {})}
-            for (ch, u, code, ex), n in out.items()]
+            **({"executor": ex} if ex else {}),
+            **({"class": classes[(ch, u, code, ex)]} if (ch, u, code, ex) in classes else {}),
+            **({"executor_version": versions[(ch, u, code, ex)]} if (ch, u, code, ex) in versions else {})}
+            for (ch, u, code, ex), n in out.items()] + _answers(records, ivs)
