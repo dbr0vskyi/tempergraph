@@ -83,10 +83,11 @@ WHEN a pinned thread finishes, or a person runs `resume --unpin` after the pinne
 
 ### MIG-B15 A workflow changed under a thread
 
-WHEN a thread resumes and the workflow's current `content_digest` differs from the last `history` entry's (the declared version where no package is loaded) THE engine SHALL test that the pending unit (the one paused at or entered next) exists with the same name and kind, every completed unit still exists so a `back` decision or loop-back can find it, every artifact key a completed unit produced and every one a pending or later unit reads is still declared or recorded, and every input parameter the new version requires has a value in the resolved input; when all pass, resume on the new content with `moved_from` carrying both workflow versions and one `workflow_changed` notice naming the units whose prompts, gates or limits changed, edges, routes, prompts, criteria, limits and new units after the pending one free to differ; when any fails, exit 2 listing the breaks, naming as remedies reinstalling the `workflow_version` the thread started on or starting a new thread, and write nothing; an unreadable file is validation's own error and the resume exits 2.
+WHEN a thread resumes and the workflow's current `content_digest` differs from the last `history` entry's (the declared version where no package is loaded) THE engine SHALL test that the pending unit (the one paused at or entered next) exists with the same name and kind, every completed unit still exists so a `back` decision or loop-back can find it, every artifact key a completed unit produced and every one a pending or later unit reads is still declared or recorded (a unit whose artifacts a trip back cleared is not a completed unit for this test: it runs again before any reader of its keys), and every input parameter the new version requires has a value in the resolved input; when all pass, resume on the new content with `moved_from` carrying both workflow versions and one `workflow_changed` notice naming the units whose prompts, gates or limits changed, edges, routes, prompts, criteria, limits and new units after the pending one free to differ; when any fails, exit 2 listing the breaks, naming as remedies starting a new thread and, for a workflow loaded from a package registered from a local folder, reinstalling the content version the thread ran on from that folder, and write nothing; an unreadable file is validation's own error and the resume exits 2.
 
 - GIVEN a passing fixture for each test WHEN resumed THEN `workflow_changed` is recorded
 - GIVEN a failing fixture for each test WHEN resumed THEN it refuses with its own message and writes nothing
+- GIVEN a thread of three units where the third reads a key the second produces, a BACK from the third to the first, and the workflow content changed before the second ran again WHEN resumed THEN it resumes with one `workflow_changed` notice and is not refused for the second unit's unrecorded key
 
 ### MIG-B3 A workflow change that keeps the path
 
@@ -133,7 +134,7 @@ WHEN the current engine resumes the fixture checkpoints of every earlier release
 ## Acceptance criteria
 
 - MIG-AC1 (MIG-B12, MIG-B1, MIG-B2, MIG-B8, MIG-B16): Every case of MIG-B12 and MIG-B2 is a test with fixture checkpoints
-- MIG-AC2 (MIG-B15, MIG-B3, MIG-B4): Each test of MIG-B15 has a failing fixture that refuses with its own message and writes nothing, and a passing fixture that records `workflow_changed`
+- MIG-AC2 (MIG-B15, MIG-B3, MIG-B4): Each test of MIG-B15 has a failing fixture that refuses with its own message and writes nothing, and a passing fixture that records `workflow_changed`; a trip-back-cleared unit's unrecorded key does not refuse the resume
 - MIG-AC3 (MIG-B9, MIG-B10, MIG-B5): Every layout migration step has a before and after fixture tree, is idempotent, and a fault injected mid-step restores the backup
 - MIG-AC4 (MIG-B9): A read-only verb run against an older layout leaves it unchanged (hash test)
 - MIG-AC5 (MIG-B13, MIG-B14): Two engines of different checkpoint formats never open the same database file (test with both formats in one state root)

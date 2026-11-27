@@ -21,6 +21,7 @@ A gate's deterministic check is the cheap half of every gate: a FAIL retries the
 - `visit-session-record.spec.md`: a check is given the calls of every session of the visit (VSR-B1)
 - `workflow-model.spec.md`: workflow model and validation
 - `workflow-package.spec.md`: workflow package
+- `executor-interface.spec.md`: launcher-owned workspace paths (EXI-B30)
 - `workspace-and-concurrency.spec.md`: the state root outside git (WSP-B15)
 - `worktree-mode.spec.md`: base (WTR-B21); records (WTR-B24)
 

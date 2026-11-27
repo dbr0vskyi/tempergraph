@@ -165,6 +165,27 @@ def _aliases(v: object) -> list[str]:
     return [v] if isinstance(v, str) else [str(x) for x in v]  # type: ignore[attr-defined]
 
 
+def _remove_launcher_owned(workdir: Path, owned: tuple[str, ...], before: Any) -> None:
+    """EXI-B30: remove launcher-owned paths that did not exist before the session started."""
+    if not owned:
+        return
+    import shutil
+
+    before_paths: set[str] = set()
+    if hasattr(before, "status") and before.status:
+        before_paths = {ln[3:] for ln in before.status.splitlines() if ln}
+    for rel in owned:
+        p = workdir / rel
+        if not p.exists():
+            continue
+        before_present = any(bp.startswith(rel) for bp in before_paths)
+        if not before_present:
+            if p.is_dir():
+                shutil.rmtree(p, ignore_errors=True)
+            else:
+                p.unlink(missing_ok=True)
+
+
 class EngineNodes:
     def __init__(self, ctx: RunContext) -> None:
         self._deferred: list[dict[str, Any]] = []
@@ -675,6 +696,7 @@ class EngineNodes:
             if reason:
                 raise Drain(reason)
         after = gitmod.fingerprint(workdir)
+        _remove_launcher_owned(workdir, caps.launcher_owned_paths, before)  # EXI-B30: clean up paths the launcher created
         foreign = self._foreign_worktrees(unit, iid, key, known, worktrees_before)  # WTR-B26: recorded, never touched
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False
@@ -1635,13 +1657,22 @@ class EngineNodes:
 
     def _check_context(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], workdir: Path,
                        sub: str = "") -> checkmod.CheckContext:
+        from tempergraph.run.guard import filter_owned_changed_paths
+
         u = self.ctx.spec.units[unit]
+        st = u.step
+        ex_name = (st.executor if st else None) or self.ctx.spec.default_executor
+        try:
+            owned = self.ctx.registry.get(ex_name).capabilities().launcher_owned_paths
+        except Exception:  # noqa: BLE001 - registry miss or unknown executor: treat as no owned paths
+            owned = ()
         facts = {k: v for k, v in (state.get("facts") or {}).items() if k != unit}
         gfacts = checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
                                     (state.get("workspace") or {}).get("base_branch") or "")
         return checkmod.CheckContext(
-            changed_paths=checkmod.changed_paths(
+            changed_paths=filter_owned_changed_paths(checkmod.changed_paths(
                 workdir, gfacts, self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "manifest.json"),
+                owned),
             unit=unit, item=att.get("item"), workdir=workdir, request=state.get("request") or {},
             attempt=int(att.get("attempt", 1)),
             visit=int(att.get("visit", 1)), main_checkout=self.ctx.main_checkout,
@@ -1856,7 +1887,7 @@ class EngineNodes:
         after = gitmod.fingerprint(workdir)
         gr = guard(views, res.tool_calls, before, after, workspace_mode=(state.get("workspace") or {}).get(
             "mode", "in_place"), step_session_id=att.get("session_id"), judge_session_id=res.session_id,
-            reports_actions=caps.reports_actions)
+            reports_actions=caps.reports_actions, launcher_owned_paths=caps.launcher_owned_paths)
         if gr.status == "discarded":
             judgement = None
         reread: dict[str, Any] | None = None
@@ -1968,7 +1999,8 @@ class EngineNodes:
             def discarded(res: SessionResult) -> bool:
                 return guard(views, res.tool_calls, before, gitmod.fingerprint(workdir), workspace_mode=mode,
                              step_session_id=att.get("session_id"), judge_session_id=res.session_id,
-                             reports_actions=caps.reports_actions).status == "discarded"
+                             reports_actions=caps.reports_actions,
+                             launcher_owned_paths=caps.launcher_owned_paths).status == "discarded"
 
             found = auditmod.run(session, areq, gate=g, check=cres, executor=name, discarded=discarded)
         except Exception:  # noqa: BLE001 - an audit that cannot run changes nothing

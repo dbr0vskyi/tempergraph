@@ -650,6 +650,7 @@ class Capabilities:
     tool_map: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     version: str = ""
     unattended_credentials: frozenset[str] = frozenset()  # kinds it uses with nobody present (TCK-B18, TCK-B19)
+    launcher_owned_paths: tuple[str, ...] = ()  # EXI-B30: paths the launcher creates; excluded from guard and changed_paths
 
     def maps(self, capability: str) -> bool:
         if capability in self.tool_map:
