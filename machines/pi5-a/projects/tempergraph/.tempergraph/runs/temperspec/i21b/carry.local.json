@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "on": true,
+  "remote": "origin",
+  "state": "pushed",
+  "branch": "tempergraph/state/temperspec/i21b",
+  "seq": 311,
+  "commit": "6e99a09841fd390c2ba17802d96168c780ac550a",
+  "lease": null,
+  "error": null,
+  "takeover": false
+}

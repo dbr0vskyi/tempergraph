@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "started_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-338fd451866c"
+  },
+  "last_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-338fd451866c"
+  },
+  "pinned": null,
+  "history": [
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-338fd451866c",
+      "workflow_version": "0.1.0+e0e2769b32e5",
+      "shape_digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038",
+      "checkpoint_format": 1,
+      "units": {
+        "prepare": {
+          "kind": "script",
+          "digest": "6c09bf067b70f517",
+          "produces": []
+        },
+        "setup_route": {
+          "kind": "route",
+          "digest": "99e3ee52c6fab81b",
+          "produces": []
+        },
+        "list_components": {
+          "kind": "script",
+          "digest": "d9dbd5bd9dab7761",
+          "produces": []
+        },
+        "read_component": {
+          "kind": "map",
+          "digest": "1906c885dc48815a",
+          "produces": [
+            "component_finding"
+          ]
+        },
+        "setup": {
+          "kind": "step",
+          "digest": "d15d7d21c548af5b",
+          "produces": [
+            "overview",
+            "setup_note"
+          ]
+        },
+        "triage": {
+          "kind": "step",
+          "digest": "4b00fabddeff4b9d",
+          "produces": [
+            "covered",
+            "gaps",
+            "route",
+            "triage_note"
+          ]
+        },
+        "discovery_short": {
+          "kind": "step",
+          "digest": "09ca84ee8570e1dc",
+          "produces": [
+            "handoff",
+            "settled"
+          ]
+        },
+        "owner_questions": {
+          "kind": "script",
+          "digest": "4ea5f0dd84a9813a",
+          "produces": []
+        },
+        "ask_route": {
+          "kind": "route",
+          "digest": "e552cc2e16d0bb07",
+          "produces": []
+        },
+        "ask_owner": {
+          "kind": "ask",
+          "digest": "ebba9cf4e9391e83",
+          "produces": []
+        },
+        "read_gap": {
+          "kind": "map",
+          "digest": "20ff1d8634ea7962",
+          "produces": [
+            "gap_finding"
+          ]
+        },
+        "discovery": {
+          "kind": "step",
+          "digest": "bab9d1152f94a3c4",
+          "produces": [
+            "handoff"
+          ]
+        },
+        "plan": {
+          "kind": "step",
+          "digest": "359a8199549c043a",
+          "produces": [
+            "complexity",
+            "plan"
+          ]
+        },
+        "code_mode": {
+          "kind": "switch",
+          "digest": "8b449c46b6e34881",
+          "produces": []
+        },
+        "expand": {
+          "kind": "step",
+          "digest": "baced8b2a7eeb83f",
+          "produces": [
+            "phases"
+          ]
+        },
+        "phase": {
+          "kind": "map",
+          "digest": "275c81c863954474",
+          "produces": [
+            "phase_note"
+          ]
+        },
+        "code": {
+          "kind": "step",
+          "digest": "588681573152f487",
+          "produces": [
+            "code_report",
+            "tests_passed"
+          ]
+        },
+        "code_join": {
+          "kind": "script",
+          "digest": "f9cb728937dfeea2",
+          "produces": []
+        },
+        "outcome": {
+          "kind": "step",
+          "digest": "cf893fdb1ba5aa2e",
+          "produces": []
+        }
+      },
+      "started_at": "2026-11-26T02:01:55.364Z"
+    }
+  ]
+}

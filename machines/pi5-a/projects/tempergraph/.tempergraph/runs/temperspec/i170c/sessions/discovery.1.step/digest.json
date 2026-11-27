@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 405,
+  "peak_context": 561632,
+  "turns_over_200k": 304,
+  "tokens_before_first_write": 412093,
+  "files_reread": 26,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 68,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 2.301
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.25
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 99,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 7.785
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.064
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 30,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.776
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "33c54e9a4e895744",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 132,
+      "last_turn": 134
+    },
+    {
+      "tool": "Read",
+      "target": "33c54e9a4e895744",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 195,
+      "last_turn": 197
+    },
+    {
+      "tool": "Edit",
+      "target": "5738a7515161dcd5",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 233,
+      "last_turn": 237
+    },
+    {
+      "tool": "Edit",
+      "target": "5738a7515161dcd5",
+      "error_class": null,
+      "count": 8,
+      "first_turn": 246,
+      "last_turn": 259
+    },
+    {
+      "tool": "Edit",
+      "target": "91e6c531d613ef08",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 268,
+      "last_turn": 270
+    },
+    {
+      "tool": "Edit",
+      "target": "748fa4a9611d2017",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 282,
+      "last_turn": 287
+    },
+    {
+      "tool": "Edit",
+      "target": "4d6564421a6a533e",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 290,
+      "last_turn": 294
+    },
+    {
+      "tool": "Read",
+      "target": "090f9dd00cd699ba",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 321,
+      "last_turn": 324
+    },
+    {
+      "tool": "Edit",
+      "target": "68f64951b0d5c131",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 357,
+      "last_turn": 363
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 230,
+      "minutes": 19.7,
+      "tokens": 908
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "0e79a48b3634331b",
+    "1d4bb4e69d117cfb",
+    "1f0e8794ea84f381",
+    "67afeb18b0a4b2ec",
+    "67c23d3e6612208c",
+    "9f6c68ab85ce78ba"
+  ]
+}

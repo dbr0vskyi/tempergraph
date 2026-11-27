@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 357,
+  "peak_context": 495655,
+  "turns_over_200k": 249,
+  "tokens_before_first_write": 395168,
+  "files_reread": 20,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 69,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.245
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.198
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 95,
+      "failures": 1,
+      "refused": 2,
+      "duration_s": 2.72
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 28,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.306
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.032
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "f7293cd44aa33197",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 220,
+      "last_turn": 222
+    },
+    {
+      "tool": "Edit",
+      "target": "93e87b3c984830e0",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 225,
+      "last_turn": 228
+    },
+    {
+      "tool": "Edit",
+      "target": "e379a4523f235111",
+      "error_class": null,
+      "count": 5,
+      "first_turn": 235,
+      "last_turn": 242
+    },
+    {
+      "tool": "Edit",
+      "target": "79934606eb99fe7c",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 249,
+      "last_turn": 252
+    },
+    {
+      "tool": "Edit",
+      "target": "ba5e4a24663a3ac9",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 269,
+      "last_turn": 271
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 220,
+      "minutes": 19.0,
+      "tokens": 1098
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "147d286e89a1fe15",
+    "30ea1eee61f31ffc",
+    "4bb9691274e604e4",
+    "52b266d6c15a5485",
+    "ad3371ace2e2dc68",
+    "ca1600ec5e0c8930",
+    "ecc26c5cebeef066"
+  ]
+}

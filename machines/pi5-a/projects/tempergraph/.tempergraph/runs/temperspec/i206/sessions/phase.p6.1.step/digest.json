@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p6.1.step",
+  "kind": "step",
+  "unit": "phase",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 56,
+  "peak_context": 51272,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 33109,
+  "files_reread": 3,
+  "tools": {
+    "Grep": {
+      "capability": "search",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.239
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.153
+    },
+    "Read": {
+      "capability": "read",
+      "calls": 9,
+      "failures": 1,
+      "refused": 2,
+      "duration_s": 1.248
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 6,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 127.368
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 21,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.804
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.091
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [],
+  "idle_spans": [
+    {
+      "first_turn": 31,
+      "last_turn": 55,
+      "minutes": 12.9,
+      "tokens": 218
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 4,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "2f973950a11d563a",
+    "3fe07f985ab10298",
+    "ce767670ca57f544",
+    "e70e1d2a67b0c771",
+    "eb238d854fa923ab"
+  ],
+  "_wrote": [
+    "121cdb4ead2d16ea",
+    "193e8be6cf8d128a",
+    "32790c2a4422ec84",
+    "35491dbe782391b4",
+    "45a0dfd75072a17e",
+    "480adaad971c4055",
+    "4c05e4c891f0c81c",
+    "525a9d066e1900ab",
+    "551c3fe6ef61a8f6",
+    "6ba7a3a5868ed9e9",
+    "6e6af08d0fd73685",
+    "7f48c0000be74290",
+    "85d46b1a0349e9e8",
+    "a3704ee8f0faa50a",
+    "b6ae26e3b57ae8e3",
+    "bb4b5890b60f2161",
+    "c15e290bf14fa116",
+    "d0fc4fab17376415",
+    "d845ddb6d69267c0",
+    "e09a4c5e23d66ac3",
+    "ed23217260baea6c",
+    "f4aee50436d5a15c"
+  ]
+}

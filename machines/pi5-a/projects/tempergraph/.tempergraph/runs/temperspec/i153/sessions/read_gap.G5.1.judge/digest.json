@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G5.1.judge",
+  "kind": "judge",
+  "unit": "read_gap",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 11,
+  "peak_context": 18988,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 1,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.744
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.22
+    }
+  },
+  "declared_unused": [
+    "list",
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "reads": [
+    "57e1cc8101fd3b3e",
+    "72b804184c45a2c0",
+    "d214eb1d74724605"
+  ],
+  "changed_total": 0,
+  "changed_read": 0,
+  "_commands": [],
+  "_wrote": []
+}

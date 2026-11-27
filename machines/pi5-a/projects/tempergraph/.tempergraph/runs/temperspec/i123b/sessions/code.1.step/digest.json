@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.step",
+  "kind": "step",
+  "unit": "code",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 81,
+  "peak_context": 71288,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 49889,
+  "files_reread": 5,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 12,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.555
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.111
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 10,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 627.294
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.114
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 9,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.463
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.118
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "b83583aa8d42549f",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 55,
+      "last_turn": 57
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 25,
+      "last_turn": 51,
+      "minutes": 39.0,
+      "tokens": 159
+    },
+    {
+      "first_turn": 64,
+      "last_turn": 79,
+      "minutes": 24.1,
+      "tokens": 102
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 5,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "10b01d26896311d4",
+    "1625913504b043eb",
+    "2c50707aabf7c44e",
+    "691f212565ec34a8",
+    "eb238d854fa923ab"
+  ],
+  "_wrote": [
+    "17c8d6795a1d6bc1",
+    "18fdf7f5b681adae",
+    "65f60614f204cc99",
+    "99e77062e0cc7318",
+    "e2b6ae1391359871",
+    "fced02670c20bc43"
+  ]
+}

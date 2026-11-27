@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "on": true,
+  "remote": "origin",
+  "state": "pushed",
+  "branch": "tempergraph/state/temperspec/i153",
+  "seq": 315,
+  "commit": "fabf32e26d646205569d76065f09c1dfd43e576d",
+  "lease": null,
+  "error": null,
+  "takeover": false
+}

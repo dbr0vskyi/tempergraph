@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.judge",
+  "kind": "judge",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/Projects/homelab/tempergraph/.tempergraph/runs/temperspec/i123/sessions/discovery.2.judge/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-25T15:29:15.277Z",
+  "ended_at": "2026-11-25T15:29:48.539Z",
+  "session_id": "2b8d6f0a-042c-43a2-985f-5de94da5755e",
+  "model": "claude-sonnet-5-5",
+  "pgid": 58985,
+  "cli_version": "2.1.332"
+}

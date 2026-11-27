@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "started_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-3d01d61d4214"
+  },
+  "last_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-038deee5af5d"
+  },
+  "pinned": null,
+  "history": [
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-3d01d61d4214",
+      "workflow_version": "0.1.0+e0e2769b32e5",
+      "shape_digest": "af10a279a7aa48ae0e70bea4212e4bc273728af0f93cc86cdd17b107e10c7e9b",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T03:02:17.692Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-3d01d61d4214",
+      "workflow_version": "0.1.0+e0e2769b32e5",
+      "shape_digest": "af10a279a7aa48ae0e70bea4212e4bc273728af0f93cc86cdd17b107e10c7e9b",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T03:48:55.681Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-3d01d61d4214",
+      "workflow_version": "0.1.0+e0e2769b32e5",
+      "shape_digest": "af10a279a7aa48ae0e70bea4212e4bc273728af0f93cc86cdd17b107e10c7e9b",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T05:29:40.677Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-038deee5af5d",
+      "workflow_version": "0.1.0+b85aa6864224",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
+      "units": {
+        "prepare": {
+          "kind": "script",
+          "digest": "6c09bf067b70f517",
+          "produces": []
+        },
+        "setup_route": {
+          "kind": "route",
+          "digest": "99e3ee52c6fab81b",
+          "produces": []
+        },
+        "list_components": {
+          "kind": "script",
+          "digest": "d9dbd5bd9dab7761",
+          "produces": []
+        },
+        "read_component": {
+          "kind": "map",
+          "digest": "1906c885dc48815a",
+          "produces": [
+            "component_finding"
+          ]
+        },
+        "setup": {
+          "kind": "step",
+          "digest": "d15d7d21c548af5b",
+          "produces": [
+            "overview",
+            "setup_note"
+          ]
+        },
+        "triage": {
+          "kind": "step",
+          "digest": "4b00fabddeff4b9d",
+          "produces": [
+            "covered",
+            "gaps",
+            "route",
+            "triage_note"
+          ]
+        },
+        "discovery_short": {
+          "kind": "step",
+          "digest": "09ca84ee8570e1dc",
+          "produces": [
+            "handoff",
+            "settled"
+          ]
+        },
+        "owner_questions": {
+          "kind": "script",
+          "digest": "4ea5f0dd84a9813a",
+          "produces": []
+        },
+        "ask_route": {
+          "kind": "route",
+          "digest": "e552cc2e16d0bb07",
+          "produces": []
+        },
+        "ask_owner": {
+          "kind": "ask",
+          "digest": "ebba9cf4e9391e83",
+          "produces": []
+        },
+        "read_gap": {
+          "kind": "map",
+          "digest": "20ff1d8634ea7962",
+          "produces": [
+            "gap_finding"
+          ]
+        },
+        "discovery": {
+          "kind": "step",
+          "digest": "bab9d1152f94a3c4",
+          "produces": [
+            "handoff"
+          ]
+        },
+        "plan": {
+          "kind": "step",
+          "digest": "359a8199549c043a",
+          "produces": [
+            "complexity",
+            "plan"
+          ]
+        },
+        "code_mode": {
+          "kind": "switch",
+          "digest": "8b449c46b6e34881",
+          "produces": []
+        },
+        "expand": {
+          "kind": "step",
+          "digest": "baced8b2a7eeb83f",
+          "produces": [
+            "phases"
+          ]
+        },
+        "phase": {
+          "kind": "map",
+          "digest": "275c81c863954474",
+          "produces": [
+            "phase_note"
+          ]
+        },
+        "code": {
+          "kind": "step",
+          "digest": "588681573152f487",
+          "produces": [
+            "code_report",
+            "tests_passed"
+          ]
+        },
+        "code_join": {
+          "kind": "route",
+          "digest": "d9031d08d2529e4f",
+          "produces": []
+        },
+        "independent_review": {
+          "kind": "step",
+          "digest": "dcafce222bde4a25",
+          "produces": [
+            "findings"
+          ]
+        },
+        "outcome": {
+          "kind": "step",
+          "digest": "a0d1c59865863c90",
+          "produces": []
+        }
+      },
+      "started_at": "2026-11-26T09:33:41.286Z"
+    }
+  ]
+}

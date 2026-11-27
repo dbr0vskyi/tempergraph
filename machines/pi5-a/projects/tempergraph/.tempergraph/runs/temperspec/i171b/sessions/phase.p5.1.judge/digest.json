@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p5.1.judge",
+  "kind": "judge",
+  "unit": "phase",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 9,
+  "peak_context": 17743,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 1,
+  "tools": {
+    "Grep": {
+      "capability": "search",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.193
+    },
+    "Read": {
+      "capability": "read",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.174
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "list",
+    "shell",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "reads": [
+    "69d3a9859307acef",
+    "a776bad7a3b113a8",
+    "e1dbd16d688d8225"
+  ],
+  "changed_total": 3,
+  "changed_read": 3,
+  "_commands": [],
+  "_wrote": []
+}

@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "session_key": "code.8.judge",
+  "kind": "judge",
+  "unit": "code",
+  "attempt": 8,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 7,
+  "peak_context": 32571,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Grep": {
+      "capability": "search",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.109
+    },
+    "Read": {
+      "capability": "read",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.233
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "list",
+    "shell",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "reads": [
+    "b99939618cd8fe94"
+  ],
+  "changed_total": 2,
+  "changed_read": 1,
+  "_commands": [],
+  "_wrote": []
+}

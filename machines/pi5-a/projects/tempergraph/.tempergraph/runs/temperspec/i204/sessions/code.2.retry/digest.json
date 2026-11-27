@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.retry",
+  "kind": "retry",
+  "unit": "code",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 131,
+  "peak_context": 74626,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 64398,
+  "files_reread": 35,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 41,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 5.999
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 35,
+      "failures": 2,
+      "refused": 0,
+      "duration_s": 4640.54
+    },
+    "Monitor": {
+      "capability": null,
+      "calls": 1,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 0.004
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.153
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.434
+    },
+    "TaskStop": {
+      "capability": null,
+      "calls": 1,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 0.0
+    }
+  },
+  "declared_unused": [
+    "list",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "ca0a6c1f74bce978",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 26,
+      "last_turn": 30
+    },
+    {
+      "tool": "Edit",
+      "target": "33e04e780be677db",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 91,
+      "last_turn": 93
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 87,
+      "minutes": 48.1,
+      "tokens": 904
+    },
+    {
+      "first_turn": 93,
+      "last_turn": 129,
+      "minutes": 31.7,
+      "tokens": 424
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 36,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "10b01d26896311d4",
+    "17f7764e86760d5d",
+    "285f6d81267cc20c",
+    "2ac6b3ae859c5c02",
+    "31d121d2dd44f7ce",
+    "338f11602aea45b9",
+    "39453f4bab7be266",
+    "6b232d3d6d15be33",
+    "8071378d6ddda733",
+    "821ab5a0d50ef5ab",
+    "833fd0e079c53c82",
+    "9530af55fe611084",
+    "9986f3e50d38ae1f",
+    "a2af7a58b78feaa9",
+    "b00b696b3c02125a",
+    "b20b8ae0f57bd708",
+    "b87e9ad0f87489d3",
+    "bbe49cc07047e175",
+    "ce767670ca57f544",
+    "d062606cdf226318",
+    "dcd92d0a857da84e",
+    "e0252006b3d336bf",
+    "ea0e0790b5c25800",
+    "eb238d854fa923ab",
+    "f25fde7ddb73736f",
+    "f464dea65fd3003d",
+    "f46b42479b8c8450",
+    "fe65be2d58a8ea40"
+  ],
+  "_wrote": [
+    "6c0698d0b959dacf",
+    "d7467fe3457df13a"
+  ],
+  "prior_overlap": 0.667
+}

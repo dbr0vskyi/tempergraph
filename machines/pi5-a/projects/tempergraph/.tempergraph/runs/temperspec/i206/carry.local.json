@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "on": true,
+  "remote": "origin",
+  "state": "pushed",
+  "branch": "tempergraph/state/temperspec/i206",
+  "seq": 506,
+  "commit": "cabfe5c52cea3a45eca242a7d1a209f843378219",
+  "lease": {
+    "machine": "15f7edd4-bb6f-48aa-bac7-f9aec1a01082",
+    "process": 1596973,
+    "since": "2026-11-27T05:53:38.419Z"
+  },
+  "error": null,
+  "takeover": false
+}

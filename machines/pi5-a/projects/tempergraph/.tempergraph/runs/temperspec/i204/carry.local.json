@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "on": false,
+  "remote": "origin",
+  "state": "finished",
+  "branch": "tempergraph/state/temperspec/i204",
+  "seq": 202,
+  "commit": "5bf84a8d7c7c7419d011ede73b2bd507af0ca4fb",
+  "lease": null,
+  "error": null,
+  "takeover": false
+}

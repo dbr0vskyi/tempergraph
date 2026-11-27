@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.step",
+  "kind": "step",
+  "unit": "triage",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 25,
+  "peak_context": 57493,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 53304,
+  "files_reread": 2,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 9,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.271
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.087
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 6,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.2
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.06
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 14,
+      "last_turn": 18
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "01ddfa04b9e58ef4"
+  ]
+}

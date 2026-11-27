@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p2.1.step",
+  "kind": "step",
+  "unit": "phase",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 57,
+  "peak_context": 81502,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 64534,
+  "files_reread": 4,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 10,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.097
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 6,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.533
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 27,
+      "failures": 8,
+      "refused": 0,
+      "duration_s": 2.06
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 2,
+      "failures": 1,
+      "refused": 2,
+      "duration_s": 28.839
+    }
+  },
+  "declared_unused": [
+    "list",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "463d81797d34ea44",
+      "error_class": null,
+      "count": 5,
+      "first_turn": 16,
+      "last_turn": 21
+    },
+    {
+      "tool": "Edit",
+      "target": "29c0e2fe92b3df71",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 31,
+      "last_turn": 34
+    },
+    {
+      "tool": "Edit",
+      "target": "68b710bf07c016ce",
+      "error_class": "not_found",
+      "count": 8,
+      "first_turn": 40,
+      "last_turn": 47
+    },
+    {
+      "tool": "Edit",
+      "target": "68b710bf07c016ce",
+      "error_class": null,
+      "count": 8,
+      "first_turn": 49,
+      "last_turn": 56
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "14a9e18e764e4321",
+    "858f62eea170f22d"
+  ],
+  "_wrote": [
+    "4c7a38072e19f425",
+    "544abc4c94441191",
+    "b6186be5f977e474",
+    "b99939618cd8fe94",
+    "e1dbd16d688d8225"
+  ]
+}

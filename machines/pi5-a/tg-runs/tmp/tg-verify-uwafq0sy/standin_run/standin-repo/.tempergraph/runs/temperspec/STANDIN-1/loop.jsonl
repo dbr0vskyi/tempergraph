@@ -1,0 +1,14 @@
+{"ts": "2026-11-26T01:08:41.693Z", "kind": "review_session", "session_key": "review.outcome.1.judge.1", "reviewed": "outcome.1.judge", "ok": true, "executor": "claude", "alias": "medium", "effort": "max"}
+{"ts": "2026-11-26T01:08:41.694Z", "kind": "review_done", "session_key": "outcome.1.judge", "observations": [{"category": "judge_unread", "turns": [1], "remedy_class": "brief", "confidence": 0.6, "check": "unsupported", "corroborated": false}], "kept": 0, "none_found": false, "cost_usd": 0.019889, "reported": true}
+{"ts": "2026-11-26T01:08:48.976Z", "kind": "review_session", "session_key": "review.code.1.judge.1", "reviewed": "code.1.judge", "ok": true, "executor": "claude", "alias": "medium", "effort": "max"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_done", "session_key": "code.1.judge", "observations": [{"category": "judge_unread", "turns": [1], "remedy_class": "brief", "confidence": 0.45, "check": "unsupported", "corroborated": false}], "kept": 0, "none_found": false, "cost_usd": 0.030243, "reported": true}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "phase.p4.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "phase.p3.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "phase.p2.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "phase.p1.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "expand.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "plan.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "discovery.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.977Z", "kind": "review_skipped", "session_key": "triage.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.978Z", "kind": "review_skipped", "session_key": "setup.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:08:48.979Z", "kind": "loop_summary", "thread": "temperspec/STANDIN-1", "recorded": 0, "filed": 0, "top": [], "review_failed": {}}

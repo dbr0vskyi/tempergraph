@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "roots": [
+    {
+      "path": "~/tg-runs/tmp/tg-verify-aofr0kxy/standin_run/standin-repo/.tempergraph",
+      "repository": "standin-repo",
+      "first_seen": "2026-11-26T01:44:59.454Z",
+      "last_run_at": "2026-11-26T01:44:59.454Z"
+    },
+    {
+      "path": "/var/tmp/tg-runs/tg-verify-dwoy2kmh/standin_run/standin-repo/.tempergraph",
+      "repository": "standin-repo",
+      "first_seen": "2026-11-26T04:22:26.956Z",
+      "last_run_at": "2026-11-26T04:22:26.956Z"
+    }
+  ]
+}

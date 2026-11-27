@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "draft.1.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "inherit",
+  "transcript": {
+    "engine": "~/.tempergraph/runs/demo/T-1/sessions/draft.1.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T02:11:47.774Z",
+  "ended_at": "2026-11-26T02:11:47.776Z",
+  "session_id": "s-draft",
+  "model": null,
+  "pgid": null,
+  "cli_version": null
+}

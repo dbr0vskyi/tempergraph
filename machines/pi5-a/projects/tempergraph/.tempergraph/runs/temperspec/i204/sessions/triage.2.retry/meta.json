@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.2.retry",
+  "kind": "retry",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i204/sessions/triage.2.retry/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T23:38:04.492Z",
+  "ended_at": "2026-11-26T23:38:34.519Z",
+  "session_id": "daf8236e-8aed-4152-942f-c8fb2b7fbb31",
+  "model": "claude-sonnet-5-5",
+  "pgid": 1071529,
+  "cli_version": "2.1.332"
+}

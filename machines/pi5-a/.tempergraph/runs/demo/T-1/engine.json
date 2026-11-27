@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "started_on": {
+    "engine_version": "0.2.0",
+    "engine": null
+  },
+  "last_on": {
+    "engine_version": "0.2.0",
+    "engine": null
+  },
+  "pinned": null,
+  "history": [
+    {
+      "engine_version": "0.2.0",
+      "engine": null,
+      "workflow_version": "0.1.0",
+      "shape_digest": "e05012381a54c0f78b60456991b3ee095760fcbdd0f96a11dbc8ee789c93afc3",
+      "checkpoint_format": 1,
+      "units": {
+        "draft": {
+          "kind": "step",
+          "digest": "a93dac25a2f8245e",
+          "produces": [
+            "notes"
+          ]
+        },
+        "review": {
+          "kind": "step",
+          "digest": "e12155dc795035b5",
+          "produces": [
+            "verdict"
+          ]
+        }
+      },
+      "started_at": "2026-11-26T02:11:47.759Z"
+    }
+  ]
+}

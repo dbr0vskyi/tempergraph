@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "independent_review.3.retry",
+  "kind": "retry",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i201/sessions/independent_review.3.retry/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T11:07:46.071Z",
+  "ended_at": "2026-11-26T11:10:27.858Z",
+  "session_id": "0c388271-f70a-45e8-9bea-7a3b910ad14d",
+  "model": "claude-sonnet-5-5",
+  "pgid": 2094272,
+  "cli_version": "2.1.332"
+}

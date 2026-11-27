@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.2.judge",
+  "kind": "judge",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i205/sessions/triage.2.judge/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T05:44:23.020Z",
+  "ended_at": "2026-11-26T05:44:45.312Z",
+  "session_id": "c37c1d06-01a6-4370-8951-2ac3da35cebb",
+  "model": "claude-sonnet-5-5",
+  "pgid": 1638634,
+  "cli_version": "2.1.332"
+}

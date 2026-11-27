@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "independent_review.2.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i170b/sessions/independent_review.2.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T13:59:31.268Z",
+  "ended_at": "2026-11-26T14:01:30.223Z",
+  "session_id": "0865b8a4-19c6-43d0-8802-4e67fa3e3a0b",
+  "model": "claude-sonnet-5-5",
+  "pgid": 3617727,
+  "cli_version": "2.1.332"
+}

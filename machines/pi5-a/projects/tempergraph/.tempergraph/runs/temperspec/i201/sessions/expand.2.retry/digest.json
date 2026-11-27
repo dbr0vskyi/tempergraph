@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "session_key": "expand.2.retry",
+  "kind": "retry",
+  "unit": "expand",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 28,
+  "peak_context": 140297,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 137876,
+  "files_reread": 1,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 14,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.026
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.116
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.128
+    }
+  },
+  "declared_unused": [
+    "list",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "f2af13f2ac5fee4e"
+  ],
+  "prior_overlap": 1.0
+}

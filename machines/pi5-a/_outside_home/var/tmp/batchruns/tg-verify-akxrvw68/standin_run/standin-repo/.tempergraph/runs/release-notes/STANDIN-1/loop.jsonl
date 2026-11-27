@@ -1,0 +1,3 @@
+{"ts": "2026-11-27T06:09:35.435Z", "kind": "loop_started", "ticket": "2f4f03bc618d436a", "lenses": {"friction": false, "outcome": false}, "findings": 0, "trigger": null, "fingerprints": [], "held": false}
+{"ts": "2026-11-27T06:09:35.452Z", "kind": "review_planned", "reason": "dev", "depth": "none", "targets": [], "skipped": [], "estimate_tokens": 0, "cap_usd": 0.0075, "setting": "full"}
+{"ts": "2026-11-27T06:09:35.454Z", "kind": "loop_summary", "thread": "release-notes/STANDIN-1", "recorded": 0, "filed": 0, "top": [], "review_failed": {}}

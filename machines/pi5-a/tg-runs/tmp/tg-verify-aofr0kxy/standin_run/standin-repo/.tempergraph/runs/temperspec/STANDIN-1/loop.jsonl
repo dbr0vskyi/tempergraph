@@ -1,0 +1,14 @@
+{"ts": "2026-11-26T01:45:12.672Z", "kind": "review_session", "session_key": "review.outcome.1.judge.1", "reviewed": "outcome.1.judge", "ok": true, "executor": "claude", "alias": "medium", "effort": "max"}
+{"ts": "2026-11-26T01:45:12.673Z", "kind": "review_done", "session_key": "outcome.1.judge", "observations": [{"category": "judge_unread", "turns": [1], "remedy_class": "brief", "confidence": 0.5, "check": "unsupported", "corroborated": false}, {"category": "environment_fault", "turns": [1], "remedy_class": "brief", "confidence": 0.3, "check": "unsupported", "corroborated": false}], "kept": 0, "none_found": false, "cost_usd": 0.022597, "reported": true}
+{"ts": "2026-11-26T01:45:21.050Z", "kind": "review_session", "session_key": "review.code.1.judge.1", "reviewed": "code.1.judge", "ok": true, "executor": "claude", "alias": "medium", "effort": "max"}
+{"ts": "2026-11-26T01:45:21.050Z", "kind": "review_done", "session_key": "code.1.judge", "observations": [{"category": "judge_unread", "turns": [1], "remedy_class": "brief", "confidence": 0.5, "check": "unsupported", "corroborated": false}, {"category": "environment_fault", "turns": [1], "remedy_class": "brief", "confidence": 0.25, "check": "unsupported", "corroborated": false}], "kept": 0, "none_found": false, "cost_usd": 0.030437, "reported": true}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "phase.p4.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "phase.p3.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "phase.p2.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "phase.p1.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "expand.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "plan.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.051Z", "kind": "review_skipped", "session_key": "discovery.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.052Z", "kind": "review_skipped", "session_key": "triage.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.052Z", "kind": "review_skipped", "session_key": "setup.1.judge", "reason": "budget"}
+{"ts": "2026-11-26T01:45:21.055Z", "kind": "loop_summary", "thread": "temperspec/STANDIN-1", "recorded": 0, "filed": 0, "top": [], "review_failed": {}}

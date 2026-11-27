@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "started_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-fc1b9bc8a09d"
+  },
+  "last_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-5603433fb5be"
+  },
+  "pinned": null,
+  "history": [
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-fc1b9bc8a09d",
+      "workflow_version": "0.1.0+bf47edf9a92a",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T13:45:09.729Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-fc1b9bc8a09d",
+      "workflow_version": "0.1.0+bf47edf9a92a",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T14:58:11.888Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-8f7e8a118a78",
+      "workflow_version": "0.1.0+bf47edf9a92a",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T17:43:28.423Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-8f7e8a118a78",
+      "workflow_version": "0.1.0+bf47edf9a92a",
+      "shape_digest": "6246daee84fa838753b81c1af25403552ea5fea4c96e5b86f17bff17a0a9d2e0",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T20:13:18.178Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-5603433fb5be",
+      "workflow_version": "0.1.0+6e7623aba41a",
+      "shape_digest": "8e1c8b6ebcc28166eeb1fbb22a45f48920523ad73575f2f7577784189f415216",
+      "checkpoint_format": 1,
+      "units": {
+        "prepare": {
+          "kind": "script",
+          "digest": "c17abd884d806747",
+          "produces": []
+        },
+        "setup_route": {
+          "kind": "route",
+          "digest": "0b6de87a425ef979",
+          "produces": []
+        },
+        "list_components": {
+          "kind": "script",
+          "digest": "cb61a2c897026052",
+          "produces": []
+        },
+        "read_component": {
+          "kind": "map",
+          "digest": "2740ff3a312979c9",
+          "produces": [
+            "component_finding"
+          ]
+        },
+        "setup": {
+          "kind": "step",
+          "digest": "9d59eacb7e61a481",
+          "produces": [
+            "overview",
+            "setup_note"
+          ]
+        },
+        "triage": {
+          "kind": "step",
+          "digest": "b8d6f17200d38a24",
+          "produces": [
+            "covered",
+            "gaps",
+            "route",
+            "triage_note"
+          ]
+        },
+        "discovery_short": {
+          "kind": "step",
+          "digest": "df99b4c66e5025e2",
+          "produces": [
+            "handoff",
+            "settled"
+          ]
+        },
+        "read_gap": {
+          "kind": "map",
+          "digest": "639d919654490def",
+          "produces": [
+            "gap_finding"
+          ]
+        },
+        "owner_questions": {
+          "kind": "script",
+          "digest": "ce900925f54eecee",
+          "produces": []
+        },
+        "ask_route": {
+          "kind": "route",
+          "digest": "ab05003adcbeb3ce",
+          "produces": []
+        },
+        "ask_owner": {
+          "kind": "ask",
+          "digest": "4876e98fb506829b",
+          "produces": []
+        },
+        "discovery": {
+          "kind": "step",
+          "digest": "a04cda446e00bb95",
+          "produces": [
+            "handoff"
+          ]
+        },
+        "plan": {
+          "kind": "step",
+          "digest": "356a6e8c77a5d7e6",
+          "produces": [
+            "complexity",
+            "plan"
+          ]
+        },
+        "code_mode": {
+          "kind": "switch",
+          "digest": "50b77e33b77ef16b",
+          "produces": []
+        },
+        "expand": {
+          "kind": "step",
+          "digest": "50e26b699a2cff3d",
+          "produces": [
+            "phases"
+          ]
+        },
+        "phase": {
+          "kind": "map",
+          "digest": "5cd7c58fa9f8034b",
+          "produces": [
+            "phase_note"
+          ]
+        },
+        "code": {
+          "kind": "step",
+          "digest": "7f84216a7dd8fd3f",
+          "produces": [
+            "code_report",
+            "tests_passed"
+          ]
+        },
+        "code_join": {
+          "kind": "route",
+          "digest": "72c15fafde9763af",
+          "produces": []
+        },
+        "independent_review": {
+          "kind": "step",
+          "digest": "b0e8e22b9f986d9c",
+          "produces": [
+            "findings"
+          ]
+        },
+        "outcome": {
+          "kind": "step",
+          "digest": "09a9ee434d89fb2e",
+          "produces": []
+        }
+      },
+      "started_at": "2026-11-26T22:05:01.924Z"
+    }
+  ]
+}

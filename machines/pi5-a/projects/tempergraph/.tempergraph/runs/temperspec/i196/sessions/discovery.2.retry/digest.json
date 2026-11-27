@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.retry",
+  "kind": "retry",
+  "unit": "discovery",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 233,
+  "peak_context": 318484,
+  "turns_over_200k": 139,
+  "tokens_before_first_write": 240519,
+  "files_reread": 14,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 46,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.133
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.084
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 81,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 2.171
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 30,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.753
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.044
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "edefe8712571ae53",
+      "error_class": null,
+      "count": 12,
+      "first_turn": 118,
+      "last_turn": 136
+    },
+    {
+      "tool": "Edit",
+      "target": "edefe8712571ae53",
+      "error_class": null,
+      "count": 8,
+      "first_turn": 140,
+      "last_turn": 149
+    },
+    {
+      "tool": "Edit",
+      "target": "c37291516d286541",
+      "error_class": null,
+      "count": 8,
+      "first_turn": 162,
+      "last_turn": 169
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 118,
+      "minutes": 11.2,
+      "tokens": 517
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "541417e4ead50323",
+    "57441e0feec4fa43",
+    "5c6cd74bacb76fb4"
+  ],
+  "prior_overlap": 0.5
+}

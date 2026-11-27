@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p4.2.judge",
+  "kind": "judge",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i203a/sessions/phase.p4.2.judge/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T17:40:47.525Z",
+  "ended_at": "2026-11-26T17:41:05.713Z",
+  "session_id": "5638d853-2d57-490b-8566-6886f8d150e1",
+  "model": "claude-sonnet-5-5",
+  "pgid": 1433517,
+  "cli_version": "2.1.332"
+}

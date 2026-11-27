@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "on": true,
+  "remote": "origin",
+  "branch": "tempergraph/state/temperspec/i148",
+  "state": "pushed",
+  "seq": 238,
+  "commit": "188f65d9932fb889ed207d11b75d4bdb7ffdd645",
+  "relocate": false,
+  "takeover": false,
+  "lease": null,
+  "error": null,
+  "work_branch": "tg/temperspec/i144b"
+}

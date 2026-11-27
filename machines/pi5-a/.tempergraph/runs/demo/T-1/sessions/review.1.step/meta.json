@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "review.1.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "inherit",
+  "transcript": {
+    "engine": "~/.tempergraph/runs/demo/T-1/sessions/review.1.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T02:11:48.047Z",
+  "ended_at": "2026-11-26T02:11:48.050Z",
+  "session_id": "s-review",
+  "model": null,
+  "pgid": null,
+  "cli_version": null
+}

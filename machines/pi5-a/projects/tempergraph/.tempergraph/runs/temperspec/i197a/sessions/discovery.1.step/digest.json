@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 361,
+  "peak_context": 439292,
+  "turns_over_200k": 225,
+  "tokens_before_first_write": 314949,
+  "files_reread": 32,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 70,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.73
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 10,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.408
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 88,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 2.725
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 18,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.499
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.022
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 39,
+      "last_turn": 43
+    },
+    {
+      "tool": "Read",
+      "target": "1561e703fca8a753",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 155,
+      "last_turn": 157
+    },
+    {
+      "tool": "Edit",
+      "target": "04af93379508756e",
+      "error_class": null,
+      "count": 5,
+      "first_turn": 230,
+      "last_turn": 239
+    },
+    {
+      "tool": "Edit",
+      "target": "f82036df657d4307",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 242,
+      "last_turn": 246
+    },
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 293,
+      "last_turn": 299
+    },
+    {
+      "tool": "Edit",
+      "target": "04af93379508756e",
+      "error_class": null,
+      "count": 5,
+      "first_turn": 334,
+      "last_turn": 340
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 230,
+      "minutes": 16.3,
+      "tokens": 792
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "4ad20d02d1a97073",
+    "61e6a5b30601a89c",
+    "fb01c7df05a274cf"
+  ]
+}

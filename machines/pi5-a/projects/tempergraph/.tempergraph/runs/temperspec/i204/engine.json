@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "started_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-ecb18c05ad2d"
+  },
+  "last_on": {
+    "engine_version": "0.2.0",
+    "engine": "0.2.0-40769494cb1b"
+  },
+  "pinned": null,
+  "history": [
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-ecb18c05ad2d",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T23:36:57.956Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-ecb18c05ad2d",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T23:45:00.477Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-ecb18c05ad2d",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T23:45:42.540Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-ecb18c05ad2d",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T23:47:31.327Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-ecb18c05ad2d",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T23:48:21.892Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-ecb18c05ad2d",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-26T23:49:07.113Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-40769494cb1b",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "started_at": "2026-11-27T00:04:01.770Z"
+    },
+    {
+      "engine_version": "0.2.0",
+      "engine": "0.2.0-40769494cb1b",
+      "workflow_version": "0.1.0+5adedffa5ed3",
+      "shape_digest": "7a755479033f8a2bd401fcb6d0c018f836e5c14c65c6e4f3a6ff594be08f3f0d",
+      "checkpoint_format": 1,
+      "units": {
+        "prepare": {
+          "kind": "script",
+          "digest": "c17abd884d806747",
+          "produces": []
+        },
+        "setup_route": {
+          "kind": "route",
+          "digest": "0b6de87a425ef979",
+          "produces": []
+        },
+        "list_components": {
+          "kind": "script",
+          "digest": "cb61a2c897026052",
+          "produces": []
+        },
+        "read_component": {
+          "kind": "map",
+          "digest": "2740ff3a312979c9",
+          "produces": [
+            "component_finding"
+          ]
+        },
+        "setup": {
+          "kind": "step",
+          "digest": "9d59eacb7e61a481",
+          "produces": [
+            "overview",
+            "setup_note"
+          ]
+        },
+        "triage": {
+          "kind": "step",
+          "digest": "b8d6f17200d38a24",
+          "produces": [
+            "covered",
+            "gaps",
+            "route",
+            "triage_note"
+          ]
+        },
+        "discovery_short": {
+          "kind": "step",
+          "digest": "df99b4c66e5025e2",
+          "produces": [
+            "handoff",
+            "settled"
+          ]
+        },
+        "read_gap": {
+          "kind": "map",
+          "digest": "639d919654490def",
+          "produces": [
+            "gap_finding"
+          ]
+        },
+        "owner_questions": {
+          "kind": "script",
+          "digest": "ce900925f54eecee",
+          "produces": []
+        },
+        "ask_route": {
+          "kind": "route",
+          "digest": "ab05003adcbeb3ce",
+          "produces": []
+        },
+        "ask_owner": {
+          "kind": "ask",
+          "digest": "4876e98fb506829b",
+          "produces": []
+        },
+        "discovery": {
+          "kind": "step",
+          "digest": "a04cda446e00bb95",
+          "produces": [
+            "handoff"
+          ]
+        },
+        "plan": {
+          "kind": "step",
+          "digest": "356a6e8c77a5d7e6",
+          "produces": [
+            "complexity",
+            "plan"
+          ]
+        },
+        "code_mode": {
+          "kind": "switch",
+          "digest": "50b77e33b77ef16b",
+          "produces": []
+        },
+        "expand": {
+          "kind": "step",
+          "digest": "50e26b699a2cff3d",
+          "produces": [
+            "phases"
+          ]
+        },
+        "phase": {
+          "kind": "map",
+          "digest": "5cd7c58fa9f8034b",
+          "produces": [
+            "phase_note"
+          ]
+        },
+        "code": {
+          "kind": "step",
+          "digest": "7f84216a7dd8fd3f",
+          "produces": [
+            "code_report",
+            "tests_passed"
+          ]
+        },
+        "regeneration": {
+          "kind": "script",
+          "digest": "1acb35e8ceaa7f25",
+          "produces": []
+        },
+        "code_join": {
+          "kind": "route",
+          "digest": "72c15fafde9763af",
+          "produces": []
+        },
+        "independent_review": {
+          "kind": "step",
+          "digest": "b0e8e22b9f986d9c",
+          "produces": [
+            "findings"
+          ]
+        },
+        "outcome": {
+          "kind": "step",
+          "digest": "50c4095113c31379",
+          "produces": []
+        }
+      },
+      "started_at": "2026-11-27T00:04:41.297Z"
+    }
+  ]
+}

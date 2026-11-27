@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "session_key": "code.6.retry",
+  "kind": "retry",
+  "unit": "code",
+  "attempt": 6,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 115,
+  "peak_context": 105209,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 33,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 43,
+      "failures": 1,
+      "refused": 2,
+      "duration_s": 1.577
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 9,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 603.581
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 12,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 0.425
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.092
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "ca0a6c1f74bce978",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 51,
+      "last_turn": 55
+    },
+    {
+      "tool": "Read",
+      "target": "ca0a6c1f74bce978",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 71,
+      "last_turn": 75
+    },
+    {
+      "tool": "Read",
+      "target": "ca0a6c1f74bce978",
+      "error_class": null,
+      "count": 7,
+      "first_turn": 80,
+      "last_turn": 91
+    },
+    {
+      "tool": "Read",
+      "target": "ca0a6c1f74bce978",
+      "error_class": null,
+      "count": 14,
+      "first_turn": 93,
+      "last_turn": 114
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 114,
+      "minutes": 13.6,
+      "tokens": 909
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 34,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "06e673df57aa9121",
+    "0b6a8bfc2d868178",
+    "0c5cf52968ed501a",
+    "1235f3951587d593",
+    "1a9c020f58686c18",
+    "72e045f249c76a08",
+    "a449aa3fcbfd004c",
+    "d062606cdf226318",
+    "eb238d854fa923ab"
+  ],
+  "_wrote": [],
+  "prior_overlap": 0.062
+}

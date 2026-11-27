@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.step",
+  "kind": "step",
+  "unit": "phase",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 50,
+  "peak_context": 92903,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 72915,
+  "files_reread": 4,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 11,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.351
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.093
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.034
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.049
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 15,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.393
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 5,
+      "failures": 2,
+      "refused": 2,
+      "duration_s": 13.325
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 7,
+      "last_turn": 9
+    },
+    {
+      "tool": "Edit",
+      "target": "6d5b72d33fe161a5",
+      "error_class": null,
+      "count": 6,
+      "first_turn": 28,
+      "last_turn": 34
+    },
+    {
+      "tool": "Edit",
+      "target": "cb9daae7b16c2e3e",
+      "error_class": null,
+      "count": 7,
+      "first_turn": 43,
+      "last_turn": 49
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "16d177251e580109",
+    "3a50f2bb57ac5767",
+    "43fef4cfbf901b24",
+    "5766739bf94da623",
+    "d019a33b862b2a77"
+  ],
+  "_wrote": [
+    "1a43626bf5e296c8",
+    "631f0d5c7cdfc5af",
+    "a41a342fe2149695"
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 288,
+  "peak_context": 427799,
+  "turns_over_200k": 175,
+  "tokens_before_first_write": 320375,
+  "files_reread": 23,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 56,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.86
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 6,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.266
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 90,
+      "failures": 2,
+      "refused": 0,
+      "duration_s": 3.094
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.145
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 16,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.42
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "1b1eb7324b6466c1",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 37,
+      "last_turn": 40
+    },
+    {
+      "tool": "Grep",
+      "target": "40cee7f3d9b22d70",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 70,
+      "last_turn": 72
+    },
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 154,
+      "last_turn": 157
+    },
+    {
+      "tool": "Edit",
+      "target": "edefe8712571ae53",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 172,
+      "last_turn": 178
+    },
+    {
+      "tool": "Edit",
+      "target": "748fa4a9611d2017",
+      "error_class": null,
+      "count": 6,
+      "first_turn": 206,
+      "last_turn": 211
+    },
+    {
+      "tool": "Read",
+      "target": "eaca9b1f7eada603",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 253,
+      "last_turn": 256
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 169,
+      "minutes": 16.6,
+      "tokens": 812
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "541417e4ead50323",
+    "57441e0feec4fa43",
+    "5c6cd74bacb76fb4",
+    "67afeb18b0a4b2ec",
+    "8b9c0a2efb05b617",
+    "d32cd3cde116109a"
+  ]
+}

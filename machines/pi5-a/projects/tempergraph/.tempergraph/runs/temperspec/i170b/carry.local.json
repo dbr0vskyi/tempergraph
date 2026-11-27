@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "on": false,
+  "remote": "origin",
+  "state": "finished",
+  "branch": "tempergraph/state/temperspec/i170b",
+  "seq": 539,
+  "commit": "db9080131211b24144a0a68b37ebd91830dfe7e6",
+  "lease": null,
+  "error": null,
+  "takeover": false
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "independent_review.3.judge",
+  "kind": "judge",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i170b/sessions/independent_review.3.judge/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T14:47:49.363Z",
+  "ended_at": "2026-11-26T14:47:57.431Z",
+  "session_id": "4b368630-0d9d-4061-90bc-197c61863700",
+  "model": "claude-sonnet-5-5",
+  "pgid": 4038810,
+  "cli_version": "2.1.332"
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "workflows": [
+    {
+      "kind": "local",
+      "path": "~/projects/tempergraph.worktrees/temperspec--i150/plugins/temperspec-tgraph",
+      "last_checked_at": "2026-11-26T01:45:07.364Z",
+      "version": "0.1.0",
+      "workflow_version": "0.1.0+e0e2769b32e5",
+      "requirements_digest": "e3b0c44298fc1c14",
+      "state": "ok",
+      "name": "temperspec",
+      "registered_at": "2026-11-26T01:45:08.134Z",
+      "engine_pin": null,
+      "installed_into": []
+    }
+  ]
+}

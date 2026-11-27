@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p9.1.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i123/sessions/phase.p9.1.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-25T21:20:48.945Z",
+  "ended_at": "2026-11-25T21:22:36.347Z",
+  "session_id": "8f17e137-42f3-46d9-811b-baba056c08eb",
+  "model": "claude-sonnet-5-5",
+  "pgid": 61545,
+  "cli_version": "2.1.332"
+}

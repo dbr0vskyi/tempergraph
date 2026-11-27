@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.2.retry",
+  "kind": "retry",
+  "unit": "discovery",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 254,
+  "peak_context": 321130,
+  "turns_over_200k": 149,
+  "tokens_before_first_write": 207628,
+  "files_reread": 15,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 57,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.691
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.076
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 51,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 7.228
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 12,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.109
+    },
+    "WebFetch": {
+      "capability": "web_fetch",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 7.384
+    },
+    "WebSearch": {
+      "capability": "web_search",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 5.855
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.008
+    }
+  },
+  "declared_unused": [],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "e379a4523f235111",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 115,
+      "last_turn": 119
+    },
+    {
+      "tool": "Read",
+      "target": "de04fffdf5bcf4df",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 191,
+      "last_turn": 193
+    },
+    {
+      "tool": "WebFetch",
+      "target": "f401e123cf63fbd1",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 196,
+      "last_turn": 200
+    },
+    {
+      "tool": "Edit",
+      "target": "e24b63b679181bcd",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 221,
+      "last_turn": 223
+    },
+    {
+      "tool": "Grep",
+      "target": "e56b07ec5e71e391",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 237,
+      "last_turn": 239
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "147d286e89a1fe15",
+    "4bb9691274e604e4",
+    "ad3371ace2e2dc68",
+    "ca1600ec5e0c8930"
+  ],
+  "prior_overlap": 0.571
+}

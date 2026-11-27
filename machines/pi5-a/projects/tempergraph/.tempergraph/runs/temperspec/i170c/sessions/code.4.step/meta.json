@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "code.4.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/projects/tempergraph/.tempergraph/runs/temperspec/i170c/sessions/code.4.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T18:44:15.101Z",
+  "ended_at": "2026-11-26T19:32:10.559Z",
+  "session_id": "e497cd8e-0466-4175-ba41-e623ccad0904",
+  "model": "claude-sonnet-5-5",
+  "pgid": 2273572,
+  "cli_version": "2.1.332"
+}

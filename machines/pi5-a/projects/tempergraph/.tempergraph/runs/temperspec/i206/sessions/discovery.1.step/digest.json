@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 304,
+  "peak_context": 424035,
+  "turns_over_200k": 194,
+  "tokens_before_first_write": 295689,
+  "files_reread": 35,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 74,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 4.776
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 5,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.573
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 68,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 15.116
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 23,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.003
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.043
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "skills_undeclared": [],
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "1561e703fca8a753",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 20,
+      "last_turn": 22
+    },
+    {
+      "tool": "Read",
+      "target": "ca0ac73057882910",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 138,
+      "last_turn": 142
+    },
+    {
+      "tool": "Edit",
+      "target": "fee581c2fe241d49",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 171,
+      "last_turn": 173
+    },
+    {
+      "tool": "Edit",
+      "target": "89a3037634c9cd71",
+      "error_class": null,
+      "count": 7,
+      "first_turn": 176,
+      "last_turn": 188
+    },
+    {
+      "tool": "Read",
+      "target": "6cabea48ebd5f3c6",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 231,
+      "last_turn": 233
+    },
+    {
+      "tool": "Edit",
+      "target": "58b66afffaf19b98",
+      "error_class": null,
+      "count": 5,
+      "first_turn": 254,
+      "last_turn": 258
+    },
+    {
+      "tool": "Edit",
+      "target": "58b66afffaf19b98",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 264,
+      "last_turn": 266
+    },
+    {
+      "tool": "Edit",
+      "target": "58b66afffaf19b98",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 291,
+      "last_turn": 295
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 171,
+      "minutes": 15.3,
+      "tokens": 744
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "73ea009d75c69e08",
+    "e921d71a80cb2e99",
+    "ed1f2de4a8022b53"
+  ]
+}
