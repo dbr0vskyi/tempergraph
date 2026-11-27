@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 28,
+  "revision": 30,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -27,7 +27,7 @@
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself. For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and the fix, in one line."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself. For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and the fix, in one line. Open with the read tool the file a row or a criterion names before you grade it. Lines a search printed are not a reading of that file. When a grade fails only because you did not open a place you could open, set unread true and give the path and lines to open as its fix."
   },
   "final": [
     {
@@ -107,7 +107,7 @@
       "severity": "blocker",
       "verified_by": "check",
       "text": "No spec the run edited has changed on the base branch since the run started",
-      "check_method": "Compare each edited spec at the run's base commit with the same spec at the head of the base branch (`git.base_head`); fail, naming the spec, when the head holds commits the base commit lacks and the spec reads differently at the two; N/A for a run with no base branch and for a run that edited no spec",
+      "check_method": "Compare each edited spec at the run's base commit with the same spec at the head of the base branch (`git.base_head`); fail, naming the spec, when the head holds commits the base commit lacks and the spec reads differently at the two; N/A for a run with no base branch and for a run that edited no spec; a failure pauses the run (no step can change the base branch), naming the spec, the run's base commit, the head of the base branch and the action that clears it: bring that head into the run's branch, then answer retry",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -129,7 +129,7 @@
       "severity": "blocker",
       "verified_by": "check",
       "text": "Every verification command the plan lists exits 0 on the branch head",
-      "check_method": "Run each command through the engine's command runner, reusing the code gate's run on an unchanged tree; N/A when the run delivers documents only",
+      "check_method": "Run each command through the engine's command runner, reusing the code gate's run on an unchanged tree; compare a failing command with the run's base commit as the code gate does, so that an environmental failure (the command fails the same at the base) pauses the run and a failure the change caused goes back to a step; N/A when the run delivers documents only",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -2004,7 +2004,7 @@
     "The code judge's reading budget (one file per 50 changed source lines, a floor of 10 files and a ceiling of 50) is made of first values with no run behind them; the share of code gates whose judge grades an alignment criterion UNVERIFIABLE for files beyond the budget is the measure to tune them by.",
     "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only.",
     "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-ran from the gate's own command runs.",
-    "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch.",
+    "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard is not sent back to discovery: the outcome gate pauses with kind escalation for a failing ts-spec-fresh, for an environmental ts-verify and for either beside a failure a step could repair; a person brings the head of the base branch into the run's branch and answers retry.",
     "The triage check given no conversation value reads no sort: the engine's fixture rung gives a check no settings, so ts-tri-owner is not applicable to each triage fixture, and the cases of `never`, `blocking` and `always` are proved by the package's tests.",
     "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions).",
     "The eleven categories of the uncertainty scan, the three impacts and the five routes are first values with no measured run behind them; ts-tri-uncertain is a warning until runs show how often its judge and the owner agree (research note spec-decision-and-discovery-formats)."
@@ -2176,6 +2176,18 @@
       "origin": "authored",
       "at": "2026-11-26T23:00:00.000Z",
       "note": "issue 203: the unit regeneration after code, a script unit with no session that runs the regenerations the repository declares when an input changed and sends a failure back once to the code step as numbered findings (ts-rgn-declaration, ts-rgn-ran, ts-rgn-passed; specs regeneration, regeneration-failures)"
+    },
+    {
+      "revision": 29,
+      "origin": "authored",
+      "at": "2026-11-27T09:00:00.000Z",
+      "note": "issue 197: the outcome gate pauses for a fact no step can change (ts-spec-fresh, and ts-verify when the command fails the same at the run's base commit) and names the action that clears it; ts-verify compares a failing command with the base as the code gate does; specs outcome-gate and side-by-side-runs"
+    },
+    {
+      "revision": 30,
+      "origin": "authored",
+      "at": "2026-11-27T12:00:00.000Z",
+      "note": "issue 204: the judge briefs and the outcome stance tell the judge to open with the read tool the file a row or a criterion names before grading it, that lines a search printed are not a reading of that file, and to mark a grade that fails for want of a reading with the path and lines to open as its fix (specs judge-reading, judge-and-verdict)"
     }
   ]
 }

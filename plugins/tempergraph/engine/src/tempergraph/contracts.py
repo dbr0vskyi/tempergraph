@@ -593,7 +593,7 @@ class InfraCause(StrEnum):
 
 
 ErrorKind = Literal["model", "refused", "cap_reached", "turn_cap", "denied", "auth", "unknown"]
-SessionKind = Literal["step", "retry", "judge", "judge_reask", "grouping", "member", "member_reask", "chair"]
+SessionKind = Literal["step", "retry", "judge", "judge_reask", "judge_reread", "grouping", "member", "member_reask", "chair"]
 
 
 @dataclass(kw_only=True)
@@ -809,6 +809,7 @@ class CriterionFinding:
     fix: str = ""
     defect_in: str | None = None
     no_change: bool = False
+    unread: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -816,6 +817,7 @@ class Judgement:
     criteria: tuple[CriterionFinding, ...]
     coverage: Mapping[str, int] = field(default_factory=dict)
     gap: bool = False
+    gap_unread: bool = False
     confidence: float = 0.0
     summary: str = ""
 

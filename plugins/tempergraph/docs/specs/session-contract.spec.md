@@ -23,7 +23,7 @@ WHEN the engine uses an executor THE executor SHALL offer a constant `name` (`cl
 
 ### SSN-B2 Session request
 
-WHEN the engine starts a session THE engine SHALL send a request with `kind` (`step`, `retry`, `judge`, `judge_reask`, `grouping`, `member`, `member_reask` or `chair`, the last three run by executors as step sessions with read-only tools, [CNL](council-unit.spec.md)), `prompt` (rendered text, delivered off argv), `workdir` (the absolute workspace path from state), `alias` (resolved, [CON-B3](contracts.spec.md)), the step's declared `tools` and `commands`, `timeout_s` and `idle_s` with their sources, `options`, and for a judge an optional `credentials_profile`.
+WHEN the engine starts a session THE engine SHALL send a request with `kind` (`step`, `retry`, `judge`, `judge_reask`, `judge_reread` ([JDG-B22](judge-and-verdict.spec.md)), `grouping`, `member`, `member_reask` or `chair`, the last three run by executors as step sessions with read-only tools, [CNL](council-unit.spec.md)), `prompt` (rendered text, delivered off argv), `workdir` (the absolute workspace path from state), `alias` (resolved, [CON-B3](contracts.spec.md)), the step's declared `tools` and `commands`, `timeout_s` and `idle_s` with their sources, `options`, and for a judge an optional `credentials_profile`.
 
 - GIVEN a step session WHEN its process is started THEN the prompt is not on the argv
 - GIVEN a council member session WHEN the executor starts it THEN it runs with read-only tools
@@ -74,7 +74,7 @@ WHEN an executor reads its session's stream THE executor SHALL push only these e
 
 ### SSN-B8 Judgement block
 
-WHEN the engine reads a judge's answer THE engine SHALL take the last fenced JSON block as the judgement, with `criteria[]` (each `{n, id, status, evidence, place, fix, defect_in, no_change}`, `status` one of `MET`, `PARTIAL`, `UNMET`, `N/A` or `UNVERIFIABLE`, `defect_in` an earlier artifact key, `no_change` true when the step's own output cannot fix it), `coverage` (`requirements`, `traced`, `orphans`), `gap` (a source is missing or the task is unclear), `confidence` (0 to 1, anchors 0.95 verified, 0.85 checked, 0.7 partly inferred, 0.5 contested, with `source` `judge` or `engine_placeholder`) and a one-line `summary`.
+WHEN the engine reads a judge's answer THE engine SHALL take the last fenced JSON block as the judgement, with `criteria[]` (each `{n, id, status, evidence, place, fix, defect_in, no_change}` and an optional `unread`, `status` one of `MET`, `PARTIAL`, `UNMET`, `N/A` or `UNVERIFIABLE`, `defect_in` an earlier artifact key, `no_change` true when the step's own output cannot fix it, `unread` true when the grade rests on a place the judge itself did not open, [JDG-B15](judge-and-verdict.spec.md)), `coverage` (`requirements`, `traced`, `orphans`), `gap` (a source is missing or the task is unclear) with an optional `gap_unread`, `confidence` (0 to 1, anchors 0.95 verified, 0.85 checked, 0.7 partly inferred, 0.5 contested, with `source` `judge` or `engine_placeholder`) and a one-line `summary`.
 
 - GIVEN an answer with two fenced JSON blocks WHEN it is read THEN the second is the judgement
 - GIVEN a criterion with `no_change` true WHEN the gate reads it THEN the blocker is one the step's own output cannot fix

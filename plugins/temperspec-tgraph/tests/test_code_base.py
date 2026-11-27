@@ -240,14 +240,24 @@ def test_a_failing_command_is_run_at_the_base_once_per_visit(tmp_path: Path) -> 
     assert [(r["at_base"], r["reused"]) for r in _plan_runs(res)][1] == (True, False)  # the next visit asks again
 
 
-def test_the_outcome_gate_asks_for_no_run_at_the_base(tmp_path: Path) -> None:
-    # ts-verify, AC 3: its call of `_verify` is as before, with no comparison
+def test_the_outcome_gate_compares_a_failing_command_with_the_base(tmp_path: Path) -> None:
+    # ts-verify, OGT-AC30, AC 3: the outcome check asks for the base run of a failing command once, of a passing none
     root, base = _repo(tmp_path / "repo", ABSENT)
     ctx = _ctx(root, base)
-    plan, _ = checks._plan(ctx)
-    found = checks._verify(ctx, plan, "ts-verify")
+    res = checks.outcome_check(ctx)
+    assert [c for c in ctx.calls if c[1]] == [(ABSENT, True)]
+    assert res.environmental and [f.criterion for f in res.findings if f.status == "fail" and
+                                  f.criterion == "ts-verify"] == ["ts-verify"]
+    ok_root, ok_base = _repo(tmp_path / "ok", "git --version")
+    ok_ctx = _ctx(ok_root, ok_base)
+    checks.outcome_check(ok_ctx)
+    assert not [c for c in ok_ctx.calls if c[1]]
+    # the default the code gate relies on: no comparison, no run at the base
+    plain_ctx = _ctx(root, base)
+    plan, _ = checks._plan(plain_ctx)
+    found = checks._verify(plain_ctx, plan, "ts-verify")
     assert [(f.status, f.criterion) for f in found] == [("fail", "ts-verify")]
-    assert found[0].message.startswith("exit 128: ") and not [c for c in ctx.calls if c[1]]
+    assert found[0].message.startswith("exit 128: ") and not [c for c in plain_ctx.calls if c[1]]
 
 
 # -- the package's criteria and its README say the same ---------------------------------------------------------

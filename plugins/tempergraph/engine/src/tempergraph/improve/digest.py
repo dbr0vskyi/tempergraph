@@ -22,9 +22,9 @@ from tempergraph.improve import params
 from tempergraph.store.layout import run_dir
 
 SCHEMA = 1
-KINDS = frozenset({"step", "retry", "judge", "judge_reask", "grouping", "member", "member_reask", "chair"})
+KINDS = frozenset({"step", "retry", "judge", "judge_reask", "judge_reread", "grouping", "member", "member_reask", "chair"})
 STEP_KINDS = frozenset({"step", "retry"})
-JUDGE_KINDS = frozenset({"judge", "judge_reask"})
+JUDGE_KINDS = frozenset({"judge", "judge_reask", "judge_reread"})
 WRITE_CAPS = frozenset({"edit", "write"})
 FILE_CAPS = frozenset({"read", "search", "list", "edit", "write"})
 OUTSIDE = "<outside workspace>"

@@ -602,9 +602,11 @@ SOURCE_FILES = "Changed source files"
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
             links: list[str] | None = None, reading: list[str] | None = None,
-            facts: list[str] | None = None, *, commands: list[str] | None = None, step: str | None = None) -> Any:
+            facts: list[str] | None = None, *, commands: list[str] | None = None, step: str | None = None,
+            pause: bool = False) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
-    environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
+    environmental leads the evidence, and the result is marked environmental when no other finding fails, or with
+    `pause` (the outcome check) when any environmental finding fails, beside others. `reading` is the lines a
     judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files.
     `facts` is lines of plain evidence that follow the first line, never a finding (the outcome check's push line).
     `commands` are the lines that say how each verification command was answered: first, because a preview prints
@@ -614,7 +616,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
     bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
                             if f.status == "fail" and not isinstance(f, _Environmental)])
-    environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
+    environmental = any(isinstance(f, _Environmental) and f.status == "fail" for f in found) and (
+        pause or not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found))
     specs, _ = _edited_specs(ctx)
     head = [bad or f"{len(found)} checked"] + (facts or [])
     # an environmental command leads (it escalates to a person); otherwise the command lines lead for a preview
@@ -1923,6 +1926,9 @@ def _unseen(ctx: Any, head: str, path: str) -> bool:
         return True
 
 
+FIX_FRESH = "bring the head of the base branch into the run's branch, then answer retry"
+
+
 def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
     """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
     the run's base commit, when the head holds a commit that changed it and the run's branch lacks."""
@@ -1941,10 +1947,11 @@ def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
         moved = False
     if not moved:
         return [_ok("ts-spec-fresh")]
-    found = [_find("fail", "ts-spec-fresh", path,
-                   "the base branch changed this spec since the run started (it reads differently at its head than "
-                   "at the run's base commit)", "start the task again from the head of the base branch")
-             for path in specs
+    found: list[CheckFinding] = [
+        _Environmental(status="fail", criterion="ts-spec-fresh", place=path, fix=FIX_FRESH,
+                       message=f"{path} changed on the base branch since the run started (run base {base[:10]}, "
+                               f"base head {head[:10]})")
+        for path in specs
              if _at_ref(ctx, base, path) != _at_ref(ctx, head, path) and _unseen(ctx, head, path)]
     return found or [_ok("ts-spec-fresh")]
 
@@ -2024,11 +2031,14 @@ def outcome_check(ctx: Any) -> Any:
     else:
         found += _traced(ctx, specs, _walk(ctx))
         plan, path = _plan(ctx)
-        found += _verify(ctx, plan, "ts-verify") if plan is not None else [
+        found += _verify(ctx, plan, "ts-verify", compare=True) if plan is not None else [
             _find("fail", "ts-verify", path, "the plan cannot be read")]
     found += _collateral(ctx, specs)
     push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
-    return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
+    action = [f"To clear ts-spec-fresh: {FIX_FRESH}."] if any(
+        f.criterion == "ts-spec-fresh" and f.status == "fail" for f in found) else []
+    # evidence only: a push never decides the result; a fact no step can change pauses the run (`pause`)
+    return _result(ctx, found, _plan(ctx)[0], facts=[*action, push], pause=True)
 
 
 # ---------------------------------------------------------------------------------------------
