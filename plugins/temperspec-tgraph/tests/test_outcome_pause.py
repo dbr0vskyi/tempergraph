@@ -266,3 +266,30 @@ def test_a_failing_trace_alone_is_not_marked(tmp_path: Path) -> None:  # OGT-AC2
     root, base, head = _repo(tmp_path / "repo", "git --version", moved=False, traced=False)
     res = checks.outcome_check(_ctx(root, base, head))
     assert res.result == "FAIL" and _failing(res) == ["ts-traced"] and not res.environmental
+
+
+# -- the criteria file says the same as the specs (OGT-AC23, AC 7, AC 8) -------------------------------------
+
+
+def test_outcome_json_words_the_pause_and_carries_revision_29() -> None:  # OGT-AC23, AC 7, AC 8
+    doc = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
+    rows = {c["id"]: c for c in doc["final"]}
+    overview = (ROOT / "docs" / "specs" / "overview.spec.md").read_text(encoding="utf-8")
+    fresh, verify = rows["ts-spec-fresh"], rows["ts-verify"]
+    for row in (fresh, verify):
+        assert f"- [ ] {row['id']} {row['text']}" in overview
+    method = fresh["check_method"]
+    assert "pause" in method and "base commit" in method and "head" in method and "retry" in method
+    method = verify["check_method"]
+    assert "base commit" in method and "code gate" in method and "environmental" in method and "pause" in method
+    text = " ".join(doc["assumptions"])
+    assert "a person starts the task again" not in text
+    assert "outcome gate pauses" in text and "ts-spec-fresh" in text and "retry" in text
+    assert doc["revision"] == 29
+    last = doc["revisions"][-1]
+    assert last["revision"] == 29 and last["origin"] == "authored" and "issue 197" in last["note"]
+    assert "outcome-gate" in last["note"] and "side-by-side-runs" in last["note"]
+    for name in ("outcome-gate", "side-by-side-runs"):
+        path = ROOT / "docs" / "specs" / f"{name}.spec.md"
+        raw = path.read_bytes()
+        assert len(raw.decode("utf-8").splitlines()) <= 400 and len(raw) <= 30720, name

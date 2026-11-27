@@ -22,7 +22,7 @@ SPEC = load_package(ROOT).spec
 checks = importlib.import_module("tgwf_temperspec.checks")
 A = "docs/specs/a.spec.md"
 B = "docs/specs/b.spec.md"
-FIX = "start the task again from the head of the base branch"
+FIX = "bring the head of the base branch into the run's branch, then answer retry"
 
 
 def _git(cwd: Path, *args: str) -> str:
