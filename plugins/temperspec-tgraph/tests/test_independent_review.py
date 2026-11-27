@@ -428,6 +428,83 @@ def _found(ctx: CheckContext, criterion: str) -> list[Any]:
     return [f for f in checks.review_check(ctx).findings if f.criterion == criterion]
 
 
+def _inputs_ctx(work: Path, base: str, changed: tuple[str, ...]) -> CheckContext:
+    """A check context on a `_run` repository, with the reader's inputs built by the unit's own function."""
+    (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)
+    (work / "docs" / "tasks" / "i1.review.md").write_text(_doc("None"))
+    return CheckContext(unit="independent_review", workdir=work, request={"task_id": "i1"}, values={},
+                        artifacts={"independent_review": {"findings": "docs/tasks/i1.review.md"}},
+                        git=GitFacts(base=base, changed_paths=changed), allow=SPEC.allow_commands,
+                        out_dir=work.parent / f"{work.name}.out", deadline_at=time.monotonic() + 60)
+
+
+CHANGED = ("src/new.py", "tests/test_new.py", "docs/tasks/i1.triage.md", "CLAUDE.md")
+
+
+def _form_failures(ctx: CheckContext) -> list[Any]:
+    return [f for f in _found(ctx, "ts-rev-form") if f.status == "fail"]
+
+
+def test_a_base_the_inputs_were_not_built_from_fails_naming_both_commits(tmp_path: Path) -> None:
+    # AC 3, IRV-AC15 (IRV-B15)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    other = _rev(work, "HEAD")
+    failing = _form_failures(_inputs_ctx(work, other, CHANGED))
+    assert len(failing) == 1 and base in failing[0].message and other in failing[0].message
+    assert not _form_failures(_inputs_ctx(work, base, CHANGED))
+
+
+def test_a_missing_record_of_the_base_fails_naming_the_checks_commit(tmp_path: Path) -> None:
+    # AC 3, IRV-AC15 (IRV-B15)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    (work / INPUTS / "base.txt").unlink()
+    failing = _form_failures(_inputs_ctx(work, base, CHANGED))
+    assert len(failing) == 1 and base in failing[0].message and "none was recorded" in failing[0].message
+
+
+def test_an_empty_change_over_a_changed_file_fails_saying_the_reader_was_given_no_change(tmp_path: Path) -> None:
+    # AC 4, IRV-AC16 (IRV-B16)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    (work / INPUTS / "change.diff").write_text("")
+    failing = _form_failures(_inputs_ctx(work, base, CHANGED))
+    assert len(failing) == 1 and "no change" in failing[0].message
+    # only hand-over documents and the prepare commit's files changed: an empty change is right
+    assert not _form_failures(_inputs_ctx(work, base, ("docs/tasks/i1.triage.md", "CLAUDE.md")))
+    # the change holds the file
+    (work / INPUTS / "change.diff").write_text("diff --git a/src/new.py b/src/new.py\n")
+    assert not _form_failures(_inputs_ctx(work, base, CHANGED))
+
+
+def test_a_run_with_no_base_commit_fails_saying_so(tmp_path: Path) -> None:
+    # AC 4, IRV-AC17 (IRV-B17)
+    work = _run(tmp_path)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", "")
+    failing = _form_failures(_inputs_ctx(work, "", CHANGED))
+    assert len(failing) == 1 and "no base commit" in failing[0].message
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    assert not _form_failures(_inputs_ctx(work, base, CHANGED))
+
+
+def test_a_recorded_git_failure_is_one_finding_naming_the_command(tmp_path: Path) -> None:
+    # AC 5, IRV-AC18 (IRV-B18)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    for name in ("change.diff", "files.txt", "base.txt"):
+        (work / INPUTS / name).unlink()
+    (work / INPUTS / "failed.txt").write_text("git diff --name-only: exit status 3\n")
+    failing = _form_failures(_inputs_ctx(work, base, CHANGED))
+    assert len(failing) == 1 and "git diff --name-only" in failing[0].message
+    assert "no change" not in failing[0].message and "base" not in failing[0].message.replace("git diff", "")
+
+
 def test_a_session_that_opened_a_hand_over_document_fails_naming_it(tmp_path: Path) -> None:
     # AC 1, AC 2, IRV-AC6 (IRV-B6)
     opened = [_call("read", "docs/plans/i1.plan.md"), _call("search", "docs/tasks/i1.handoff.md")]
