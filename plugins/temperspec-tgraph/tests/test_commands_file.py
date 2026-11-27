@@ -123,6 +123,26 @@ def test_rcm_ac8_a_repository_that_is_not_python_gets_no_file(repo: Path, tmp_pa
         assert not (work / FILE).exists(), work.name
 
 
+REGENERATIONS = "tempergraph.regenerations.json"
+
+
+def test_rgn_ac5_prepare_declares_no_regeneration(repo: Path, tmp_path: Path) -> None:
+    """RGN-AC5 (RGN-B5): none for a Python repository, none for a stamp and a diagram, an existing one left as it was."""
+    _put(repo, "pyproject.toml")
+    generated = _new(tmp_path / "generated")
+    _put(generated, "stamp.json", "diagram/model.json", "diagram/workflow.md")
+    declared = _new(tmp_path / "declared")
+    text = json.dumps({"schema_version": 1, "regenerations": [
+        {"name": "a", "command": "make a", "inputs": ["src"], "outputs": ["a.md"]}]}, indent=1) + "\n"
+    _put(declared, "pyproject.toml")
+    _put(declared, REGENERATIONS, text=text)
+    for work in (repo, generated, declared):
+        _commit(work, "base")
+        _prepare(work)
+    assert not (repo / REGENERATIONS).exists() and not (generated / REGENERATIONS).exists()
+    assert (declared / REGENERATIONS).read_bytes() == text.encode()
+
+
 def _prepared_run(repo: Path) -> str:
     """A Python repository whose prepare wrote the file; the commit before prepare."""
     _put(repo, "pyproject.toml", "src/a.py")

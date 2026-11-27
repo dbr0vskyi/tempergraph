@@ -469,7 +469,8 @@ class Stand:
     def __init__(self, *, phases: int = 3, plans: list[str] | None = None, fail: dict[str, int] | None = None,
                  idle: dict[str, int] | None = None, no_note: dict[str, int] | None = None,
                  claims: list[str] | None = None, claim_accepted: bool = True, route: str = "plan",
-                 finish: bool = True, delete_flag: bool = False) -> None:
+                 finish: bool = True, delete_flag: bool = False, gap_first: set[str] | None = None) -> None:
+        self.gap_first = set(gap_first or ())  # phase items whose first phase-judge session marks a gap it did not read
         self.inner = standin("claude")
         self.name = self.inner.name
         self.route = route  # what triage says: `plan`, or `quick` for a run with no plan
@@ -585,7 +586,10 @@ class Stand:
             count = 1
         rows = [{"n": i, "status": "MET", "evidence": "stand-in", "defect_in": None, "no_change": False}
                 for i in range(1, count + 1)]
-        text = "Reviewed.\n```json\n" + json.dumps({"criteria": rows, "gap": False, "confidence": 0.9}) + "\n```"
+        block: dict[str, Any] = {"criteria": rows, "gap": False, "confidence": 0.9}
+        if unit == "phase" and row["item"] in self.gap_first and self.count("judge", "phase", row["item"]) == 1:
+            block.update({"gap": True, "gap_unread": True, "summary": "Open src/p1.py lines 1 to 5 and grade again."})
+        text = "Reviewed.\n```json\n" + json.dumps(block) + "\n```"
         return answer(text, tools=("Read",), session_id=f"j-{unit}-{len(self.sessions)}")
 
 
@@ -690,6 +694,18 @@ def test_three_phases_run_one_after_another_each_in_a_session_of_its_own_and_eac
     assert subjects.index(next(s for s in subjects if " expand for " in s)) < subjects.index(
         next(s for s in subjects if " phase for " in s))
     assert stand.count("step", "code") == 1
+
+
+def test_a_stand_in_run_of_two_phases_whose_phase_judge_first_marks_a_gap_passes_each_gate_on_its_first_attempt(
+        repo: Path) -> None:
+    # AC 8, PHC-AC21 (PHC-B9)
+    stand = Stand(phases=2, gap_first={"p1"})
+    out = _go(repo, stand)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert not _records(repo, "pause") and not _records(repo, "escalate")
+    assert stand.count("step", "phase", "p1") == 1
+    assert stand.count("judge", "phase", "p1") == 2
+    assert stand.count("judge", "phase", "p2") == 1
 
 
 def test_a_plan_of_one_phase_runs_one_item(repo: Path) -> None:

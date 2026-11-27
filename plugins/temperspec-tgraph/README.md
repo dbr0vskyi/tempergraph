@@ -22,7 +22,8 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 | expand | The task rows of a plan that took the `phases` arm of `code_mode` | |
 | phase | Only on the `phases` arm, after expand: the code and tests of one phase of the plan, tests first, one fresh session for each phase, one after another in plan order; each is checked on its own rows and committed before the next starts, and a phase that fails runs again alone | The code step, once the last phase has passed |
 | code | Tests first, then code, and the code report: on the arm `single` the whole plan in one session; on `phases` it runs once after the last phase as the join, on the whole change, builds only a row no phase marked, and holds the lines back to the plan, discovery and triage steps | |
-| independent_review | After the code step, a read-only reader that is given the change since the run's base, the task's numbered acceptance criteria and the repository, and never the plan, the hand-off, the code report, an earlier judgement or any step's session. It writes numbered findings, each with a file, a line and the mark blocking or not blocking, to `<task id>.review.md` beside the triage note. The quick lane takes no review | A blocking finding on a file the change touches sends the run back once to the code step, one on any other file to the plan step; a second review with a blocking finding pauses the run showing the findings left. Otherwise the outcome gate |
+| regeneration | Nothing by a model: after the code step, runs the commands the repository declares in `tempergraph.regenerations.json` for files whose inputs the run changed, commits what they wrote, and sends a failure back once to the code step | The unit `independent_review`, or the outcome gate in the quick lane |
+| independent_review | After the code step, a read-only reader that is given the change since the run's base, a file list of it (`.tempergraph/review/files.txt`, one row per file with its added and removed lines, generated files last), the task's numbered acceptance criteria and the repository, and never the plan, the hand-off, the code report, an earlier judgement or any step's session. It writes numbered findings, each with a file, a line and the mark blocking or not blocking, to `<task id>.review.md` beside the triage note. The quick lane takes no review | A blocking finding on a file the change touches sends the run back once to the code step, one on any other file to the plan step; a second review with a blocking finding pauses the run showing the findings left. Otherwise the outcome gate |
 | last stage | Pushes the branch and opens a draft pull request, or reuses the open one, with a description of what to read | |
 
 Each step is followed by a gate: a model-free check first, then a read-only judge. The engine commits after every step. A gate that finds the defect in an earlier step's output sends the run back there by itself. No step or judge uses the large model tier; discovery thinks at the highest effort, its short visit at `high`. A judge grades only what it can read in the step's output and references: criteria about how a step works (narrow reading, the reading list, commands run once, a reused gate result) are checked by the gate's model-free check, from the package's prompts and the gate's own command runs.
@@ -31,9 +32,9 @@ Each step is followed by a gate: a model-free check first, then a read-only judg
 
 | Lane | Path | For |
 |---|---|---|
-| quick | triage → code (no review) | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
-| standard | triage → (discovery or its short visit) → plan → code → independent_review | A change of ordinary size |
-| full | triage → discovery → plan → expand → phase → code → independent_review | A plan over a limit of the plan rule's Complexity table |
+| quick | triage → code (no review) → regeneration | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
+| standard | triage → (discovery or its short visit) → plan → code → regeneration → independent_review | A change of ordinary size |
+| full | triage → discovery → plan → expand → phase → code → regeneration → independent_review | A plan over a limit of the plan rule's Complexity table |
 
 Triage proposes the quick lane and writes a short Change section that stands in for the plan. The code gate stays whole, and it measures the change afterwards: a spec or decision record edited, a file the note does not name, more than 2 code files or more than 200 changed lines sends the run back to triage, which then plans the task. A run never moves to a lighter lane.
 
@@ -56,6 +57,25 @@ The conversation setting says how much a run may ask the owner, with three value
 A pause holds at most 20 questions, the owner decisions first. Answer it in the terminal when `tempergraph run` asks, by file with `resume --answers FILE` (`tempergraph resume temperspec <thread> --answers answers.json`), by `--decision answer:<name>=<value>` (the name is the row's id in lower case, `g2` or `u1`), or by the agent that started the run, which answers what it can and takes the rest to a person. Answers that leave a question open leave the pause open for it. The pause has a deadline of 86,400 seconds, or the seconds `--set ask_owner.deadline_s=<seconds>` gives; `resume --apply-deadline` before it is refused, and after it the run goes on with the answers already given and the default of each open question. Discovery closes each owner decision on its answer and lists under `Decisions` how each was closed; the pull request lists the answered ones under `Decided` and the rest under `Assumptions to confirm`.
 
 What goes to expand is chosen by the engine's complexity switch `code_mode`, not by the plan's own word: after the plan passes its gate, the arm `single` (straight to code) is taken when every fact the plan check records is inside the limits of `routing/code_mode.json` (the plan rule's limits for a simple plan), and the arm `phases` (through expand first) otherwise or when the switch cannot decide. To name the arm yourself, start the run with `tempergraph run temperspec "<task>" --arm code_mode=<single|phases>`. A repository overrides the limits at `.tempergraph/routing/temperspec/code_mode.json`. `tempergraph report --switch temperspec/code_mode` shows the runs of each arm and zone, the operator's own choices apart from the switch's, and their cost per phase.
+
+## Running it on this repository
+
+This repository is built by running temperspec on its own issues ([CONTRIBUTING.md](../../CONTRIBUTING.md), section 4). The recipe:
+
+```sh
+plugins/tempergraph/bin/tempergraph install                    # the engine, from this checkout
+tempergraph workflows register plugins/temperspec-tgraph
+tempergraph run temperspec --check <request> --worktree --worktree-base head
+tempergraph run temperspec <request> --worktree --worktree-base head
+```
+
+- **Worktree mode.** Each run works in its own worktree and branch, started from the head of the checkout it is launched in, so the checkout stays free. `--worktree-base` takes `head`, `default_branch` or `ref:<name>`, never a bare branch name. A request given as a file path must exist at that base.
+- **One shared environment.** One Python environment with the engine's `dev` extra serves every worktree: a worktree's test suite imports the `src` beside it, so the environment holds only the dependencies. An editable install puts its own `tempergraph` in that environment's `bin`; put the installed engine's shim before it on `PATH`, or the run uses the checkout's working tree.
+- **The rule files are the repository's own.** This repository holds them in `.claude/rules/temperspec/`, so a run installs nothing, and a copy under `~/.claude/rules/temperspec/` does not count.
+- **The launch environment is part of the run.** The suite and the step sessions see what the launching shell holds. Start from a clean shell, set `TMPDIR` to a folder on disk outside the home folder with a plain name, and export nothing the run does not need.
+- **At most two runs at once.** Three concurrent runs on a four-core machine pushed the full suite from 16 to 28 minutes and timed out gate checks.
+- **A stop is an exit.** The engine's improvement loop runs at every exit that is not a pause, a stop included. When experimenting, pass `--dry-run`, or set the workflow's level to `record` (the run setting `loop_autonomy`).
+- **A change to this package needs its stamp regenerated.** After a change to its prompts, checks or workflow code, `tempergraph author verify plugins/temperspec-tgraph` writes the stamp again; a step session cannot run it.
 
 ## Rule files
 
@@ -83,28 +103,10 @@ Six skills serve the person outside a run; no step of a run loads one. The `task
 
 Real runs, including runs on this repository's own issues, have passed in part: they finished with every gate passed and, where the repository had a remote, pushed the run's branch, but opening the draft pull request has not been shown yet. Every result, with its date, cost and what it did not show, is in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
 
-## Running on this repository
-
-Much of this repository is built by running temperspec on its own issues. The recipe below is what has worked across the batch described in the field notes.
-
-**Install once.** From `plugins/tempergraph/engine/`, run `python -m pip install -e '.[dev]'` in a single virtual environment. Do not create a separate virtual environment per run.
-
-**Engine PATH priority.** The same environment must be active when you launch each run. The editable install ensures the local `src/` is on `sys.path`, so the engine the worktree sees is the one installed in that environment, not any other copy.
-
-**Start each run in worktree mode.** Pass `--worktree --worktree-base head` to give the run its own git worktree starting at the current HEAD commit:
-
-```
-tempergraph run temperspec "<the task and its acceptance criteria>" --worktree --worktree-base head
-```
-
-Pass `--worktree-base ref:<branch>` instead when the run should start at a named branch's tip.
-
-**Concurrent run limit.** Run at most two temperspec runs at the same time. Three concurrent runs on a four-core machine pushed the full suite from 16 to 28 minutes and timed out gate checks.
-
 ## What comes next
 
 Features found useful and not built yet are [GitHub issues labelled `area: temperspec`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+temperspec%22), each with what it waits for; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## What it asks of the engine
 
-temperspec uses the engine like any other workflow package: through `tempergraph.api`, its manifests and its settings. The engine names no workflow. When temperspec needs something the engine lacks, the need is written here under Limits first, and the engine change is made as a capability any workflow can use, stated in the engine's specs without temperspec (engine ADR `the-engine-names-no-workflow`). The reading sessions of discovery and setup run on the engine's concurrent map, and the writing session reads their findings through the map's items in a later template (VAL-B9). The callable of a script unit (`owner_questions`) gets the artifacts, values and settings of the run so far (SCR-B5, RST-B25), so that it reads the triage note and the `conversation` setting.
+temperspec uses the engine like any other workflow package: through `tempergraph.api`, its manifests and its settings. The engine names no workflow. When temperspec needs something the engine lacks, the need is written here under Limits first, and the engine change is made as a capability any workflow can use, stated in the engine's specs without temperspec (engine ADR `the-engine-names-no-workflow`). The reading sessions of discovery and setup run on the engine's concurrent map, and the writing session reads their findings through the map's items in a later template (VAL-B9). The callable of a script unit (`owner_questions`) gets the artifacts, values and settings of the run so far (SCR-B5, RST-B25), so that it reads the triage note and the `conversation` setting. It also gets `git.base`, the run's base commit that a check reads (SCR-B10), carried by the engine of this repository: the reader's inputs of `independent_review` are built from it. An engine without it gives the empty base, and the review then fails with the finding of IRV-B17 (the run has no base commit).

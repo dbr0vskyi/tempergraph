@@ -14,6 +14,8 @@ When the notes list the phases, the phases built and committed their rows, so yo
 
 **The quick lane.** When the triage note's Route is `quick`, there is no plan and the Plan line above names none. The note's `## Change` section is then your plan: its `Files` and `Tests` are the only files you change, its `Verify` commands are the verification, and each acceptance criterion of the note is one row, with the id `AC <n>`. For a bug, first write the test that reproduces it and see it fail. If the change turns out to need a spec edit, a file the section does not name, or more than a small change, stop: write the report with what you found and end with `UPSTREAM triage: the task is larger than the quick lane`, so the task is planned.
 
+**A failed regeneration.** When the reason of this visit lists the numbered findings of a failed regeneration (the unit after the code step runs the commands `tempergraph.regenerations.json` declares for generated files), the plan is already built: fix those findings and change nothing else. Touch no file that fixing them does not need, and edit no stamp, authoring record or diagram by hand: the regeneration writes them again after this visit.
+
 ## Rules to follow
 
 `task-notes.rule.md` (the code report) and `plan.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it.
@@ -22,7 +24,7 @@ When the notes list the phases, the phases built and committed their rows, so yo
 
 1. Read the plan, then the triage note its hand-off section names, then the specs its front matter names. Read the files the task rows name before you change them. Set the plan's `status` to `in-progress`.
 2. Work through the phases in order and the rows of each phase in order. After a trip back to the plan, some rows already carry a mark from an earlier visit: build only the rows whose Completed cell is empty, and leave the mark of every other row as it is.
-3. For a test row, write the test first and see it fail for the right reason. The test carries the id its row names under Proves, in its name or in a comment on it: the spec's id (`SES-AC1`), or `AC <n>` of the task. A test that carries a criterion is never skipped.
+3. For a test row, write the test first and see it fail for the right reason. The test carries the id its row names under Proves, in its name or in a comment on it: the spec's id (`<PREFIX>-AC<n>`), or `AC <n>` of the task. A test that carries a criterion is never skipped.
 4. For a code row, make the smallest change in the named file that makes the phase's tests pass.
 5. For a docs row, edit the named document. A spec is edited only where the plan says a behaviour or a criterion changes.
 6. After each phase, run only the test files that the phase's rows name, as plain commands, never the whole suite and never the plan's full verification commands. Fix what fails in your change. Never weaken, skip or delete a test to make a test pass. Then write the completed marks of the rows you built in one phase in one edit of the plan, after the change of each row is in its file and the test files that the phase's rows name pass, and not in one edit for each row: one change to the plan that puts `✓ <today's date as YYYY-MM-DD>` in the Completed cell of each of those rows. A session that builds several phases writes one edit for each phase, after that phase's test files pass, never the marks of two phases in one edit.
@@ -38,6 +40,7 @@ When the notes list the phases, the phases built and committed their rows, so yo
 - If a verification command already fails before your first change, note the failing tests under Deviations and do not count them against your rows; do not repair unrelated failures.
 - Do not run `git commit`, `git push` or `gh`. The engine commits your files when you finish, and only the last stage publishes.
 - Use plain single commands from the repository root; `cd <folder> && <command>` is the one allowed chain. Stay inside this working directory. The shell runs only the commands the repository declares in `tempergraph.commands.json` and read-only git, one per call, for example `python -m pytest tests/test_config.py`, `cd sub/pkg && python3 -m pytest tests/test_x.py -q`, `ruff check src tests`, `mypy`, `git status` or `git diff`. It refuses pipes, `;`, a second `&&`, redirections such as `2>&1`, `env` or variable prefixes, inline `python -c`, and listing or reading commands such as `ls`, `cat`, `wc` or `grep`: read, search and list files with the file tools instead.
+- On a visit that follows a failed regeneration, fix those findings and change nothing else, touch no file that fixing them does not need, and edit no stamp, authoring record or diagram by hand.
 - Report results as what you saw. Do not say the work passes: the gate runs the verification itself.
 
 ## What to hand over

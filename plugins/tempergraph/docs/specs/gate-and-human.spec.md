@@ -14,6 +14,7 @@ The gate only routes. The human node is the single place a run pauses, and only 
 - `effort-ladder-and-model-escalation.spec.md`: escalation conditions (LAD-B12)
 - `flow-extensions.spec.md`: deadlines (FLX-B8); operator breakpoints (FLX-B10)
 - `judge-and-verdict.spec.md`: an upstream claim is judged on its own (JDG-B9)
+- `map-unit.spec.md`: what is refused (MAP-B11)
 - `reruns-and-feedback.spec.md`: feedback (RRN-B14); rulings (RRN-B15); rewind (RRN-B16); rerun (RRN-B17); rerun workspace (RRN-B18)
 - `run-outcome.spec.md`: verifier classes (OUT-B10); one class per criterion (OUT-B12)
 - `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); tool grants (RST-B28); escalation for tool access (RST-B29); grants are tracked (RST-B30)
@@ -119,6 +120,37 @@ WHEN a decision is not valid for the thread state ([DUR](durability-and-resume.s
 - GIVEN `back:deploy` where the gate lists only `plan` WHEN resumed THEN it exits 2
 - GIVEN 100 retries by a person WHEN the 101st is sent THEN it exits 2
 
+### HUM-B15 A failed check goes back when the gate declares it
+
+WHEN a gate that has no judge and declares `on_fail: back` meets a check FAIL that carries findings and is not marked environmental THE gate SHALL send the run back to its one back target with no retry, giving the target the findings as the reason of its visit.
+
+- GIVEN a script unit whose gate has no judge, `on_fail: back` and the back target `a` WHEN its check fails with two findings THEN the run goes back to `a`, the visit of `a` has the two findings as its reason and the script unit is not retried
+- GIVEN the same gate WHEN its check fails with a result marked environmental THEN the run is not sent back and pauses with kind `escalation` ([BUD-B11](budgets-and-failures.spec.md))
+- GIVEN the same gate WHEN its check fails with no finding THEN the unit retries as a gate with `on_fail: retry` does
+
+### HUM-B16 The reason of the visit holds the findings, numbered
+
+WHEN a gate sends the run back with the findings of its check THE engine SHALL give the target one line for each failing finding as the reason of its visit, numbered from 1 in the order the check returned them, holding the finding's criterion, place, message and fix and nothing else.
+
+- GIVEN a first finding with a criterion, a place, a message and a fix, and a second with a criterion and a message only WHEN the gate sends the run back THEN the reason holds two numbered lines, the first with all four parts and the second with its two
+- GIVEN a check that returned one passing finding and one failing finding WHEN the gate sends the run back THEN the reason holds the failing finding alone, numbered 1
+
+### HUM-B17 The loop budget bounds the trips back
+
+WHEN a gate that declares `on_fail: back` meets a failing check after the run has gone back to its target as many times as the gate's loop budget allows THE gate SHALL apply its `on_budget_spent` instead of sending the run back, the pause of an `ask` showing the findings left ([BUD-B8](budgets-and-failures.spec.md)).
+
+- GIVEN `loop_budget: 1`, `on_budget_spent: ask` and a check that fails on both passes WHEN the second failure is decided THEN the run pauses with kind `budget` and the pause lists the findings of the second failure
+- GIVEN `on_budget_spent: stop` and the same failures WHEN the second failure is decided THEN the run stops with exit 5
+- GIVEN `loop_budget: 1` and a check that fails on the first pass and passes after the trip back WHEN the second pass is decided THEN the run goes on and nothing pauses
+
+### HUM-B18 What is refused
+
+WHEN a workflow is validated THE engine SHALL refuse `on_fail: back` on a gate that has a judge, on a map's gate ([MAP-B11](map-unit.spec.md)), and on a gate that lists no back target or more than one.
+
+- GIVEN `on_fail: back` on a gate with a judge WHEN the workflow validates THEN it is refused with its own finding code
+- GIVEN `on_fail: back` on a map's gate WHEN the workflow validates THEN it is refused with its own finding code
+- GIVEN `on_fail: back` on a gate with no judge and no back target, or two back targets, WHEN the workflow validates THEN it is refused with its own finding code, and with one back target that is an earlier unit it validates
+
 ## Acceptance criteria
 
 - HUM-AC1 (HUM-B1): A source test asserts the interrupt is the first statement of the human node
@@ -131,3 +163,6 @@ WHEN a decision is not valid for the thread state ([DUR](durability-and-resume.s
 - HUM-AC8 (HUM-B5): An approval pause leaves the verdict PROCEED and adds no escalation
 - HUM-AC9 (HUM-B13): Each refused decision of HUM-B13 exits 2 and leaves the thread unchanged
 - HUM-AC10 (HUM-B14): A fixture run whose stand-in executor ends a step session not ok with `usage_limit` true and a reset instant exits 3 with a payload of kind `escalation`, reason `usage_limit` and that instant as `usage_limit_resets_at`, whose resume command carries no `--decision`; a fixture whose judge session ends the same way pauses with the same kind and reason; and a fixture whose executor reported no reset instant has `usage_limit_resets_at` null
+- HUM-AC11 (HUM-B15, HUM-B16): An engine fixture with a script unit whose check fails once with two findings sends the run back to the declared target with the two findings, numbered, as the reason of its visit, and does not retry the script unit; a check marked environmental pauses with kind `escalation` and sends nothing back; a check that fails with no finding retries
+- HUM-AC12 (HUM-B17): The same fixture with a check that fails on both passes pauses with kind `budget` showing the findings of the second failure under `ask` and stops with exit 5 under `stop`, and a check that passes after the trip back leaves the run unpaused
+- HUM-AC13 (HUM-B18): Each refusal of HUM-B18 has a fixture that fails validation with its own finding code, and a gate with no judge and one earlier back target validates

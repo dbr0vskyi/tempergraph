@@ -169,7 +169,7 @@ WHEN a store write fails THE engine SHALL leave the run and its exit code unchan
 
 - IMD-AC1 (IMD-B20, IMD-B2, IMD-B10): Every record kind that crosses passes the canary test over the sink, the fleet copy, the outbox and label rows: no planted request, output or feedback text crosses to the aggregate
 - IMD-AC2 (IMD-B12, IMD-B1, IMD-B11): Every loop query returns `scope: local` or `scope: aggregate`, and IMD-B1 holds in both
-- IMD-AC3 (IMD-B23): Every threshold named in SIL, PRP, FBK and LSN exists as a parameter record with a provenance
+- IMD-AC3 (IMD-B23): Every threshold named in SIL, ISS, PRP, FBK and LSN exists as a parameter record with a provenance
 - IMD-AC4 (IMD-B22, IMD-B3, IMD-B4): `report --loop` reproduces a hand-computed fixture of every figure
 - IMD-AC5 (IMD-B5, IMD-B6, IMD-B7, IMD-B8, IMD-B9, IMD-B13, IMD-B14, IMD-B15, IMD-B16, IMD-B17, IMD-B18, IMD-B19, IMD-B21, IMD-B24): A fixture run's records carry the join keys, digests, settings, grants and callers, loop records are append-only with their own kinds, and a failed store write leaves the exit code unchanged
 

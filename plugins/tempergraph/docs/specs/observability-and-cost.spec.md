@@ -35,9 +35,10 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 
 ### OBS-B1 Every call logged
 
-WHEN any model session ends, a step, retry, judge, judge re-ask or grouping call THE engine SHALL write one `agent_run` record of that kind with its own `Usage`, the tool call names, `cli_version`, `session_id`, isolation mode, the outcome fields of `SessionResult`, `unknown_tools` (names the executor's view catalog does not map, [SIL](self-improvement.spec.md)), `lessons_digest` on a step or retry whose unit has lessons ([LSN](workflow-lessons.spec.md)), `duration_s`, `tool_wall_share` and `slow_host`; and count only `agent_run` records as model calls.
+WHEN any model session ends, a step, retry, judge, judge re-ask, judge re-read or grouping call THE engine SHALL write one `agent_run` record of that kind with its own `Usage`, the tool call names, `cli_version`, `session_id`, isolation mode, the outcome fields of `SessionResult`, `unknown_tools` (names the executor's view catalog does not map, [SIL](self-improvement.spec.md)), `lessons_digest` on a step or retry whose unit has lessons ([LSN](workflow-lessons.spec.md)), `duration_s`, `tool_wall_share` and `slow_host`; and count only `agent_run` records as model calls.
 
 - GIVEN a judge re-ask WHEN it runs THEN it is an `agent_run` record of kind `judge_reask` with its own usage
+- GIVEN a judge re-read WHEN it runs THEN it is an `agent_run` record of kind `judge_reread` with its own usage
 - GIVEN a run log with route, gate and agent_run records WHEN the analyzer counts model calls THEN only the agent_run records count
 
 ### OBS-B2 Mixed-executor run line

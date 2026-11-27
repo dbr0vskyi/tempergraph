@@ -145,6 +145,58 @@ def test_the_log_shows_at_most_forty_lines_and_says_how_many_it_left_out() -> No
     assert host_ctx["log_left_out"] == 16
 
 
+def test_the_context_of_a_paused_segment_is_built_from_that_segment() -> None:  # ISS-AC13, AC 7
+    def seg(t: str, code: int, reason: str, attempt: int, pause: str | None = None) -> list[dict[str, Any]]:
+        paused = [{"kind": "pause", "ts": f"2026-11-25T{t}:00:02+00:00", "unit": "plan", "reason": pause}] if pause else []
+        return [{"kind": "run_started", "ts": f"2026-11-25T{t}:00:00+00:00"},
+                {"kind": "attempt_start", "ts": f"2026-11-25T{t}:00:01+00:00", "unit": "plan", "attempt": attempt},
+                {"kind": "attempt_start", "ts": f"2026-11-25T{t}:00:02+00:00", "unit": "other", "attempt": attempt},
+                *paused,
+                {"kind": "run_exit", "ts": f"2026-11-25T{t}:00:03+00:00", "exit_code": code, "reason": reason}]
+
+    # ISS-AC13, AC 8: a paused segment shows the pause's own reason, not the exit record's
+    records = seg("01", 3, "budget", 1, "unresolved_gap") + seg("02", 3, "escalation", 2, "retries_spent") \
+        + seg("03", 0, "finished", 3)
+    facts = {"reason": "unresolved_gap", "unit": "plan", "item": "-", "decision": "proceed", "caller": "agent",
+             "ruling": "given", "feedback": "not given", "touch": "rescue,steer", "workspace": "unchanged",
+             "next_gate": "none"}
+    ctx = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00", facts=facts)
+    assert ctx["run"]["started"] == "2026-11-25T01:00:00"
+    assert ctx["run"]["exit_code"] == 3 and ctx["run"]["exit_reason"] == "unresolved_gap"
+    bare = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T02:00:00+00:00")
+    assert "facts" not in bare["run"] and bare["run"]["exit_reason"] == "retries_spent"  # also with no facts row
+    # every fact of SIL-B37, a touch of two classes included (SIL-B43), as ids and enums
+    assert ctx["run"]["facts"] == ("pause=unresolved_gap unit=plan item=- decision=proceed caller=agent "
+                                   "ruling=given feedback=not_given touch=rescue,steer workspace=unchanged "
+                                   "next_gate=none")
+    odd = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00",
+                              facts={**facts, "touch": "rescue,/a/path", "item": "/a/path"})
+    assert "touch=" not in odd["run"]["facts"] and "item=" not in odd["run"]["facts"]  # a non-id is left out
+    assert any("attempt=1" in ln for ln in ctx["log"]) and not any("attempt=2" in ln or "attempt=3" in ln
+                                                                  for ln in ctx["log"])
+    assert not any("unit=other" in ln for ln in ctx["log"])
+    last = issue_context.build(records, [finding(unit="plan")])  # a finding of the last segment: as today
+    assert last["run"]["exit_code"] == 0 and last["run"]["exit_reason"] == "finished" and "facts" not in last["run"]
+    assert any("attempt=3" in ln for ln in last["log"])
+    gone = issue_context.build(records, [finding(unit="plan")], segment_started="1999-01-01T00:00:00+00:00")
+    assert gone == last  # a segment start that is not found gives the last segment
+
+
+def test_the_facts_line_of_a_paused_segment_shows_the_operator_reason() -> None:  # SIL-AC60, ISS-B15, AC 4
+    records = [{"kind": "run_started", "ts": "2026-11-25T01:00:00+00:00"},
+               {"kind": "pause", "ts": "2026-11-25T01:00:02+00:00", "unit": "plan", "reason": "unresolved_gap"},
+               {"kind": "run_exit", "ts": "2026-11-25T01:00:03+00:00", "exit_code": 3, "reason": "budget"}]
+    facts = {"reason": "unresolved_gap", "unit": "plan", "decision": "proceed", "operator_reason": "judge_error"}
+    given = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00", facts=facts)
+    assert given["run"]["facts"].endswith("operator_reason=judge_error") or "operator_reason=judge_error" in given["run"]["facts"]
+    none = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00",
+                               facts={**facts, "operator_reason": "not given"})
+    assert "operator_reason=not_given" in none["run"]["facts"]
+    odd = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00",
+                              facts={**facts, "operator_reason": "/a/path"})
+    assert "operator_reason=" not in odd["run"]["facts"]  # a value that is not an id is left out
+
+
 @pytest.mark.parametrize("value", [f"two words {CANARY}", "/a/path", "x" * 65, {"k": "a b"}, [f"{CANARY} y"]])
 def test_a_value_that_is_not_an_id_enum_or_number_is_left_out(value: Any) -> None:  # ISS-AC10, SIL-AC2
     rec = [{"kind": "run_started", "ts": "t"}, {"kind": "agent_run", "unit": "plan", "reason": value, "model": value}]

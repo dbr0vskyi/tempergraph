@@ -22,7 +22,7 @@ SPEC = load_package(ROOT).spec
 checks = importlib.import_module("tgwf_temperspec.checks")
 A = "docs/specs/a.spec.md"
 B = "docs/specs/b.spec.md"
-FIX = "start the task again from the head of the base branch"
+FIX = "bring the head of the base branch into the run's branch, then answer retry"
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -92,7 +92,7 @@ def _fails(found: list[Any]) -> list[Any]:
 # -- a spec the base branch changed fails the guard (SBS-B1) ----------------------------------------------
 
 
-def test_a_spec_the_base_branch_changed_fails_and_is_named(repo: Path) -> None:  # SBS-AC1, SBS-AC2, AC 4
+def test_a_spec_the_base_branch_changed_fails_and_is_named(repo: Path) -> None:  # SBS-AC1, SBS-AC2, SBS-AC6, AC 4
     base = _base(repo)
     _write(repo, A, "# A\n\nversion 2 by the run\n")
     head = _on_main(repo, lambda r: _write(r, A, "# A\n\nversion 1 changed on main\n"))

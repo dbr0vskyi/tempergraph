@@ -11,7 +11,7 @@ import pytest
 
 from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import answer, standin
-from tempergraph.improve import child, filing, review
+from tempergraph.improve import child, filing, pause_facts, review
 from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.improve.record import read_findings
 from tempergraph.run.runner import resume, start
@@ -76,7 +76,7 @@ def test_a_later_final_exit_hands_the_loop_no_finding_an_earlier_loop_was_handed
     loop_on(monkeypatch)
     ex = paused_on_retries(repo, "F-2")
     assert stop(repo, "F-2", ex).exit_code is ExitCode.STOPPED
-    first, reply1 = asks()
+    first, reply1 = asks(answering=True)  # SIL-AC40, AC 3: the answer is recorded, so the finding is not handed again
     child.drain(registry=registry(standin("claude", judges=[reply1])), host=lambda: MemoryCodeHost())
     assert len(first) == 1 and "cause `retries_spent`" in first[0]
     (earlier,) = started(repo, "F-2")
@@ -144,7 +144,7 @@ def test_a_final_exit_that_is_not_a_stop_plans_no_review_from_the_pauses(
 
 SECTION = "## What answered each pause"
 CANARY = {"request": "canary-request-aardvark", "feedback": "canary-feedback-zebra",
-          "output": "canary-output-heron", "file": "canary-file-ibis"}
+          "output": "canary-output-heron", "file": "canary-file-ibis", "ruling": "canary-ruling-lemur"}
 
 
 def judged_prompts() -> list[str]:
@@ -198,9 +198,23 @@ def committed_in_worktree(repo: Path, task: str) -> None:
     git(wt, "commit", "-m", "a person's change")
 
 
+def writes_and_commits(req: Any) -> Any:
+    """A step that writes a file and commits it in the worktree before the run pauses."""
+    from .test_worktree_cleanup import git
+
+    (req.workdir / "own.txt").write_text("the run's own file\n")
+    git(req.workdir, "add", "-A")
+    git(req.workdir, "commit", "-m", "the run's own commit")
+    return DRAFT
+
+
 def test_the_judge_is_told_whether_the_workspace_changed(
-        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC46, AC 3
-    ex = paused_on_gap(repo, "F-10", monkeypatch)
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC46, WTR-AC15, AC 2
+    ex = paused_on_gap(repo, "F-13", monkeypatch, draft=writes_and_commits)
+    finish(repo, "F-13", ex)  # nothing done between the pause and the resume
+    (prompt,) = judged_prompts()
+    assert "workspace unchanged" in facts_of(prompt, finding_of(repo, "F-13", "gap_escalation")["fingerprint"])
+    ex = paused_on_gap(repo, "F-10", monkeypatch, draft=writes_and_commits)
     committed_in_worktree(repo, "F-10")
     finish(repo, "F-10", ex)
     (prompt,) = judged_prompts()
@@ -235,3 +249,267 @@ def test_no_text_of_the_run_reaches_the_judge_or_the_loop_log(
         assert (f"- `{f['fingerprint']}` cause `{f['cause']}` class {f['class']} side `{f['side']}` "
                 f"unit `{f['unit']}` count {f['count']}") in prompt
     assert "reason `unresolved_gap`" in facts_of(prompt, finding_of(repo, "F-12", "gap_escalation")["fingerprint"])
+
+
+def run_log(repo: Path, task: str) -> list[dict[str, Any]]:
+    p = state_root_path(repo) / "runs" / "demo" / task / "run.jsonl"
+    return [json.loads(ln) for ln in p.read_text().splitlines()]
+
+
+def facts_by_finding(repo: Path, task: str) -> list[tuple[dict[str, Any], dict[str, str]]]:
+    """Each finding of a paused segment of the thread with its facts from `pause_facts.of` (None-free: rows only)."""
+    found = [f for f in read_findings(state_root_path(repo), "demo", task) if f.get("segment_exit") == 3]
+    facts = pause_facts.of(state_root_path(repo), "demo", task, found)
+    return [(f, facts[f["fingerprint"]]) for f in found if f["fingerprint"] in facts]
+
+
+def test_a_finding_is_told_the_pause_of_its_own_segment(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC49, AC 1
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, "F-20")  # segment 1 pauses at `draft`
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
+    again = resume(two_step(), "F-20", repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert again.exit_code is ExitCode.PAUSED and again.payload["unit"] == "review", again.message  # segment 2: `review`
+    starts = [r["ts"] for r in run_log(repo, "F-20") if r["kind"] == "run_started"]
+    assert len(starts) == 2
+    lines = [f for f in read_findings(state_root_path(repo), "demo", "F-20") if f.get("segment_exit") == 3]
+    assert {f["segment_started"] for f in lines} == set(starts)
+    rows = facts_by_finding(repo, "F-20")
+    by_segment = {f["segment_started"]: row for f, row in rows}
+    assert by_segment[starts[0]]["unit"] == "draft" and by_segment[starts[0]]["reason"] != "unresolved_gap"
+    assert by_segment[starts[1]]["unit"] == "review" and by_segment[starts[1]]["reason"] == "unresolved_gap"
+    # a finding of the first unit told in the second segment names the pause at `review`, not the earlier one
+    stray = dict(next(f for f in lines if f["segment_started"] == starts[1]), unit="draft", fingerprint="stray")
+    row = pause_facts.of(state_root_path(repo), "demo", "F-20", [stray])["stray"]
+    assert row["unit"] == "review" and row["reason"] == "unresolved_gap"
+
+
+def test_a_finding_with_nothing_recorded_gets_no_row(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC50, AC 1
+    paused_on_gap(repo, "F-21", monkeypatch)  # one pause, no answer yet
+    ((f, row),) = [x for x in facts_by_finding(repo, "F-21") if x[0]["cause"] == "gap_escalation"]
+    assert row["reason"] == "unresolved_gap" and row["decision"] == pause_facts.UNKNOWN and row["unit"] == "review"
+    nothing = {"kind": "finding", "thread": "demo/F-22", "segment_exit": 3, "unit": "ghost", "fingerprint": "ghost",
+               "segment_started": "2000-01-01T00:00:00+00:00", "at": "2000-01-01T00:00:01+00:00"}
+    answers = pause_facts.of(state_root_path(repo), "demo", "F-22", [nothing])
+    assert answers == {}  # no pause, decision or gate
+    assert SECTION not in child.prompt([nothing], [], answers)  # and no row means no section
+
+
+def mapped_pause(repo: Path, task: str) -> tuple[Any, Any]:
+    """A map whose first item spends its retry and pauses; returns the spec and the first segment's stand-in."""
+    from .test_map import FAIL, THREE, item_ok, mapped, planner, run
+
+    spec = mapped(check=None)
+    out, ex = run(repo, spec, [planner(THREE[:2]), item_ok(), item_ok()], [judge(), judge(FAIL), judge(FAIL)], task=task)
+    assert out.exit_code is ExitCode.PAUSED and out.payload["item"] == "p1", out.message
+    return spec, ex
+
+
+def test_the_next_gate_is_that_of_the_paused_item(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC51, AC 3
+    from .test_map import FAIL, item_ok
+
+    loop_on(monkeypatch)
+    spec, _ = mapped_pause(repo, "F-23")
+    ex = standin("claude", steps=[item_ok(), item_ok(), answer("Joined.", session_id="join")],
+                 judges=[judge(FAIL), judge(), judge()])  # p2's first gate is RETRY
+    done = resume(spec, "F-23", repo, registry(ex), decision="proceed", settings=NO_SLEEP)
+    assert done.exit_code is ExitCode.FINISHED, done.message
+    log = run_log(repo, "F-23")
+    later = next(r for r in log[max(i for i, r in enumerate(log) if r["kind"] == "pause"):]
+                 if r["kind"] == "gate" and r.get("item") == "p2")
+    assert later["token"] == "RETRY"
+    rows = [row for f, row in facts_by_finding(repo, "F-23") if row["unit"] == "phase"]
+    assert rows and all(row["item"] == "p1" and row["next_gate"] == "none" for row in rows), rows
+
+
+def test_the_next_gate_of_the_same_item_is_read(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC51, AC 3
+    from .test_map import item_ok
+
+    loop_on(monkeypatch)
+    spec, _ = mapped_pause(repo, "F-24")
+    ex = standin("claude", steps=[item_ok(), item_ok(), answer("Joined.", session_id="join")],
+                 judges=[judge(), judge(), judge()])
+    done = resume(spec, "F-24", repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert done.exit_code is ExitCode.FINISHED, done.message
+    log = run_log(repo, "F-24")
+    gate = next(r for r in log[max(i for i, r in enumerate(log) if r["kind"] == "pause"):]
+                if r["kind"] == "gate" and r.get("item") == "p1")
+    rows = [row for f, row in facts_by_finding(repo, "F-24") if row["unit"] == "phase"]
+    assert rows and all(row["next_gate"] == gate["verdict"] != "none" for row in rows), rows
+
+
+def test_the_facts_say_a_ruling_was_given_and_never_its_words(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC52, SIL-AC53, SIL-AC44, AC 4
+    ex = paused_on_gap(repo, "F-25", monkeypatch)
+    finish(repo, "F-25", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})
+    (prompt,) = judged_prompts()
+    ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    (decision,) = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == "demo/F-25"
+                   and r.get("ruling")]
+    assert [t.get("class") for t in decision.get("touches") or []] == ["rescue"]  # an escalation answered `proceed`
+    (row,) = [r for f, r in facts_by_finding(repo, "F-25") if f["cause"] == "gap_escalation"]
+    assert row["ruling"] == "given" and row["feedback"] == "not given" and row["touch"] == "rescue", row
+    assert CANARY["ruling"] not in prompt
+    assert CANARY["ruling"] not in child.loop_log(state_root_path(repo), "demo", "F-25").read_text()
+    assert "feedback not given" in facts_of(prompt, finding_of(repo, "F-25", "gap_escalation")["fingerprint"])
+
+
+def test_an_escalation_answered_stop_is_told_every_touch_class_once(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC53
+    ex = paused_on_gap(repo, "F-26", monkeypatch)
+    assert stop(repo, "F-26", ex).exit_code is ExitCode.STOPPED
+    ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    (decision,) = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == "demo/F-26"
+                   and r.get("decision") == "stop"]
+    assert [t.get("class") for t in decision["touches"]] == ["rescue", "steer"]
+    (row,) = [r for f, r in facts_by_finding(repo, "F-26") if f["cause"] == "gap_escalation"]
+    assert row["decision"] == "stop" and row["touch"] == "rescue,steer", row
+    (prompt,) = judged_prompts()
+    assert "touch `rescue,steer`" in facts_of(prompt, finding_of(repo, "F-26", "gap_escalation")["fingerprint"])
+
+
+def test_the_touch_classes_of_a_decision_are_each_told_once_in_order_and_none_is_not_recorded() -> None:  # SIL-AC53
+    touch = pause_facts._touch
+    assert touch({"touches": [{"class": "steer"}, {"class": "rescue"}, {"class": "rescue"}]}) == "rescue,steer"
+    assert touch({"touches": [{"class": "engine"}, {"class": "steer"}, {"class": "designed"}]}) == \
+        "designed,steer,engine"
+    assert touch({"touches": [{"class": "rescue"}]}) == "rescue"
+    assert touch({"touches": []}) == pause_facts.UNKNOWN == "not recorded"
+    assert touch({}) == pause_facts.UNKNOWN
+    assert touch({"touches": [{"class": "bogus"}, "text"]}) == pause_facts.UNKNOWN
+
+
+def test_an_issue_and_a_comment_are_built_from_the_paused_segment(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC13, ISS-AC14, AC 7
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+    ex = paused_on_gap(repo, "F-40", monkeypatch)
+    finish(repo, "F-40", ex)
+    f = finding_of(repo, "F-40", "gap_escalation")
+    host = MemoryCodeHost()
+    child.drain(registry=registry(standin("claude", judges=[gap_only])), host=lambda: host)
+    (issue,) = host.issues
+    check_paused_context(issue["body"], f, *pause_and_exit_reasons(repo, "F-40"))
+
+
+def pause_and_exit_reasons(repo: Path, task: str) -> tuple[str, str]:
+    """The reason of the pause that ended the paused segment and the reason of that segment's `run_exit` record."""
+    log = run_log(repo, task)
+    ended = next(i for i, r in enumerate(log) if r["kind"] == "run_exit" and r["exit_code"] == 3)
+    pause = next(r for r in reversed(log[:ended]) if r["kind"] == "pause")
+    return str(pause["reason"]), str(log[ended]["reason"])
+
+
+def check_paused_context(text: str, f: dict[str, Any], reason: str, exit_reason: str) -> None:
+    assert reason != exit_reason, (reason, exit_reason)  # so the two cannot be mixed up
+    run = text.split("## Run\n")[1].split("\n## ")[0]
+    assert f"Segment started (UTC): `{f['segment_started'][:19]}`" in run
+    assert "Exit code: `3`" in run and f"Exit reason: `{reason}`" in run
+    facts = next(ln for ln in run.splitlines() if "pause=" in ln)  # ISS-B15: the facts of SIL-B37, ids and enums only
+    for word in ("pause=unresolved_gap", "unit=review", "item=-", "decision=proceed", "caller=", "ruling=not_given",
+                 "feedback=not_given", "touch=rescue", "workspace=", "next_gate=none"):
+        assert word in facts, (word, facts)
+    runlog = text.split("## Run log\n")[1].split("\n## ")[0]
+    assert "unit=review" in runlog and "exit_code=3" in runlog and "exit_code=0" not in runlog
+
+
+def test_a_seen_again_comment_is_built_from_the_paused_segment(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC14, AC 7
+    host, _ = drain_with_issue(repo, "F-41", "cause", monkeypatch)
+    f = finding_of(repo, "F-41", "gap_escalation")
+    check_paused_context(host.comments[0]["body"], f, *pause_and_exit_reasons(repo, "F-41"))
+
+
+def test_an_issue_shows_the_pauses_reason_when_no_facts_row_was_made(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-AC13, AC 8
+    monkeypatch.delenv("TEMPERGRAPH_AUTONOMY", raising=False)
+
+    def broken(*a: Any, **k: Any) -> Any:
+        raise OSError("facts unreadable")
+
+    monkeypatch.setattr(pause_facts, "of", broken)
+    ex = paused_on_gap(repo, "F-42", monkeypatch)
+    finish(repo, "F-42", ex)
+    host = MemoryCodeHost()
+    child.drain(registry=registry(standin("claude", judges=[gap_only])), host=lambda: host)
+    (issue,) = host.issues
+    reason, exit_reason = pause_and_exit_reasons(repo, "F-42")
+    run = issue["body"].split("## Run\n")[1].split("\n## ")[0]
+    assert reason != exit_reason and f"Exit reason: `{reason}`" in run and "pause=" not in run
+
+
+def test_the_brief_tells_what_the_pauses_section_is_and_how_an_answer_bears_on_attribution(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC54, AC 5
+    ex = paused_on_gap(repo, "F-30", monkeypatch)
+    finish(repo, "F-30", ex)
+    (prompt,) = judged_prompts()
+    assert SECTION in prompt
+    flat = " ".join(prompt.split())
+    assert "section `What answered each pause`" in flat or "section on what answered each pause" in flat.lower()
+    assert "`retry` that passes with the workspace unchanged" in flat and "points at the judge or the check" in flat
+    assert "not at the step" in flat
+    assert "`proceed` with a ruling" in flat and "overrode the gate" in flat
+    assert "supervising caller" in flat
+    assert "can file the finding by the count whatever its confidence" in flat  # FFD-B6
+
+
+def test_each_paused_segment_with_a_listed_finding_has_a_section_of_its_own(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC55, AC 6
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, "F-31")  # segment 1 pauses at `draft`
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
+    again = resume(two_step(), "F-31", repo, registry(ex), decision="retry", feedback=CANARY["feedback"],
+                   settings=NO_SLEEP)
+    assert again.exit_code is ExitCode.PAUSED and again.payload["unit"] == "review", again.message  # segment 2
+    finish(repo, "F-31", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})  # segment 3, final
+    (prompt,) = judged_prompts()
+    heads = [ln for ln in prompt.splitlines() if ln.startswith("## The segment's records")]
+    assert len(heads) == 3, heads
+    assert [("exit code 3" in h, "exit code 0" in h) for h in heads] == [(True, False), (True, False), (False, True)]
+    assert all("reason " in h for h in heads), heads
+    pauses = [r for r in run_log(repo, "F-31") if r["kind"] == "pause"]  # the pause's own reason, not the exit's (SIL-B45)
+    exits = [r for r in run_log(repo, "F-31") if r["kind"] == "run_exit" and r["exit_code"] == 3]
+    assert len(pauses) == 2 and len(exits) == 2, (pauses, exits)
+    for head, pause, ended in zip(heads[:2], pauses, exits, strict=True):
+        assert pause["reason"], pause
+        assert f"reason {pause['reason']})" in head, (head, pause["reason"])
+        assert pause["reason"] != ended["reason"], (pause["reason"], ended["reason"])  # so the two cannot be mixed up
+    parts = prompt.split("## The segment's records")[1:]
+    assert any("`draft`" in p and "gate" in p for p in parts[:1])  # the first segment's own units and records
+    assert all(CANARY[k] not in prompt for k in CANARY)
+    for ln in prompt.splitlines():  # `test_loop_child.py` reads a `- ` line with a backtick and `cause` as a fingerprint
+        if ln.startswith("- `") and "cause" in ln:
+            assert "class " in ln and "side " in ln, ln  # only finding rows
+
+
+@pytest.mark.parametrize("how", ["stopped_by_request", "attempt_cap", "cost_cap"])
+def test_a_final_exit_that_is_not_a_finish_carries_the_earlier_pause_fingerprint(
+        repo: Path, monkeypatch: pytest.MonkeyPatch, how: str) -> None:  # SIL-AC48, AC 9
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, f"F-4-{how}")
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
+    flags: dict[str, Any] = {}
+    if how == "stopped_by_request":
+        from tempergraph.durability import control
+        monkeypatch.setattr(control, "take_stop", lambda *a, **k: control.TakenStop(mode="drain", caller={}))
+    elif how == "attempt_cap":
+        flags = {"run.attempt_cap": 1}
+    else:
+        flags = {"run.run_cost_cap_usd": 0.001}
+    out = resume(two_step(), f"F-4-{how}", repo, registry(ex), decision="retry",
+                 settings=dataclasses.replace(NO_SLEEP, flags=flags))
+    code = ExitCode.BUDGET_OR_INFRA if how == "cost_cap" else ExitCode.STOPPED
+    assert out.exit_code is code and out.reason == how, out.message
+    fp = finding_of(repo, f"F-4-{how}", "retries_spent")["fingerprint"]
+    (t,) = tickets()
+    doc = json.loads(t.read_text())
+    assert fp in doc["pause_fingerprints"], doc
+
+
+def test_the_guide_names_every_exit_that_is_final(
+        repo: Path) -> None:  # SIL-AC48, SIL-AC46, AC 9, AC 10
+    guide = Path(__file__).resolve().parents[2] / "docs" / "guides" / "improving-workflows.guide.md"
+    para = next(p for p in guide.read_text().split("\n\n") if "final exit" in p and "exit 5" in p)
+    assert "exit 0" in para and "exit 4" in para and "exit 5" in para

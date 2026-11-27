@@ -87,6 +87,7 @@ WHEN `resume` names a thread that stopped by request and carries no decision THE
 
 - GIVEN a run drained between unit `a` and unit `b` WHEN `resume` runs with no decision THEN `b` starts its first attempt, no request file exists and the run ends with the exit it would have had without the stop
 - GIVEN a step session in unit `a`, whose retry budget is 1, that a `now` stop ended WHEN `resume` runs with no decision THEN that attempt runs under the number it had, the retry budget is unspent and the run ends with the exit it would have had without the stop
+- GIVEN a run drained while items of a concurrent map ran WHEN `resume` runs with no decision THEN the items that had not started run, no item runs twice and the run ends with the exit it would have had without the stop
 
 ## Acceptance criteria
 
@@ -101,6 +102,7 @@ WHEN `resume` names a thread that stopped by request and carries no decision THE
 - RCT-AC9 (RCT-B9): The next resume removes a stale request file and records it as stale
 - RCT-AC10 (RCT-B10): A request file that does not parse drains the run
 - RCT-AC11 (RCT-B11): For each of the modes `drain` and `now`, a plain `resume` of a fixture thread stopped by request ends with the exit the same fixture has without the stop, asks for no decision, leaves no request file, and leaves every budget counter as the unstopped fixture has it
+- RCT-AC12 (RCT-B11): A plain `resume` of a fixture thread drained inside a concurrent map of five items, the request written during a step or a judge session of one item, ends as finished with every item's step run once and the join after them
 
 ## Open questions
 

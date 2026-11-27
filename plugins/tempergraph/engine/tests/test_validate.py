@@ -136,7 +136,19 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("script-before-external", lambda: _step(two_step(), "draft", before=(
         Script(run=["pytest"], side_effects="external"),))),
     ("self-check-without-check", lambda: _step(two_step(), "review", self_check=True)),
+    # WFM-AC8 (WFM-B14): the three refusals of `judge_may_skip`
+    ("judge-may-skip-absolute", lambda: _gate(two_step(), "draft", judge_may_skip=("/tmp/out/*",))),
+    ("judge-may-skip-outside-repository", lambda: _gate(two_step(), "draft",
+                                                         judge_may_skip=("../out/*", "docs/../../x"))),
+    ("judge-may-skip-without-judge", lambda: _gate(two_step(), "draft", judge=None, judge_may_skip=("dist/**",))),
 ]
+
+
+def test_judge_may_skip_with_a_judge_validates() -> None:  # WFM-AC8
+    spec = _gate(two_step(), "draft", judge_may_skip=("dist/**", "docs/../out/*.log"))
+    assert spec.units["draft"].gate.judge is not None
+    assert errors(validate(spec, ALL)) == []
+    assert Gate(judge_may_skip=["a/*"]).judge_may_skip == ("a/*",)
 
 
 @pytest.mark.parametrize("code,build", CASES, ids=[c for c, _ in CASES])
@@ -190,6 +202,30 @@ def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:  # S
     no_inputs = Script(run=["pytest"], cache="thread", side_effects="none")
     assert "script-cache-side-effects" in codes(_step(two_step(), "draft", before=(no_inputs,)))
     assert "not_in_release" not in codes(_step(two_step(), "draft", before=(effects, no_inputs)))
+
+
+def _back_unit(**gate: Any) -> WorkflowSpec:
+    """`two_step` plus a script unit `regen` whose gate has no judge and `on_fail: back` (HUM-B15, HUM-B18)."""
+    spec = two_step()
+    fields: dict[str, Any] = {"check": not_module_level, "on_fail": "back", "back_targets": ["draft"]}
+    fields.update(gate)
+    units = dict(spec.units)
+    units["regen"] = Script(call=not_module_level, summary="Regenerate", gate=Gate(**fields))
+    return dataclasses.replace(spec, units=units, order=(*spec.order, "regen"))
+
+
+def test_hum_ac13_on_fail_back_refusals_each_have_their_code() -> None:  # HUM-AC13 (HUM-B18)
+    judged = _back_unit(judge=Judge(stance="V.", brief="Read it"), criteria=[crit("c-regen")])
+    assert "back-with-judge" in codes(judged)
+    item = Step(prompt="Do {item}", tools=["read"], produces={"note": Value()},
+                gate=Gate(judge=Judge(stance="V."), criteria=[crit("c-item")], on_fail="back", back_targets=["draft"]))
+    spec = two_step()
+    units = {"draft": spec.units["draft"], "phase": api.Map(items_from=("draft", "notes"), step=item)}
+    mapped = dataclasses.replace(spec, units=units, order=("draft", "phase"))
+    assert "back-on-map" in codes(mapped)
+    assert "back-target-missing" in codes(_back_unit(back_targets=[]))
+    assert "back-targets-many" in codes(_back_unit(back_targets=["draft", "review"]))
+    assert codes(_back_unit()) == set()  # a judge-less gate with one earlier back target validates
 
 
 def test_subworkflow_kind_is_not_refused_as_not_in_release() -> None:  # SWF-AC1

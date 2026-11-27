@@ -311,6 +311,17 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     return out
 
 
+def _finding_line(b: Mapping[str, Any]) -> str:
+    """HUM-B16: the criterion, the place, the message and the fix of one finding, and nothing else."""
+    head = f"[{b['criterion']}]" if b.get("criterion") else ""
+    if b.get("place"):
+        head = f"{head} {b['place']}".strip()
+    line = f"{head}: {b['problem']}" if head and b.get("problem") else head or str(b.get("problem") or "")
+    if b.get("fix"):
+        line += f" (fix: {b['fix']})"
+    return line
+
+
 def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str) -> dict[str, Any]:
     u: UnitSpec = spec.units[unit]
     g = u.gate
@@ -445,7 +456,11 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             return spent("loop_budget")
         loops[target] = int(loops.get(target, 0)) + 1
         visits = (state.get("visits") or {}).get(target) or {}
-        reason = "; ".join(b.get("problem", "") for b in judged.get("blockers") or []) or "sent back"
+        if g.judge is None and g.on_fail == "back":  # HUM-B16: one numbered line for each finding
+            reason = "\n".join(f"{n}. {_finding_line(b)}" for n, b in enumerate(judged.get("blockers") or [], 1)) \
+                or "sent back"
+        else:
+            reason = "; ".join(b.get("problem", "") for b in judged.get("blockers") or []) or "sent back"
         return _merge(clear_from(spec, target, state),
                       route("BACK", flow.entry_node(spec, target)),
                       {"counters": {unit: {**counters, "retries": 0, "infra": 0, "loops": loops}},

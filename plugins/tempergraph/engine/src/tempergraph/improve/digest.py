@@ -22,9 +22,9 @@ from tempergraph.improve import params
 from tempergraph.store.layout import run_dir
 
 SCHEMA = 1
-KINDS = frozenset({"step", "retry", "judge", "judge_reask", "grouping", "member", "member_reask", "chair"})
+KINDS = frozenset({"step", "retry", "judge", "judge_reask", "judge_reread", "grouping", "member", "member_reask", "chair"})
 STEP_KINDS = frozenset({"step", "retry"})
-JUDGE_KINDS = frozenset({"judge", "judge_reask"})
+JUDGE_KINDS = frozenset({"judge", "judge_reask", "judge_reread"})
 WRITE_CAPS = frozenset({"edit", "write"})
 FILE_CAPS = frozenset({"read", "search", "list", "edit", "write"})
 OUTSIDE = "<outside workspace>"
@@ -182,6 +182,13 @@ def parse_key(key: str) -> tuple[str, int, str]:
     return parts[0], attempt, parts[idx] if idx < len(parts) else "step"
 
 
+def _item(key: str) -> str:
+    """The map item of a session key `<unit>.<item>.<attempt>.<kind>`: the parts between the unit and the attempt."""
+    parts = key.split(".")
+    idx = next((i for i, p in enumerate(parts) if p in KINDS), len(parts) - 1)
+    return ".".join(parts[1:idx - 1]) if idx >= 3 and parts[idx - 1].isdigit() else ""
+
+
 def _target(c: Call) -> str | None:
     return identity.request_digest(f"{c.name}|{c.summary or ''}") if c.summary else None
 
@@ -234,7 +241,7 @@ def _decl(unit: Mapping[str, Any] | None) -> tuple[set[str], set[str], set[str]]
 
 
 def build(session_dir: Path, run_rec: Mapping[str, Any], unit_decl: Mapping[str, Any] | None = None,
-          prior: Mapping[str, Any] | None = None, changed: Sequence[str] = ()) -> dict[str, Any]:
+          prior: Mapping[str, Any] | None = None, changed: Sequence[str] = (), counted: bool = True) -> dict[str, Any]:
     """The digest of one session; `run_rec` is its `agent_run` record, `prior` the previous attempt's digest."""
     key = str(run_rec.get("session_key") or session_dir.name)
     unit, attempt, kind = parse_key(key)
@@ -301,8 +308,9 @@ def build(session_dir: Path, run_rec: Mapping[str, Any], unit_decl: Mapping[str,
     if doc["kind"] in JUDGE_KINDS:
         opened = {p for p in read_paths if p}
         doc["reads"] = sorted(filter(None, (identity.request_digest(p) for p in opened)))
-        doc["changed_total"] = len(changed)
-        doc["changed_read"] = sum(1 for p in changed if p in opened)
+        if counted:  # SRV-B38: a null `changed_base` has no count to carry
+            doc["changed_total"] = len(changed)
+            doc["changed_read"] = sum(1 for p in changed if p in opened)
     doc["_commands"] = sorted({identity.request_digest(s) or "" for s in shell} - {""})
     doc["_wrote"] = sorted({identity.request_digest(str(w)) or "" for w in wrote} - {""})
     if prior is not None and doc["kind"] == "retry":
@@ -372,7 +380,8 @@ def write_segment(root: Path, workflow: str, task_id: str, seg: Sequence[Mapping
         unit, _, kind = parse_key(key)
         sdir = run_dir(root, workflow, task_id) / "sessions" / key
         try:
-            doc = build(sdir, r, units.get(unit), last_by_unit.get(unit) if kind == "retry" else None, changed)
+            doc = build(sdir, r, units.get(unit), last_by_unit.get(unit) if kind == "retry" else None, changed,
+                        counted=not ("changed_base" in r and r["changed_base"] is None))
             write_json(sdir / "digest.json", doc)
         except Exception:  # noqa: BLE001 - OVR-B4: findings are derived without this digest
             continue
@@ -436,13 +445,17 @@ def causes(digests: Sequence[Mapping[str, Any]], *, root: Path | None = None, wo
         end = d.get("end") or {}
         if end.get("state") == "timed_out":
             add(unit, f"timeout:{end.get('timeout_shape') or 'mixed'}")
+        item = _item(str(d.get("session_key") or ""))
+        held = judged or {}
+        mine = held.get(f"{unit}.{item}") if item else None
+        mine = mine if mine is not None else held.get(unit)
         if kind in JUDGE_KINDS and int(d.get("changed_total") or 0) > 0 and int(d.get("changed_read") or 0) == 0:
-            j = (judged or {}).get(unit) or {}
+            j = mine or {}
             if j.get("passed"):
                 add(unit, "judge_unread_pass")
         if kind in JUDGE_KINDS and int(d.get("changed_total") or 0) > 0:  # SRV-B31: read some, but under the share
             read, total = int(d.get("changed_read") or 0), int(d.get("changed_total") or 0)
-            gave = ((judged or {}).get(unit) or {}).get("gave") or ()
+            gave = (mine or {}).get("gave") or ()
             if 1 <= read < float(params.value("digest.judge_read_share")) * total and int(d.get("attempt") or 1) in gave:
                 add(unit, "judge_partial_read")
         if kind == "retry" and float(d.get("prior_overlap") or 0) >= float(params.value("digest.retry_overlap")):

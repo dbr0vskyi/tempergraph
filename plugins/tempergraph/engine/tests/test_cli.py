@@ -278,7 +278,7 @@ def test_pause_before_and_dry_run(repo: Path) -> None:  # ROP-B1 to ROP-B13, FLX
     assert started["dry_run"] is True and "run.auto_reopen" in started["overridden_keys"]
 
 
-# CLI-AC12
+# CLI-AC20
 _OVERLAP_OUTCOME: dict[str, Any] = {
     "schema_version": 1, "revision": 1,
     "statement": "Notes covering every requested change in the notes file.",
@@ -309,7 +309,7 @@ _OVERLAP_OUTCOME: dict[str, Any] = {
 
 
 def test_authoring_warnings_aggregated_on_check_ok(repo: Path, tmp_path: Path,
-                                                    monkeypatch: pytest.MonkeyPatch) -> None:  # CLI-AC12
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:  # CLI-AC20
     home = tmp_path / "home"
     home.mkdir()
     pkg = minimal_package(tmp_path / "pkgs")
@@ -329,7 +329,7 @@ def _git(cwd: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True)
 
 
-def test_check_and_run_refuse_file_missing_at_base(repo: Path) -> None:  # CLI-AC13
+def test_check_and_run_refuse_file_missing_at_base(repo: Path) -> None:  # CLI-AC21
     # Branch `b` exists and has README.md but not task.md; task.md is added on the current branch.
     _git(repo, "checkout", "-q", "-b", "b")
     _git(repo, "checkout", "-q", "main")

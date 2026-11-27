@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from tempergraph.improve import params
+from tempergraph.improve import bindings, params
 from tempergraph.improve.codehost import LOOP_LABEL, CodeHost, CodeHostError
 
 ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL-B11)
@@ -56,6 +57,7 @@ class Candidate:
     mode: str | None = None  # the workflow's improvement mode (ISS-B8)
     judge_executor: str | None = None  # the loop's judge executor (ISS-B8)
     earlier_answers: Sequence[bool] = ()  # the attributed flags already recorded for the fingerprint in the window
+    facts: Mapping[str, str] = field(default_factory=dict)  # what answered the finding's pause (SIL-B37), ids and enums
 
 
 @dataclass(kw_only=True)
@@ -81,11 +83,13 @@ def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
 
 def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime | None) -> tuple[dict[str, int], bool]:
     """SIL-B3: the runs, distinct requests and machines that record the candidate's fingerprint inside the window,
-    and whether they meet the pattern rule. Both lenses count here (SIL-B18)."""
+    and whether they meet the pattern rule. Both lenses count here (SIL-B18). Only history lines of class `fault`
+    count (SIL-B46)."""
     f = c.finding
     now = now or datetime.now(UTC)
     since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
-    same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
+    same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and h.get("class") == "fault"
+            and str(h.get("at") or "") >= since]
     runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
     first: dict[str, str] = {}  # SIL-B3: a thread counts its request once, by the first digest it recorded
     for h in sorted(same, key=lambda h: str(h.get("at") or "")):
@@ -102,13 +106,18 @@ def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime |
     return counts, met
 
 
-def recorded_answers(root: Path, workflow: str, now: datetime | None = None) -> dict[str, list[bool]]:
+def recorded_answers(root: Path, workflow: str, now: datetime | None = None,
+                     exclude: Path | None = None) -> dict[str, list[bool]]:
     """SIL-B18, SIL-B36: the `attributed` flags of the `loop_judged` answers of the workflow's runs in the state
-    root, per fingerprint, inside `pattern_rule.window_days` by the record's time, oldest first."""
+    root, per fingerprint, inside `pattern_rule.window_days` by the record's time, oldest first. `exclude` is a loop
+    log left out: the loop child leaves out its own thread's, whose one answer for a fingerprint `decide` adds itself
+    (SIL-B49, FFD-B1)."""
     now = now or datetime.now(UTC)
     since = now - timedelta(days=int(params.value("pattern_rule.window_days")))
     rows: list[tuple[datetime, str, bool]] = []
     for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+        if exclude is not None and path == exclude:
+            continue
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
@@ -187,7 +196,8 @@ def _context(ds: Sequence[Decision]) -> dict[str, Any]:
 
     c = ds[0].candidate
     return issue_context.build(c.records, [d.candidate.finding for d in ds], mode=c.mode,
-                               judge_executor=c.judge_executor)
+                               judge_executor=c.judge_executor,
+                               segment_started=str(c.finding.get("segment_started") or "") or None, facts=c.facts)
 
 
 def _fmt(v: Any) -> str:
@@ -204,7 +214,7 @@ ENV_NAMES = (("engine_version", "Engine version (run)"), ("loop_engine_version",
              ("judge_executor", "Loop judge executor"), ("improvement_mode", "Improvement mode"),
              ("python", "Python"), ("os", "OS"), ("arch", "Architecture"))
 RUN_NAMES = (("thread", "Run"), ("started", "Segment started (UTC)"), ("exit_code", "Exit code"),
-             ("exit_reason", "Exit reason"), ("run_cost_usd", "Run cost so far (USD)"),
+             ("exit_reason", "Exit reason"), ("facts", "What answered the pause"), ("run_cost_usd", "Run cost so far (USD)"),
              ("unit_cost_usd", "Cost of these units' sessions (USD)"), ("attempts", "Attempts per unit"),
              ("request_digest", "Request digest"), ("rerun_of", "Rerun of"), ("machine", "Machine id"))
 
@@ -345,9 +355,13 @@ class Outbox:
         return cls(path=root / "filing-outbox.jsonl")  # LOS-B7, LOS-B8, LOS-B9
 
     def add(self, payload: Mapping[str, Any]) -> None:
+        """ISS-B18: the entry keeps the time it was first queued; an entry put back keeps the one it holds."""
+        entry = dict(payload)
+        if not entry.get("queued_at"):
+            entry["queued_at"] = datetime.now(UTC).isoformat(timespec="seconds")
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with open(self.path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(dict(payload)) + "\n")
+            fh.write(json.dumps(entry) + "\n")
 
     def take(self) -> list[dict[str, Any]]:
         try:
@@ -356,6 +370,45 @@ class Outbox:
             return []
         self.path.unlink(missing_ok=True)
         return [json.loads(ln) for ln in lines if ln.strip()]
+
+    def entries(self) -> list[dict[str, Any]]:
+        """CLI-B21: the payloads in file order; none when the file is absent, an unreadable line is skipped, and
+        nothing is written or removed."""
+        try:
+            lines = self.path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return []
+        out: list[dict[str, Any]] = []
+        for ln in lines:
+            try:
+                got = json.loads(ln)
+            except ValueError:
+                continue
+            if isinstance(got, dict):
+                out.append(got)
+        return out
+
+    def remove(self, fingerprint: str | None = None) -> int:
+        """CLI-B22: remove every entry (no fingerprint) or those of `fingerprint`; returns the number removed."""
+        try:
+            lines = [ln for ln in self.path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        except OSError:
+            return 0
+        if fingerprint is None:
+            self.path.unlink(missing_ok=True)
+            return len(lines)
+        keep: list[str] = []
+        for ln in lines:
+            try:
+                got = json.loads(ln)
+            except ValueError:
+                got = None
+            if isinstance(got, dict) and got.get("fingerprint") == fingerprint:
+                continue
+            keep.append(ln)
+        if len(keep) != len(lines):
+            self.path.write_text("".join(ln + "\n" for ln in keep), encoding="utf-8")
+        return len(lines) - len(keep)
 
 
 def _deliver(host: CodeHost, p: Mapping[str, Any]) -> str:
@@ -401,12 +454,14 @@ def _match_open(issues: Sequence[Mapping[str, Any]], fps: Sequence[str], key: st
     return next((i for i in order if _holds(i, [_cause_line(key)])), None)
 
 
-def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> dict[tuple[str, int], int]:
-    """ISS-B13: the `issue_commented` records of the workflow's runs in the state root dated on `now`'s UTC day,
-    counted per (repo, issue number). An unreadable file or line is skipped."""
+def comments_by_day(root: Path, workflow: str | None, now: datetime | None = None) -> dict[tuple[str, int], int]:
+    """ISS-B13, BND-B3: the `issue_commented` records of the workflow's runs in the state root (of every workflow
+    when `workflow` is None) dated on `now`'s UTC day, counted per (repo, issue number). An unreadable file or line
+    is skipped."""
     day = (now or datetime.now(UTC)).astimezone(UTC).date()
     out: dict[tuple[str, int], int] = {}
-    for path in sorted((root / "runs" / workflow).glob("*/loop.jsonl")):
+    pattern = "*/*/loop.jsonl" if workflow is None else f"{workflow}/*/loop.jsonl"
+    for path in sorted((root / "runs").glob(pattern)):
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except OSError:
@@ -427,6 +482,141 @@ def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> d
     return out
 
 
+def _expired(p: Mapping[str, Any], now: datetime) -> bool:
+    """ISS-B18: first queued more than `outbox.max_age_days` before `now`; no or an unreadable time never expires."""
+    try:
+        at = datetime.fromisoformat(str(p.get("queued_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    at = at if at.tzinfo else at.replace(tzinfo=UTC)
+    return now - at > timedelta(days=float(params.value("outbox.max_age_days")))
+
+
+def _comment_bound(p: dict[str, Any], got: bindings.Binding, source: int, host: CodeHost, outbox: Outbox,
+                   results: list[dict[str, Any]], comments_today: Mapping[tuple[str, int], int] | None,
+                   sent_now: dict[tuple[str, int], int]) -> None:
+    """BND-B11: a waiting create of a bound cause is one comment on the open target within the day bound (BND-B3);
+    its opening sentence is built from the payload, or from its title and `Seen again` line when it lacks the fields."""
+    repo = str(p.get("repo"))
+    fp = p.get("fingerprint")
+    ident = (repo, int(got.number or 0))
+    if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+            params.value("seen_again.max_per_issue_per_day")):
+        results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fp})
+        return
+    comment = str(p.get("comment") or "")
+    m = re.match(r"\[loop\] (.*?): (.*)$", str(p.get("title") or ""))
+    workflow = str(p.get("workflow") or (m.group(1) if m else ""))
+    cause = str(p.get("cause") or (m.group(2) if m else ""))
+    units = p.get("units")
+    if not isinstance(units, list):
+        seen = re.search(r"\*\*Seen again\*\*: .*? at (.*)\.$", comment, re.MULTILINE)
+        units = re.findall(r"`([^`]+)`", seen.group(1)) if seen else []
+    sentence = bindings.opening_sentence(workflow, cause, [str(u) for u in units], source)
+    c = {"op": "comment", "repo": repo, "number": ident[1], "fingerprint": fp,
+         "body": sentence + "\n" + (comment or "**Seen again**"), "queued_at": p.get("queued_at")}
+    try:
+        url = _deliver(host, c)
+    except CodeHostError:
+        outbox.add(p)
+        return
+    sent_now[ident] = sent_now.get(ident, 0) + 1
+    results.append({"op": "commented", "url": url, "fingerprint": fp, "repo": repo, "number": ident[1]})
+
+
+def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[dict[str, Any]], now: datetime,
+               comments_today: Mapping[tuple[str, int], int] | None,
+               listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]],
+               sent_now: dict[tuple[str, int], int]) -> None:
+    """ISS-B16 to ISS-B18: one waiting entry, checked before it is sent: dropped when expired; a create becomes a
+    comment on the open issue holding its fingerprint or cause line (within the day's bound), is dropped when its
+    cause is muted, else is sent as queued. A refused entry goes back with its queue time."""
+    repo = str(p.get("repo"))
+    if _expired(p, now):
+        who = {"fingerprint": p.get("fingerprint")} if p.get("op") == "create" else {"number": p.get("number")}
+        results.append({"op": "outbox_dropped", "reason": "expired", "entry_kind": p.get("op"), "repo": repo, **who})
+        return
+    if p.get("op") == "create":
+        lines = [ln for ln in str(p.get("body") or "").splitlines()
+                 if ln.startswith(("<!-- tempergraph:fp=", "<!-- tempergraph:cause=")) and ln.endswith("-->")]
+        if (repo, "open") not in listed:
+            listed[(repo, "open")] = _read(host, repo, "open")
+        opened, failed = listed[(repo, "open")]
+        if not failed and lines:
+            match = next((i for i in sorted(opened or [], key=lambda i: int(i.get("number") or 0))
+                          if _holds(i, lines)), None)
+            if match is not None:
+                ident = (repo, int(match["number"]))
+                fp = p.get("fingerprint")
+                if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+                        params.value("seen_again.max_per_issue_per_day")):
+                    results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fp})
+                    return
+                text = str(p.get("comment") or "\n".join([*lines, "", "**Seen again**"]))
+                c = {"op": "comment", "repo": repo, "number": ident[1], "fingerprint": fp, "body": text,
+                     "queued_at": p.get("queued_at")}
+                try:
+                    url = _deliver(host, c)
+                except CodeHostError:
+                    outbox.add(p)
+                    return
+                sent_now[ident] = sent_now.get(ident, 0) + 1
+                results.append({"op": "commented", "url": url, "fingerprint": fp, "repo": repo, "number": ident[1]})
+                return
+            if (repo, "closed") not in listed:
+                listed[(repo, "closed")] = _read(host, repo, "closed")
+            closed, cfailed = listed[(repo, "closed")]
+            mine = [i for i in closed or [] if _holds(i, lines)]
+            last = max(mine, key=_closed_at) if mine and not cfailed else None
+            key = next((ln[len("<!-- tempergraph:cause="):-len(" -->")] for ln in lines
+                        if ln.startswith("<!-- tempergraph:cause=")), "")
+            if (last is not None and key and str(last.get("state_reason") or "") == "duplicate"
+                    and isinstance(last.get("number"), int)):  # BND-B11: a bound cause's waiting create
+                got = bindings.learn(host, repo, key, last, outbox.path.parent, now)
+                if got.state == "unreadable":
+                    outbox.add(p)  # back with its queue time; it expires by ISS-B18
+                    return
+                if got.state == "bound":
+                    if got.learned:
+                        results.append({"op": "bound", "cause_key": key, "repo": repo, "source": int(last["number"]),
+                                        "target": int(got.number or 0)})
+                    if str(got.issue.get("state") or "") == "open":
+                        _comment_bound(p, got, int(last["number"]), host, outbox, results, comments_today, sent_now)
+                        return
+                    last = got.issue  # BND-B5: the closed target decides as a closed loop issue does
+            if (last is not None and str(last.get("state_reason") or "") in ("not_planned", "duplicate")
+                    and now - _closed_at(last) < timedelta(days=float(params.value("mute.days")))):
+                results.append({"op": "outbox_dropped", "reason": "muted", "fingerprint": p.get("fingerprint")})
+                return
+    try:
+        url = _deliver(host, p)
+    except CodeHostError:
+        outbox.add(p)
+        return
+    _refresh(listed, repo, p, url)
+    results.append({"op": "redelivered", "url": url, "fingerprint": p.get("fingerprint")})
+
+
+def _refresh(listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]], repo: str, p: Mapping[str, Any],
+             url: str) -> None:
+    """ISS-B9, SIL-B2, ISS-B7: the lists read before a redelivery must hold what it changed, so a finding or a second
+    waiting create of the same cause in the same call finds the issue it opened. A new issue joins the cached open
+    list with its body; a reopen drops both lists, to be read again when needed."""
+    if p.get("op") == "reopen":
+        listed.pop((repo, "open"), None)
+        listed.pop((repo, "closed"), None)
+        return
+    if p.get("op") != "create" or (repo, "open") not in listed:
+        return
+    opened, failed = listed[(repo, "open")]
+    m = re.search(r"/issues/(\d+)/?$", str(url))
+    if failed or opened is None or m is None:
+        listed.pop((repo, "open"), None)  # read again by the grouping
+        return
+    listed[(repo, "open")] = ([*opened, {"number": int(m.group(1)), "url": url, "body": str(p.get("body") or ""),
+                                         "state_reason": ""}], False)
+
+
 def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False,
          now: datetime | None = None, comments_today: Mapping[tuple[str, int], int] | None = None
          ) -> list[dict[str, Any]]:
@@ -438,12 +628,11 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
     makes no call (SIL-B6)."""
     results: list[dict[str, Any]] = []
     now = now or datetime.now(UTC)
+    listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]] = {}
+    sent_now: dict[tuple[str, int], int] = {}  # the comments this call has sent, by (repo, issue number)
     if not dry_run:
         for p in outbox.take():
-            try:
-                results.append({"op": "redelivered", "url": _deliver(host, p), "fingerprint": p.get("fingerprint")})
-            except CodeHostError:
-                outbox.add(p)
+            _redeliver(p, host, outbox, results, now, comments_today, listed, sent_now)
     groups: dict[tuple[str, str], list[Decision]] = {}
     for d in decisions:
         f = d.candidate.finding
@@ -455,8 +644,6 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             results.append({"op": "would_file", "repo": d.repo, "title": title(f), "fingerprint": fp})
             continue
         groups.setdefault((d.repo, cause_key(f)), []).append(d)
-    listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]] = {}
-    sent_now: dict[tuple[str, int], int] = {}  # the comments this call has sent, by (repo, issue number)
     for (repo, key), ds in groups.items():
         fps = list(dict.fromkeys(str(x.candidate.finding.get("fingerprint")) for x in ds))
         note = None
@@ -467,6 +654,7 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             note = "search_failed"  # retried once, then files anyway and says why
         match = _match_open(opened or [], fps, key)
         regression: int | None = None
+        source: int | None = None  # the closed loop issue whose close as a duplicate sends the comment to `match`
         if match is None and not failed:  # an open issue always wins; only then do closed ones count
             if (repo, "closed") not in listed:
                 listed[(repo, "closed")] = _read(host, repo, "closed")
@@ -478,11 +666,25 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             elif last is not None:
                 reason = str(last.get("state_reason") or "")
                 days = float(params.value("mute.days"))
-                if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
-                    results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
-                    continue
-                if reason == "completed" and last.get("number") is not None:
-                    regression = int(last["number"])  # ISS-B4
+                if reason == "duplicate" and isinstance(last.get("number"), int):  # BND-B1 to BND-B7
+                    got = bindings.learn(host, repo, key, last, outbox.path.parent, now)
+                    if got.state == "unreadable":  # BND-B6: no issue, no comment
+                        results.append({"op": "binding_unreadable", "cause_key": key, "repo": repo})
+                        continue
+                    if got.state == "bound":
+                        if got.learned:
+                            results.append({"op": "bound", "cause_key": key, "repo": repo, "source": int(last["number"]),
+                                            "target": int(got.number or 0)})
+                        if str(got.issue.get("state") or "") == "open":
+                            match, source = got.issue, int(last["number"])
+                        else:  # BND-B5: the closed target decides as a closed loop issue does; no chain is followed
+                            last, reason = got.issue, str(got.issue.get("state_reason") or "")
+                if match is None:
+                    if reason in ("not_planned", "duplicate") and now - _closed_at(last) < timedelta(days=days):
+                        results += [{"op": "muted", "url": last.get("url"), "fingerprint": fp} for fp in fps]  # ISS-B3
+                        continue
+                    if reason == "completed" and last.get("number") is not None:
+                        regression = int(last["number"])  # ISS-B4
         f = ds[0].candidate.finding
         if match is not None:  # ISS-B13: at most the bound of "seen again" comments to one issue in one UTC day
             ident = (repo, int(match["number"]))
@@ -491,11 +693,18 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
                 results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fps[0]})
                 continue
         if match is not None:
-            p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0],
-                 "body": comment_body(ds)}
+            text = comment_body(ds)
+            if source is not None:  # BND-B4: a comment on a target says where it comes from
+                text = bindings.opening_sentence(str(f.get("workflow")), str(f.get("cause")),
+                                                 list(dict.fromkeys(_unit(x.candidate.finding) for x in ds)),
+                                                 source) + "\n" + text
+            p = {"op": "comment", "repo": repo, "number": int(match["number"]), "fingerprint": fps[0], "body": text}
         else:
             p = {"op": "create", "repo": repo, "title": title(f), "body": body(ds, regression),
-                 "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0]}
+                 "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0],
+                 "comment": comment_body(ds),  # ISS-B16: a later delivery as a comment carries the same context
+                 "workflow": str(f.get("workflow")), "cause": str(f.get("cause")),  # BND-B11: ids for the opening sentence
+                 "units": list(dict.fromkeys(_unit(x.candidate.finding) for x in ds))}
         try:
             url = _deliver(host, p)
         except CodeHostError:

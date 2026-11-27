@@ -166,6 +166,21 @@ WHEN the scaffold and check verbs run THE engine CLI SHALL offer `blueprint chec
 
 - GIVEN a stand-in session counter WHEN every verb but `author verify --judge-seeds` and `--trial` runs THEN the counter stays at zero
 
+### SCF-B24 Rung 7 passes for another checkout of the registered package
+
+WHEN rung 7 of the verify ladder (SCF-B18) runs for a package whose workflow name is registered from another path that is another checkout of the same package THE engine SHALL pass the rung without writing the registry, another checkout being a working tree of the same git repository that holds the package folder at the same place in it.
+
+- GIVEN a workflow registered from the main checkout of a repository and a linked worktree of it that holds the package at the same place WHEN `author verify` runs on the package folder of the worktree with the default home THEN rung 7 passes with a note naming the registered path, and the entry is unchanged and names the main checkout
+- GIVEN the same registry WHEN `workflows register` runs on the package folder of the worktree THEN it exits 2 with `name-taken`, as [UPD-B24](engine-update.spec.md) says
+- GIVEN the same registry WHEN `author verify` runs on the package folder of the main checkout THEN rung 7 passes and refreshes the entry in place, as [UPD-B24](engine-update.spec.md) says for the path the entry names
+
+### SCF-B25 Rung 7 fails for a different package that claims a registered name
+
+WHEN rung 7 of the verify ladder (SCF-B18) runs for a package whose workflow name, or its private import name ([UPD-B24](engine-update.spec.md)), is registered from a path that is not another checkout of the same package THE engine SHALL fail the rung with the finding `name-taken`, writing nothing to the registry.
+
+- GIVEN a workflow `notes` registered from a folder of one repository and a package named `notes` in a folder of another repository WHEN `author verify` runs on that folder THEN rung 7 fails with `name-taken` naming the registered path, exit 2, and the entry is unchanged
+- GIVEN a workflow registered from the main checkout and a package of the same name in a linked worktree of that repository at another place in it WHEN `author verify` runs on it THEN rung 7 fails with `name-taken`
+
 ## Acceptance criteria
 
 - SCF-AC1 (SCF-B1, SCF-B2, SCF-B9, SCF-B10, SCF-B11, SCF-B14): Every blueprint, sizing and scaffold refusal has a fixture that fails with its own code
@@ -176,6 +191,8 @@ WHEN the scaffold and check verbs run THE engine CLI SHALL offer `blueprint chec
 - SCF-AC6 (SCF-B6, SCF-B20, SCF-B21, SCF-B22): A trial writes one label per judged criterion the person grades and never changes `improvement_mode`
 - SCF-AC7 (SCF-B8, SCF-B19): A seed fixture graded against its expected status, or flipping between the two runs, fails rung 8 naming the criterion
 - SCF-AC8 (SCF-B18): A package that passes rungs 1 to 5 and whose allow-list holds `git status` and `@repository` passes rung 6 in a repository with no `tempergraph.commands.json`
+- SCF-AC9 (SCF-B24): An engine fixture with a repository, a linked worktree of it and a package registered from the main checkout passes rung 7 of `author verify` on the worktree's package folder with the default home and leaves the registry entry unchanged, while `workflows register` on that folder exits 2 with `name-taken`
+- SCF-AC10 (SCF-B25): An engine fixture in which a different package claims a registered name, from another repository and from another place in the same repository, fails rung 7 with `name-taken`, exits 2 and leaves the registry entry unchanged
 
 ## Open questions
 

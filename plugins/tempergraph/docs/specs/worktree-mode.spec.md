@@ -4,6 +4,30 @@
 
 A run works either in place, in the person's checkout, or in its own git worktree on its own branch, which the engine creates, records, re-attaches and, only when asked, removes, using git directly on every executor. One setting chooses it, `run.workspace`, with a few `run.worktree.*` keys for where the worktree lives, which commit it starts from, how its branch is named and whether it is removed after a finished run; all are keys of the settings catalog ([RST-B20](run-settings-and-overrides.spec.md), [RST-B21](run-settings-and-overrides.spec.md)), so a flag, a profile, a project or user file and the workflow set them in the usual order and the thread snapshots them. This spec owns the person-facing parameter, the worktree's lifecycle, its names, how each executor is pointed at it, and how an executor's own worktree feature is kept from creating a second tree; [WSP](workspace-and-concurrency.spec.md) keeps the state root, the shapes of parallel work, batches and import roots ([research `native-worktrees-and-executor-worktree-features`](../research/native-worktrees-and-executor-worktree-features.rsrch.md)). The engine owns the run's worktree and never uses an executor's native one ([ADR `the-engine-owns-the-run-worktree-executor-worktrees-are-not-used`](../adr/the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)); worktrees are optional, and a workflow that only reads files or writes outside the repository runs in place under `auto` ([ADR `one-workspace-setting-with-an-auto-default`](../adr/one-workspace-setting-with-an-auto-default.adr.md)); worktrees sit beside the repository with derived names ([ADR `worktrees-beside-the-repository-with-derived-ref-safe-names`](../adr/worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md)), start from the main checkout's `HEAD` ([ADR `a-new-worktree-starts-from-the-main-checkouts-head`](../adr/a-new-worktree-starts-from-the-main-checkouts-head.adr.md)) and are removed only on request, clean, keeping the branch ([ADR `worktree-removal-is-opt-in-clean-only-and-keeps-the-branch`](../adr/worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md)). Operators, every executor and the finalizer depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `check-contract-and-command-runs.spec.md`: command runs (CHK-B12)
+- `contracts.spec.md`: workflow fields (CON-B4); persisted documents are versioned (CON-B14)
+- `durability-and-resume.spec.md`: fresh run never merges (DUR-B1)
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `executor-agent-sdk.spec.md`: step options (EAS-B8)
+- `executor-antigravity.spec.md`: launch (EAG-B12)
+- `executor-claude-code.spec.md`: claude Code executor
+- `executor-messages-api.spec.md`: worker request document (EMA-B8)
+- `finalizer-contract.spec.md`: what it receives (FIN-B6)
+- `independence-guard.spec.md`: workspace fingerprint (GRD-B3)
+- `orchestration.spec.md`: orchestration of runs
+- `reruns-and-feedback.spec.md`: rewind (RRN-B16); rerun workspace (RRN-B18)
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: run events for observers
+- `run-settings-and-overrides.spec.md`: layers (RST-B22)
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `security.spec.md`: security posture
+- `session-contract.spec.md`: session contract
+- `tool-host.spec.md`: path confinement (THS-B7)
+- `workspace-and-concurrency.spec.md`: resume after worktree deletion (WSP-B1); bootstrap of a worktree (WSP-B2); writes in place (WSP-B6); shapes of parallel work (WSP-B11); workspace outside git (WSP-B16); each pass of a writing unit has writers of its own (WSP-B20)
+
 ## Behaviours
 
 ### WTR-B17 Settings and flags
@@ -84,7 +108,7 @@ WHEN `default_branch` cannot be fetched THE engine SHALL start from the local co
 
 ### WTR-B22 Lifecycle
 
-WHEN a worktree run moves through its life THE engine SHALL at `run --check` resolve the plan, check the root is writable, the branch does not exist, the base resolves and setup commands are allowed, and print the plan creating nothing (C13); at start, after preflight and the thread lock and under a short repository lock, run `prepare_workspace`: `git worktree add -b <branch> <path> <base commit>`, `git worktree lock --reason "tempergraph <thread>"` and the bootstrap, a failed copy, submodule step, setup command or limit removing the new worktree and branch ([WSP-B2](workspace-and-concurrency.spec.md)) and exiting 2 with the failing step, recording a `workspace` record `prepared`; at each unit work in the record's path, `unit_entered` carrying `head_commit` and `dirty` ([EVT](run-events.spec.md)); at a pause, stop, failure or crash leave worktree, lock and branch, the pause payload naming the path; at resume run `attach_workspace`, reusing a present path on the branch (`reused`), or after `git worktree prune` adding it again with a new lock and bootstrap (`attached`, [WSP-B1](workspace-and-concurrency.spec.md)), keeping and recording a person's commits and changes since the segment (`external_change` with commit and changed-path counts), exiting 2 offering `rerun --from start` when the run branch is missing and naming the other checkout when the branch is checked out elsewhere; at a rewind touch no file ([RRN-B16](reruns-and-feedback.spec.md)); at a rerun prepare a new worktree and branch ([RRN-B18](reruns-and-feedback.spec.md)); and at finish run the finalizer with `workdir` the run worktree, then `release_workspace` unlocking it and applying cleanup, recording `released` and then `removed` or `kept` with the reason; an in-place run started inside a linked worktree working in that worktree, not the main checkout.
+WHEN a worktree run moves through its life THE engine SHALL at `run --check` resolve the plan, check the root is writable, the branch does not exist, the base resolves and setup commands are allowed, and print the plan creating nothing (C13); at start, after preflight and the thread lock and under a short repository lock, run `prepare_workspace`: `git worktree add -b <branch> <path> <base commit>`, `git worktree lock --reason "tempergraph <thread>"` and the bootstrap, a failed copy, submodule step, setup command or limit removing the new worktree and branch ([WSP-B2](workspace-and-concurrency.spec.md)) and exiting 2 with the failing step, recording a `workspace` record `prepared`; at each unit work in the record's path, `unit_entered` carrying `head_commit` and `dirty` ([EVT](run-events.spec.md)); at a pause, stop, failure or crash leave worktree, lock and branch, the pause payload naming the path; at resume run `attach_workspace`, reusing a present path on the branch (`reused`), or after `git worktree prune` adding it again with a new lock and bootstrap (`attached`, [WSP-B1](workspace-and-concurrency.spec.md)), keeping a person's commits and changes since the pause and recording them as WTR-B28 says, exiting 2 offering `rerun --from start` when the run branch is missing and naming the other checkout when the branch is checked out elsewhere; at a rewind touch no file ([RRN-B16](reruns-and-feedback.spec.md)); at a rerun prepare a new worktree and branch ([RRN-B18](reruns-and-feedback.spec.md)); and at finish run the finalizer with `workdir` the run worktree, then `release_workspace` unlocking it and applying cleanup, recording `released` and then `removed` or `kept` with the reason; an in-place run started inside a linked worktree working in that worktree, not the main checkout.
 
 - GIVEN a failing setup command WHEN the run starts THEN the new worktree and branch are removed and it exits 2 naming the step
 
@@ -173,6 +197,14 @@ WHEN `worktree prune --apply` runs THE engine SHALL remove only removable worktr
 
 - GIVEN four worktrees (running, finished and clean, finished and dirty, paused and clean) WHEN `prune --apply` runs THEN only the finished clean and paused clean ones are removed, the paused thread can still resume, and no branch is deleted
 
+### WTR-B28 What a resume compares
+
+WHEN a paused run is resumed in its worktree THE engine SHALL record the workspace as `external_change`, with the number of commits and of changed paths since the pause, only when the head or the status of the worktree differs from the head and the status the engine recorded when the run paused ([GRD-B3](independence-guard.spec.md)), so that what the run's own sessions and commands committed or left uncommitted before the pause is no change.
+
+- GIVEN a worktree run whose step committed one file and left another file uncommitted before the run paused WHEN it is resumed with nothing done in the worktree between THEN its `workspace` record is `reused` and not `external_change`
+- GIVEN that run and a person who commits one file between the pause and the resume WHEN it is resumed THEN its `workspace` record is `external_change` with 1 commit
+- GIVEN that run and a person who adds an untracked file between the pause and the resume WHEN it is resumed THEN its `workspace` record is `external_change` with 0 commits and 1 changed path
+
 ## Acceptance criteria
 
 - WTR-AC1 (WTR-B18, WTR-B1, WTR-B2, WTR-B3): `resolve_workspace` returns each case of WTR-B18 for a fixture workflow and target, with no git write and no model call
@@ -189,6 +221,7 @@ WHEN `worktree prune --apply` runs THE engine SHALL remove only removable worktr
 - WTR-AC12 (WTR-B25): The step, judge and check of an item of a concurrent map whose step declares `write`, run by a scripted executor, record the item's worktree as their working directory, never the run worktree
 - WTR-AC13 (WTR-B20): The folder and branch of an item of a concurrent map's second visit end in `--i2-<item>`, those of its first visit in `--i-<item>`, and both branches pass `git check-ref-format --branch`
 - WTR-AC14 (WTR-B20): The folder and branch of a slot of a writing contest's second attempt end in `--s2-<slot>`, those of its first attempt in `--s-<slot>`, and both branches pass `git check-ref-format --branch`
+- WTR-AC15 (WTR-B28): A fixture worktree run whose scripted step commits one file and leaves another uncommitted, paused and resumed with nothing done in the worktree between, records `reused`; the same run with a commit made between the pause and the resume records `external_change` with 1 commit, and with an untracked file added between records `external_change` with 0 commits and 1 changed path
 
 ## Open questions
 

@@ -42,8 +42,11 @@ def test_review_text_is_in_the_local_evidence_and_nowhere_else(tmp_path: Path) -
             continue
         assert CANARY not in text, f"review text reached {path.relative_to(root)}"
     assert CANARY not in json.dumps(host.issues, default=str)
-    for name in ("issue_comments", "comments", "labels", "pulls"):
-        assert CANARY not in json.dumps(getattr(host, name, []), default=str), name
+    for name in ("issue_comments", "comments", "thread", "labels", "pulls"):
+        held = getattr(host, name, [])
+        if callable(held):  # a read method of the host (BND-B12), not data it holds
+            continue
+        assert CANARY not in json.dumps(held, default=str), name
     assert CANARY not in json.dumps(out, default=str)
     assert child.loop_log(root, "demo", "T-0").exists()
 

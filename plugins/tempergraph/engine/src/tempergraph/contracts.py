@@ -158,13 +158,14 @@ class GateSpec:
     check_timeout_s: int = 1800
     judge: JudgeSpec | None = None
     criteria: tuple[Criterion, ...] = ()
-    on_fail: Literal["retry", "stop", "fallback"] = "retry"
+    on_fail: Literal["retry", "stop", "fallback", "back"] = "retry"
     on_budget_spent: Literal["stop", "ask", "fallback"] = "ask"
     fallback: str | None = None
     approval: bool = False
     back_targets: tuple[str, ...] = ()
     loop_budget: int = 1
     retry_budget: int = 2
+    judge_may_skip: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -592,7 +593,7 @@ class InfraCause(StrEnum):
 
 
 ErrorKind = Literal["model", "refused", "cap_reached", "turn_cap", "denied", "auth", "unknown"]
-SessionKind = Literal["step", "retry", "judge", "judge_reask", "grouping", "member", "member_reask", "chair"]
+SessionKind = Literal["step", "retry", "judge", "judge_reask", "judge_reread", "grouping", "member", "member_reask", "chair"]
 
 
 @dataclass(kw_only=True)
@@ -808,6 +809,7 @@ class CriterionFinding:
     fix: str = ""
     defect_in: str | None = None
     no_change: bool = False
+    unread: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -815,6 +817,7 @@ class Judgement:
     criteria: tuple[CriterionFinding, ...]
     coverage: Mapping[str, int] = field(default_factory=dict)
     gap: bool = False
+    gap_unread: bool = False
     confidence: float = 0.0
     summary: str = ""
 

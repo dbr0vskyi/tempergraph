@@ -20,6 +20,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from tempergraph.compiler.graph import CompiledWorkflow, compile_workflow
 from tempergraph.compiler.state import RunState
 from tempergraph.contracts import ThreadState, WorkflowSpec
+from tempergraph.model import flow
 
 BUSY_TIMEOUT_S = 60.0
 CREATE_RETRY_S = 30.0
@@ -134,14 +135,28 @@ def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:
     return ThreadState.STOPPED
 
 
+def _reached_by_goto(cw: CompiledWorkflow, node: str) -> bool:
+    """`node` is a node of a concurrent map that an item reaches or returns to: an item node, which an item is sent to,
+    or the map's own step node, which an item goes back to when it has passed, waits for a person or has stopped the
+    map (MAP-B9). Nothing in the checkpoint but the pending task itself says that such a node runs next."""
+    unit = node.rpartition(".")[0]
+    if not flow.concurrent_map(cw.spec, unit):
+        return False
+    return node == flow.step_node(unit) or node in {flow.item_node(unit, k) for k in flow.ITEM_KINDS}
+
+
 def update_values(cw: CompiledWorkflow, config: Any, update: Any) -> bool:
-    """A state write outside any node. False when several tasks are pending (of several nodes, or of one node sent
-    several times, as the items of a concurrent map are) and the write cannot be attributed; the caller then hands it
-    to the first node that runs."""
+    """A state write outside any node. False when the write cannot be made without losing what is pending; the caller
+    then hands it to the first node that runs. That is so when several tasks are pending (of several nodes, or of one
+    node sent several times, as the items of a concurrent map are) and the write cannot be attributed, and when one
+    is pending at a node of a concurrent map that an item reaches or returns to (one item's pause, even alone, or the
+    map's step after a stop inside the map): the checkpoint the write makes keeps only what the graph's edges give,
+    and no edge leads there, so the thread would be left with nothing pending (MAP-B6, RCT-B11)."""
     from langgraph.errors import InvalidUpdateError
 
     try:
-        if len(cw.graph.get_state(config).tasks) > 1:
+        tasks = cw.graph.get_state(config).tasks
+        if len(tasks) > 1 or any(_reached_by_goto(cw, t.name) for t in tasks):
             return False
         cw.graph.update_state(config, update)
     except InvalidUpdateError:

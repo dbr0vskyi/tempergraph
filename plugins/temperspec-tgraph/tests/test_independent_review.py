@@ -196,10 +196,156 @@ def _run(tmp_path: Path) -> Path:
     return work
 
 
+def _rev(work: Path, ref: str) -> str:
+    return subprocess.run(["git", "rev-parse", ref], cwd=work, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def _base(work: Path) -> str:
+    """The run's base commit as the engine gives it: the commit before the prepare commit of the `_run` fixture."""
+    return _rev(work, ":/init")
+
+
+INPUTS = ".tempergraph/review"
+
+
+def test_a_hand_made_commit_between_run_commits_leaves_the_files_of_every_run_commit(tmp_path: Path) -> None:
+    # AC 2, IRV-AC3 (IRV-B3)
+    work = _run(tmp_path)
+    _commit(work, "fix typo by hand", {"src/hand.py": "h = 1\n"})
+    _commit(work, "feat(temperspec): code for i1", {"src/after.py": "a = 1\n"})
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    diff = (work / INPUTS / "change.diff").read_text()
+    for held in ("src/new.py", "src/hand.py", "src/after.py"):
+        assert held in diff
+    assert "CLAUDE.md" not in diff and "x.rule.md" not in diff
+
+
+def _fake_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
+    import shutil
+    real = shutil.which("git")
+    folder = tmp_path / "fakebin"
+    folder.mkdir()
+    script = folder / "git"
+    script.write_text(f'#!/bin/sh\nfor a in "$@"; do\n  if [ "$a" = diff ]; then\n    {body}\n  fi\ndone\nexec {real} "$@"\n')
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{folder}:{__import__('os').environ['PATH']}")
+
+
+def _stale(work: Path) -> None:
+    folder = work / INPUTS
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in ("change.diff", "files.txt", "base.txt"):
+        (folder / name).write_text("earlier review\n")
+
+
+def test_a_failing_git_leaves_no_change_and_names_the_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 5, IRV-AC18, IRV-AC19 (IRV-B18, IRV-B19)
+    work = _run(tmp_path)
+    base = _base(work)
+    _stale(work)
+    _fake_git(tmp_path, monkeypatch, "echo broken >&2; exit 3")
+    assert review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base) == []
+    folder = work / INPUTS
+    for gone in ("change.diff", "files.txt", "base.txt"):
+        assert not (folder / gone).exists()
+    failed = (folder / "failed.txt").read_text()
+    assert "git" in failed and "diff" in failed
+
+
+def test_a_git_that_does_not_finish_leaves_no_change_and_names_the_command(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 5, IRV-AC18, IRV-AC19 (IRV-B18, IRV-B19)
+    work = _run(tmp_path)
+    base = _base(work)
+    _stale(work)
+    _fake_git(tmp_path, monkeypatch, "exec sleep 20")
+    monkeypatch.setattr(review, "GIT_TIMEOUT", 0.5)
+    assert review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base) == []
+    folder = work / INPUTS
+    for gone in ("change.diff", "files.txt", "base.txt"):
+        assert not (folder / gone).exists()
+    failed = (folder / "failed.txt").read_text()
+    assert "diff" in failed and "timed out" in failed
+
+
+def test_a_good_run_after_a_failure_removes_the_record_of_it(tmp_path: Path) -> None:
+    # AC 5, IRV-AC19 (IRV-B19)
+    work = _run(tmp_path)
+    (work / INPUTS).mkdir(parents=True)
+    (work / INPUTS / "failed.txt").write_text("git diff\n")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    assert not (work / INPUTS / "failed.txt").exists()
+    assert (work / INPUTS / "base.txt").read_text().strip() == _base(work)
+
+
+def test_the_file_list_holds_one_row_for_each_file_of_the_change(tmp_path: Path) -> None:
+    # AC 6, IRV-AC20 (IRV-B20)
+    work = _run(tmp_path)
+    (work / "blob.bin").write_bytes(b"\x00\x01\x02\x00")
+    _commit(work, "feat(temperspec): code for i1", {"src/moved.py": "line\n"})
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    rows = (work / INPUTS / "files.txt").read_text().splitlines()
+    assert "+2 -0 src/new.py" in rows
+    assert "+1 -0 src/moved.py" in rows
+    assert "+0 -1 src/gone.py" in rows
+    assert not any("triage.md" in r or "CLAUDE.md" in r for r in rows)
+    assert len(rows) == len(set(rows))
+
+
+def test_a_binary_file_shows_no_counted_lines(tmp_path: Path) -> None:
+    # AC 6, IRV-AC20 (IRV-B20)
+    work = _run(tmp_path)
+    _commit(work, "feat(temperspec): code for i1", {"blob.bin": "x"})
+    (work / "blob.bin").write_bytes(b"\x00\x01\x02\x00")
+    _git(work, "add", "-A")
+    _git(work, "commit", "-q", "-m", "feat(temperspec): code for i1")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    assert "+0 -0 blob.bin" in (work / INPUTS / "files.txt").read_text().splitlines()
+
+
+def test_a_rename_is_a_deletion_and_an_addition(tmp_path: Path) -> None:
+    # AC 6, IRV-AC20 (IRV-B20)
+    work = _run(tmp_path)
+    _git(work, "mv", "src/new.py", "src/renamed.py")
+    _git(work, "commit", "-q", "-m", "feat(temperspec): code for i1")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    rows = (work / INPUTS / "files.txt").read_text().splitlines()
+    assert any(r.endswith(" src/renamed.py") for r in rows)
+    assert not any(r.endswith(" src/new.py") for r in rows)
+
+
+def test_generated_files_are_listed_last_and_marked(tmp_path: Path) -> None:
+    # AC 6, IRV-AC21 (IRV-B21)
+    work = _run(tmp_path)
+    (work / "tempergraph.regenerations.json").write_text(json.dumps({"schema_version": 1, "regenerations": [
+        {"name": "stamps", "command": "true", "inputs": ["src"], "outputs": ["docs/specs/a.spec.md", "gen"]}]}))
+    _commit(work, "feat(temperspec): code for i1", {"gen/x.txt": "x\n", "gen/sub/y.txt": "y\n", "src/zz.py": "z\n"})
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    rows = (work / INPUTS / "files.txt").read_text().splitlines()
+    marked = [r for r in rows if r.endswith(" [generated]")]
+    assert {r.split()[2] for r in marked} == {"docs/specs/a.spec.md", "gen/x.txt", "gen/sub/y.txt"}
+    assert rows[-len(marked):] == marked
+    assert not any(r.endswith(" [generated]") for r in rows[:-len(marked)])
+
+
+def test_a_repository_with_no_declaration_has_no_marked_row(tmp_path: Path) -> None:
+    # AC 6, IRV-AC21 (IRV-B21)
+    work = _run(tmp_path)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    assert "[generated]" not in (work / INPUTS / "files.txt").read_text()
+
+
+def test_no_base_writes_no_change(tmp_path: Path) -> None:
+    # AC 2, IRV-AC3 (IRV-B3)
+    work = _run(tmp_path)
+    assert review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", "") == []
+    assert not (work / INPUTS / "change.diff").exists() and not (work / INPUTS / "base.txt").exists()
+
+
 def test_the_change_holds_the_runs_files_and_no_hand_over_document(tmp_path: Path) -> None:
     # AC 2, IRV-AC3 (IRV-B3)
     work = _run(tmp_path)
-    changed = review.write_inputs(work, "i1", "docs/tasks/i1.triage.md")
+    changed = review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
     diff = (work / ".tempergraph" / "review" / "change.diff").read_text()
     for held in ("src/new.py", "tests/test_new.py", "docs/specs/a.spec.md", "src/gone.py"):
         assert held in diff and held in changed
@@ -214,7 +360,7 @@ def test_a_review_after_a_trip_back_holds_the_commits_of_both_visits(tmp_path: P
     work = _run(tmp_path)
     _commit(work, "docs(temperspec): independent_review for i1", {"docs/tasks/i1.review.md": "# Review\n"})
     _commit(work, "feat(temperspec): code for i1", {"src/new.py": "def f():\n    return 2\n", "src/second.py": "y = 2\n"})
-    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
     diff = (work / ".tempergraph" / "review" / "change.diff").read_text()
     assert "return 2" in diff and "src/second.py" in diff and "tests/test_new.py" in diff
     assert "i1.review.md" not in diff
@@ -223,7 +369,7 @@ def test_a_review_after_a_trip_back_holds_the_commits_of_both_visits(tmp_path: P
 def test_the_criteria_file_holds_the_numbered_criteria_and_nothing_else_of_the_note(tmp_path: Path) -> None:
     # AC 2, IRV-AC4 (IRV-B4)
     work = _run(tmp_path)
-    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
     text = (work / ".tempergraph" / "review" / "criteria.md").read_text()
     for line in ("1. A request is refused", "2. A retry is served", "3. The list is sorted"):
         assert line in text
@@ -267,19 +413,162 @@ def _call(capability: str, target: str | None, ok: bool = True) -> dict[str, Any
     return {"name": names[capability], "capability": capability, "target": target, "ok": ok}
 
 
-def _ctx(tmp_path: Path, session: list[dict[str, Any]] | None) -> CheckContext:
-    work = _work(tmp_path)
+def _ctx(tmp_path: Path, session: list[dict[str, Any]] | None, git: GitFacts | None = None) -> CheckContext:
+    """A check context; with `git` it sits on `tmp_path` as it is (a `_run` repository), else on a plain work folder."""
+    work = tmp_path if git is not None else _work(tmp_path)
     (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)
     (work / "docs" / "tasks" / "i1.review.md").write_text(_doc("None"))
     return CheckContext(unit="independent_review", workdir=work, request={"task_id": "i1"}, values={},
                         artifacts={"independent_review": {"findings": "docs/tasks/i1.review.md"}},
-                        git=GitFacts(), allow=SPEC.allow_commands, out_dir=tmp_path.parent / f"{tmp_path.name}.out",
+                        git=git or GitFacts(), allow=SPEC.allow_commands, out_dir=tmp_path.parent / f"{tmp_path.name}.out",
                         deadline_at=time.monotonic() + 60, session=None if session is None else tuple(session),
                         visit_session=None if session is None else tuple(session))
 
 
 def _found(ctx: CheckContext, criterion: str) -> list[Any]:
     return [f for f in checks.review_check(ctx).findings if f.criterion == criterion]
+
+
+def _inputs_ctx(work: Path, base: str, changed: tuple[str, ...]) -> CheckContext:
+    """A check context on a `_run` repository, with the reader's inputs built by the unit's own function."""
+    return _ctx(work, None, GitFacts(base=base, changed_paths=changed))
+
+
+CHANGED = ("src/new.py", "tests/test_new.py", "docs/tasks/i1.triage.md", "CLAUDE.md")
+
+
+def _form_failures(ctx: CheckContext) -> list[Any]:
+    return [f for f in _found(ctx, "ts-rev-form") if f.status == "fail"]
+
+
+def test_a_base_the_inputs_were_not_built_from_fails_naming_both_commits(tmp_path: Path) -> None:
+    # AC 3, IRV-AC15 (IRV-B15)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    other = _rev(work, "HEAD")
+    failing = _form_failures(_inputs_ctx(work, other, CHANGED))
+    assert len(failing) == 1 and base in failing[0].message and other in failing[0].message
+    assert not _form_failures(_inputs_ctx(work, base, CHANGED))
+
+
+def test_a_missing_record_of_the_base_fails_naming_the_checks_commit(tmp_path: Path) -> None:
+    # AC 3, IRV-AC15 (IRV-B15)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    (work / INPUTS / "base.txt").unlink()
+    failing = _form_failures(_inputs_ctx(work, base, CHANGED))
+    assert len(failing) == 1 and base in failing[0].message and "none was recorded" in failing[0].message
+
+
+def test_an_empty_change_over_a_changed_file_fails_saying_the_reader_was_given_no_change(tmp_path: Path) -> None:
+    # AC 4, IRV-AC16 (IRV-B16)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    (work / INPUTS / "change.diff").write_text("")
+    failing = _form_failures(_inputs_ctx(work, base, CHANGED))
+    assert len(failing) == 1 and "no change" in failing[0].message
+    # only hand-over documents and the prepare commit's files changed: an empty change is right
+    assert not _form_failures(_inputs_ctx(work, base, ("docs/tasks/i1.triage.md", "CLAUDE.md")))
+    # the change holds the file
+    (work / INPUTS / "change.diff").write_text("diff --git a/src/new.py b/src/new.py\n")
+    assert not _form_failures(_inputs_ctx(work, base, CHANGED))
+
+
+def test_a_run_with_no_base_commit_fails_saying_so(tmp_path: Path) -> None:
+    # AC 4, IRV-AC17 (IRV-B17)
+    work = _run(tmp_path)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", "")
+    failing = _form_failures(_inputs_ctx(work, "", CHANGED))
+    assert len(failing) == 1 and "no base commit" in failing[0].message
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    assert not _form_failures(_inputs_ctx(work, base, CHANGED))
+
+
+def test_a_recorded_git_failure_is_one_finding_naming_the_command(tmp_path: Path) -> None:
+    # AC 5, IRV-AC18 (IRV-B18)
+    work = _run(tmp_path)
+    base = _base(work)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base)
+    for name in ("change.diff", "files.txt", "base.txt"):
+        (work / INPUTS / name).unlink()
+    (work / INPUTS / "failed.txt").write_text("git diff --name-only: exit status 3\n")
+    failing = _form_failures(_inputs_ctx(work, base, CHANGED))
+    assert len(failing) == 1 and "git diff --name-only" in failing[0].message
+    assert "no change" not in failing[0].message and "base" not in failing[0].message.replace("git diff", "")
+
+
+FIXTURES = ROOT / "evals" / "checks" / "independent_review"
+
+# what each must-fail fixture is named for: the sentence of its `ts-rev-form` finding
+FIXTURE_FINDING = {"base-differs": "built from",             # IRV-AC15
+                   "empty-change": "no change",                    # IRV-AC16
+                   "no-base": "no base commit"}                    # IRV-AC17
+
+
+def _fixture_run(fixture: Path, work: Path, crlf: bool) -> Any:
+    """The unit's gate check on one check fixture as the engine's fixture runner gives it: the files copied (with LF or
+    CRLF), the git facts read from `git.json`, the findings document as the unit's artifact."""
+    from tempergraph.run.checks import run_check
+
+    for f in sorted(p for p in fixture.rglob("*") if p.is_file() and p != fixture / "git.json"):
+        data = f.read_bytes()
+        if crlf:
+            data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        target = work / f.relative_to(fixture)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    git_file = fixture / "git.json"
+    facts = json.loads(git_file.read_text()) if git_file.is_file() else {}
+    git = GitFacts(**{k: tuple(v) if isinstance(v, list) else v for k, v in facts.items()})
+    ctx = CheckContext(unit="independent_review", workdir=work, request={"task_id": "STANDIN-1"}, values={},
+                       artifacts={"independent_review": {"findings": "findings.md"}}, git=git,
+                       changed_paths=tuple(git.changed_paths), allow=SPEC.allow_commands, out_dir=work / ".out",
+                       deadline_at=time.monotonic() + 60)
+    res, _ = run_check(SPEC.units["independent_review"].gate, ctx)
+    return res
+
+
+@pytest.mark.parametrize("crlf", [False, True], ids=["lf", "crlf"])
+@pytest.mark.parametrize("fixture", sorted(p for p in (FIXTURES / "must-pass").iterdir() if p.is_dir()), ids=lambda p: p.name)
+def test_irv_ac15_ac16_ac17_a_must_pass_fixture_holds_a_base_and_the_change_it_names(
+        fixture: Path, crlf: bool, tmp_path: Path) -> None:
+    # IRV-AC15 (the recorded base is the check's), IRV-AC16 (a changed file has a change), IRV-AC17 (a base exists)
+    res = _fixture_run(fixture, tmp_path, crlf)
+    assert res.result == "PASS", res.evidence
+    assert not [f for f in res.findings if f.criterion == "ts-rev-form" and f.status == "fail"]
+    recorded = json.loads((fixture / "git.json").read_text())["base"]
+    assert (fixture / INPUTS / "base.txt").read_text().strip() == recorded
+
+
+@pytest.mark.parametrize("crlf", [False, True], ids=["lf", "crlf"])
+@pytest.mark.parametrize("name", sorted(FIXTURE_FINDING))
+def test_irv_ac15_ac16_ac17_a_must_fail_fixture_fails_on_the_finding_it_is_named_for(
+        name: str, crlf: bool, tmp_path: Path) -> None:
+    # IRV-AC15 (base-differs), IRV-AC16 (empty-change), IRV-AC17 (no-base)
+    res = _fixture_run(FIXTURES / "must-fail" / name, tmp_path, crlf)
+    assert res.result == "FAIL"
+    failing = [f for f in res.findings if f.criterion == "ts-rev-form" and f.status == "fail"]
+    named = [f for f in failing if FIXTURE_FINDING[name] in f.message]
+    assert len(named) == 1, res.evidence
+    if name == "base-differs":
+        recorded = (FIXTURES / "must-fail" / name / INPUTS / "base.txt").read_text().strip()
+        given = json.loads((FIXTURES / "must-fail" / name / "git.json").read_text())["base"]
+        assert recorded in named[0].message and given in named[0].message and recorded != given
+
+
+@pytest.mark.parametrize("crlf", [False, True], ids=["lf", "crlf"])
+@pytest.mark.parametrize("name", ["no-line", "file-missing"])
+def test_irv_ac15_ac16_ac17_the_older_must_fail_fixtures_fail_on_their_own_finding_only(
+        name: str, crlf: bool, tmp_path: Path) -> None:
+    # IRV-AC15 to IRV-AC17: a base and a change in order, so the form finding is the fixture's own
+    res = _fixture_run(FIXTURES / "must-fail" / name, tmp_path, crlf)
+    assert res.result == "FAIL"
+    messages = [f.message for f in res.findings if f.criterion == "ts-rev-form" and f.status == "fail"]
+    assert messages and not [m for m in messages if "base commit" in m or "no change" in m or "was built from" in m]
 
 
 def test_a_session_that_opened_a_hand_over_document_fails_naming_it(tmp_path: Path) -> None:
@@ -383,7 +672,7 @@ class Stand:
         if unit == "independent_review":
             folder = work / ".tempergraph" / "review"
             seen = {name: (folder / name).read_text(encoding="utf-8") if (folder / name).is_file() else ""
-                    for name in ("change.diff", "criteria.md")}
+                    for name in ("change.diff", "criteria.md", "files.txt")}
             self.readers.append({"prompt": req.prompt, **seen})
             lines = self.reviews[min(len(self.readers), len(self.reviews)) - 1]
             put(".tempergraph/review/findings.md", "## Findings\n\n" + "\n".join(lines) + "\n")
@@ -498,7 +787,8 @@ def test_irv_ac1_a_run_that_passes_the_code_step_enters_the_review_on_both_arms(
     for steps, task in ((modes.SINGLE, "S-1"), (modes.PHASES, "P-1")):
         out = modes._run(repo, steps, task=task)
         assert out.exit_code is ExitCode.FINISHED, json.dumps(out.payload, default=str)[:1500]
-        assert modes._entered(repo, task)[-3:] == ["code", "code_join", "independent_review"], task
+        # RGN-AC1 (RGN-B1): the regeneration unit follows the code step and the join follows it
+        assert modes._entered(repo, task)[-4:] == ["code", "regeneration", "code_join", "independent_review"], task
 
 
 def test_irv_ac1_a_documents_only_run_enters_no_review(repo: Path) -> None:
@@ -519,12 +809,14 @@ def test_irv_ac1_a_run_outside_the_quick_lane_enters_the_review_and_then_the_out
 
 # IRV-AC2 (IRV-B2), AC 7
 def test_irv_ac2_a_quick_lane_run_starts_no_reader_session_and_enters_the_outcome_gate_next(repo: Path) -> None:
+    """The outcome gate runs after the regeneration unit (RGN-B1)."""
     stand = Stand(route="quick")
     out = _go(repo, stand)
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert "independent_review" not in stand.units() and "independent_review" not in stand.units("judge")
     steps = [r["unit"] for r in _records(repo, "gate")]
     assert steps[-1] == "outcome" and "independent_review" not in steps
+    assert steps.index("regeneration") < steps.index("outcome")  # RGN-AC1: the unit's gate comes before the outcome gate
 
 
 def test_irv_ac2_a_run_sent_back_to_triage_and_routed_to_the_plan_step_takes_the_review(repo: Path) -> None:
@@ -544,10 +836,12 @@ def test_irv_ac5_the_readers_prompt_and_values_hold_nothing_of_the_runs_other_ou
     forbidden = (PLAN_TEXT, HANDOFF_TEXT, REPORT_TEXT, ACCOUNT, "the total is wrong", "Visit:", "SENTINEL",
                  ".plan.md", ".handoff.md", ".report.md", ".triage.md", ".setup.md", ".review.md", "Earlier review")
     for held in stand.readers:
-        for name in ("prompt", "change.diff", "criteria.md"):
+        for name in ("prompt", "change.diff", "criteria.md", "files.txt"):
             for text in forbidden:
                 assert text not in held[name], (name, text)
         assert ".tempergraph/review/change.diff" in held["prompt"] and ".tempergraph/review/criteria.md" in held["prompt"]
+        assert ".tempergraph/review/files.txt" in held["prompt"]
+        assert "src/app.py" in held["files.txt"]
         assert ".tempergraph/review/findings.md" in held["prompt"]
     assert "value_" in stand.readers[0]["change.diff"] and "A thing" in stand.readers[0]["criteria.md"]
 
@@ -562,6 +856,25 @@ def test_irv_ac8_the_prompt_states_the_blocking_rule_and_the_unit_has_no_shell()
     assert step is not None and set(step.tools) == {"read", "search", "list", "write"}
     assert not step.commands and "shell" not in step.tools
     assert [s.call.qualname for s in step.before] == ["review_before"]
+
+
+# IRV-AC22, IRV-AC23 (IRV-B22, IRV-B23), AC 7
+def test_irv_ac22_ac23_the_brief_names_the_file_list_opens_it_first_and_reads_a_large_change_in_pages() -> None:
+    prompt = " ".join((ROOT / "prompts" / "independent_review.md").read_text(encoding="utf-8").lower().split())
+    assert ".tempergraph/review/files.txt" in prompt
+    assert "open the file list first" in prompt and "before the change" in prompt
+    assert "page by page" in prompt and "last line" in prompt
+    assert "does not fit one read" in prompt
+
+
+# IRV-B3, IRV-B15 to IRV-B23, IRV-AC3, IRV-AC15 to IRV-AC23 (AC 8)
+def test_irv_ac3_ac15_to_ac23_the_spec_states_the_behaviours_and_the_record_holds_the_engine_need() -> None:
+    behaviours, criteria = _ids("independent-review.spec.md", "IRV")
+    assert {f"IRV-B{n}" for n in [3, *range(15, 24)]} <= behaviours
+    assert {f"IRV-AC{n}" for n in [3, *range(15, 24)]} <= criteria
+    record = (ROOT / "docs" / "adr" / "review-independence-is-held-by-inputs-and-the-session-record.adr.md").read_text()
+    needs = record.split("The needs, each a general capability", 1)[1].split("###", 1)[0]
+    assert "A script's context carries the run's base commit" in needs
 
 
 # IRV-AC9 to IRV-AC11 (IRV-B9 to IRV-B11), AC 4, AC 9
@@ -653,7 +966,7 @@ def _ids(spec: str, prefix: str) -> tuple[set[str], set[str]]:
 
 def test_the_specs_define_each_behaviour_with_a_criterion_and_the_documents_show_the_unit() -> None:
     # IRV-AC1, RVF-AC1 (AC 1, AC 10)
-    for spec, prefix, count in (("independent-review.spec.md", "IRV", 14), ("review-findings.spec.md", "RVF", 7),
+    for spec, prefix, count in (("independent-review.spec.md", "IRV", 23), ("review-findings.spec.md", "RVF", 7),
                                 ("pull-request-description.spec.md", "PRD", 9)):
         behaviours, criteria = _ids(spec, prefix)
         assert behaviours == {f"{prefix}-B{n}" for n in range(1, count + 1)}, spec

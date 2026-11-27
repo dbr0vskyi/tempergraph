@@ -90,9 +90,10 @@ WHEN a run had a pause on cause `tool_access` or a tool grant ([RST-B28, RST-B29
 
 ### SIL-B15 Agent rescues and supervision
 
-WHEN an agent decided a `rescue` touch on its own ([SUP-B9](supervision-metrics.spec.md), [PRV-B14](caller-provenance.spec.md)) THE loop SHALL make a friction finding `agent_decided:<pause cause>` clustered by workflow, unit and pause cause, file a workflow issue whose remedy is a check or an environmental cause for a cluster whose decisions were mostly `proceed` with no workspace change, write `supervision{}` on the ledger row, and show supervision cost in the cost lens as its own figure, never in run cost ([SCO](supervision-cost.spec.md)).
+WHEN an agent decided a `rescue` touch on its own (SUP-B9, PRV-B14) THE loop SHALL make a friction finding `agent_decided:<pause cause>` clustered by workflow, unit and pause cause, file a workflow issue whose remedy is a check or an environmental cause for a cluster of faults whose decisions were mostly `proceed` with no workspace change, write `supervision{}` on the ledger row, and show supervision cost in the cost lens as its own figure, never in run cost ([SCO](supervision-cost.spec.md)).
 
-- GIVEN ten agent `proceed` rescues on unit `test` with no workspace change WHEN clustered THEN one workflow issue is filed
+- GIVEN ten `proceed` rescues on unit `test` with no workspace change, each decided by an agent other than the caller that started its run WHEN clustered THEN one workflow issue is filed
+- GIVEN ten such rescues, each decided by the caller that started its run WHEN clustered THEN their findings are of class `designed` ([FRC-B6](friction-causes.spec.md)) and no workflow issue is filed
 
 ### SIL-B16 Review observations corroborate
 
@@ -125,7 +126,7 @@ WHEN the friction judge's session ends THE loop child SHALL write in the `loop_j
 
 WHEN the loop child asks the friction judge about findings THE loop child SHALL put no request text, no text of feedback or of a ruling, no content of the run's outputs and no content of a workspace file in the judge's prompt or in the thread's `loop.jsonl`.
 
-- GIVEN a thread whose request, feedback, an output and a workspace file each hold a distinct word WHEN the loop child asks the friction judge about its findings THEN none of the four words is in the judge's prompt or in `loop.jsonl`
+- GIVEN a thread whose request, feedback, a ruling, an output and a workspace file each hold a distinct word WHEN the loop child asks the friction judge about its findings THEN none of the five words is in the judge's prompt or in `loop.jsonl`
 - GIVEN a segment that ended in a final exit and holds a finding of cause `gap_escalation` at unit `review` WHEN the judge's prompt is built THEN it names the finding's fingerprint, cause, class, side, unit and count, and the counts of the record kinds of `review` with the ids of the criteria that blocked it
 
 ### SIL-B18 Filing by attribution or by count
@@ -158,9 +159,16 @@ WHEN a finding would file by the pattern rule THE loop SHALL require at least th
 - GIVEN the exit's run and an earlier run under one request, and a third run that recorded the fingerprint under a second request and later under a third WHEN the rule counts THEN it counts three runs and two requests and is not met
 - GIVEN the exit's run and two earlier runs with three requests in all, one of the earlier runs recorded 31 days before WHEN the rule counts THEN it counts two runs and is not met
 
+### SIL-B46 The pattern rule counts only findings of class `fault`
+
+WHEN the pattern rule of SIL-B3 counts the runs, the distinct requests and the machines that recorded a fingerprint THE loop SHALL count only findings of class `fault` (SIL-B11).
+
+- GIVEN a `fault` finding at an exit and three earlier runs under three distinct requests that recorded its fingerprint with class `designed` WHEN the rule counts THEN it counts one run and one request and is not met
+- GIVEN two earlier runs that recorded the fingerprint with class `fault` and two that recorded it with class `designed`, each under its own request, and the exit's run under a fifth WHEN the rule counts THEN it counts three runs and three requests and is met
+
 ### SIL-B19 Code host unreachable
 
-WHEN the code host refuses or cannot be reached THE loop SHALL keep the payload in the state root's `filing-outbox.jsonl` ([LOS-B7, LOS-B8, LOS-B9](local-observability-store.spec.md)) and redeliver it with the next filing.
+WHEN the code host refuses or cannot be reached THE loop SHALL keep the payload, with the time it was first queued, in the state root's `filing-outbox.jsonl` ([LOS-B7, LOS-B8, LOS-B9](local-observability-store.spec.md)) and redeliver it with the next filing as [ISS-B16, ISS-B17, ISS-B18](loop-issues.spec.md) say.
 
 - GIVEN `gh` failing with a network error WHEN an issue files THEN the payload is in the outbox, and the next filing sends it
 
@@ -200,6 +208,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC8 (SIL-B16, SIL-B7): No issue is filed from a review observation alone or from an uncalibrated judge
 - SIL-AC9 (SIL-B3): A workflow-side outcome gap files only at three runs with three distinct requests in 30 days
 - SIL-AC47 (SIL-B3): Against a fixture history of findings, three runs of which two share a request and one recorded the fingerprint under two requests do not meet the pattern rule for a friction finding or for an outcome finding, three runs with three requests do, a run recorded 31 days before the exit is not counted, and the figures counted are those of the history and the exit's run
+- SIL-AC56 (SIL-B46): Against a fixture history, three other runs under three distinct requests that recorded a fingerprint with class `designed` leave the pattern rule unmet for a `fault` finding of it, so that a friction finding with one earlier attributed answer is recorded and not filed, and the same three runs with class `fault` meet the rule, so that the finding files
 - SIL-AC10 (SIL-B19, SIL-B20, SIL-B6): A refused payload is redelivered, the daily cap skips judges with `loop_skipped`, and a dry run files nothing
 - SIL-AC11 (SIL-B5): A measurement makes no model call and writes only one comment and at most one reopen
 - SIL-AC12 (SIL-B21): Each cost rule is produced by a fixture ledger, and a saving under 10 USD a month is not filed
@@ -215,7 +224,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC36 (SIL-B18, SIL-B6): A dry run lists a friction finding that meets the pattern rule and that its judge attributed in each run as one that would file and makes no issue and no comment
 - SIL-AC37 (SIL-B18, SIL-B11): A friction finding that meets the pattern rule and that its judge attributed in each run files to the engine's repository when its side is the engine or an executor, to the workflow's `issue_repository` when its side is the workflow, and is recorded and not filed when its side is `host`
 - SIL-AC38 (SIL-B36): A fixture loop child whose judge answers for two of three findings leaves a `loop_judged` record whose `answers[]` holds the fingerprint, `confidence` and `attributed` of those two and no other text of the reply, and a child whose judge session fails leaves an empty `answers[]`
-- SIL-AC44 (SIL-B38): In a fixture thread whose request, feedback, an output and a workspace file each hold a distinct canary word, no canary word is in the friction judge's prompt or in `loop.jsonl`, and the prompt holds the fingerprint, cause, class, side, unit and count of each finding
+- SIL-AC44 (SIL-B38): In a fixture thread whose request, feedback, a ruling, an output and a workspace file each hold a distinct canary word, no canary word is in the friction judge's prompt or in `loop.jsonl`, and the prompt holds the fingerprint, cause, class, side, unit and count of each finding
 
 ## Open questions
 

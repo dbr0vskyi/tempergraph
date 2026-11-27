@@ -46,6 +46,7 @@
 - {name: "needs: spec",           color: "fef2c0", description: "Write or change the spec before any code"}
 - {name: "blocked",               color: "000000", description: "Waits on another issue, named in the body"}
 - {name: "in progress",           color: "0052cc", description: "Claimed: a person or agent is working on it (see the claim comment)"}
+- {name: "help wanted",           color: "008672", description: "Standalone and well described: short sessions by hand, no live check, no restamp"}
 - {name: "good first issue",      color: "7057ff", description: "Small, well-bounded, good for a first contribution"}
 
 # filed by the engine itself

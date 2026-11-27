@@ -12,6 +12,8 @@ from typing import Any
 
 from tempergraph.contracts import WorkflowSpec
 
+GIT_FILE = "git.json"
+
 
 def _spec(root: Path) -> WorkflowSpec:
     from tempergraph.package.loader import load_package
@@ -67,7 +69,35 @@ def _fixture_dirs(root: Path, unit: str) -> dict[str, list[Path]]:
 
 
 def _files(fixture: Path) -> list[Path]:
-    return sorted(p for p in fixture.rglob("*") if p.is_file()) if fixture.is_dir() else [fixture]
+    if not fixture.is_dir():
+        return [fixture]
+    return sorted(p for p in fixture.rglob("*") if p.is_file() and p != fixture / GIT_FILE)  # EVS-B9: git facts, not a file
+
+
+def _git_facts(fixture: Path) -> Any:
+    """The fixture's git facts from `git.json` at the top of its folder (EVS-B9); the default facts without one."""
+    import dataclasses
+
+    from tempergraph.run.checks import GitFacts
+
+    path = fixture / GIT_FILE
+    if not fixture.is_dir() or not path.is_file():
+        return GitFacts()
+    try:
+        fields = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"{GIT_FILE} of fixture {fixture.name} is not readable JSON: {exc}") from exc
+    known = {f.name for f in dataclasses.fields(GitFacts)}
+    if not isinstance(fields, dict) or set(fields) - known:
+        raise ValueError(f"{GIT_FILE} of fixture {fixture.name} must be a JSON object of git fact fields "
+                         f"({', '.join(sorted(known))})")
+    for key in ("changed_paths", "commits_since_base"):
+        if key in fields:
+            fields[key] = tuple(fields[key])
+    try:
+        return GitFacts(**fields)
+    except TypeError as exc:
+        raise ValueError(f"{GIT_FILE} of fixture {fixture.name} is not valid: {exc}") from exc
 
 
 def _produces(spec: WorkflowSpec, unit: str) -> dict[str, Any]:
@@ -120,7 +150,9 @@ def fixture_runs(root: Path, tmp: Path, spec: WorkflowSpec | None = None) -> lis
                         target.parent.mkdir(parents=True, exist_ok=True)
                         target.write_bytes(data)
                         copied.append(target)
-                    ctx = CheckContext(unit=name, workdir=work, request={},
+                    facts = _git_facts(p)
+                    ctx = CheckContext(unit=name, workdir=work, request={}, git=facts,
+                                       changed_paths=tuple(facts.changed_paths),
                                        artifacts=_artifacts(spec, name, copied, work),
                                        allow=spec.allow_commands, out_dir=work / ".out")
                     res, _ = run_check(u.gate, ctx)
@@ -154,8 +186,9 @@ def _standin_files(root: Path, unit: str, produces: dict[str, Any], workdir: Pat
     """Write the unit's must-pass fixture files into the workspace; each produced key and its path or value."""
     fixtures = _fixture_dirs(root, unit)["must-pass"]
     first = fixtures[0] if fixtures else None
-    files = _files(first) if first is not None else []
     base = first if first is not None and first.is_dir() else (first.parent if first is not None else workdir)
+    # a fixture's `.tempergraph/` folder is the run's own record a check reads, not a step's output: the run wrote it
+    files = [f for f in (_files(first) if first is not None else []) if f.relative_to(base).parts[0] != ".tempergraph"]
     by_stem = {f.stem: f for f in files}
     out: dict[str, str] = {}
     for key, kind in produces.items():

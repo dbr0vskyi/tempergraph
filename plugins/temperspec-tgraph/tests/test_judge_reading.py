@@ -77,6 +77,20 @@ def test_the_evidence_lists_the_source_files_most_changed_lines_first(tmp_path: 
     assert listed.count(";") == 2  # exactly the three source files
 
 
+def test_a_declared_output_only_the_regeneration_changed_is_not_a_source_file(tmp_path: Path) -> None:  # JRD-AC1
+    _git(tmp_path, "init", "-q", "-b", "main")  # the declaration is in the history before the run's base
+    (tmp_path / "tempergraph.regenerations.json").write_text(json.dumps({"schema_version": 1, "regenerations": [
+        {"name": "s", "command": "make s", "inputs": ["src"], "outputs": ["stamp.json"]}]}))
+    repo, base = _scratch(tmp_path, {"src/small.py": 30, "src/big.py": 120, "src/mid.py": 80})
+    (repo / "stamp.json").write_text("".join(f"line {i}\n" for i in range(500)))
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "docs(temperspec): regeneration for T")
+    evidence = _evidence(repo, git_facts(repo, base))
+    listed = _line(evidence, SOURCE_LINE)
+    assert "stamp.json" not in listed, listed
+    assert "Changed source lines: 230." in evidence, evidence
+
+
 def test_a_change_of_markdown_documents_alone_has_no_source_file(tmp_path: Path) -> None:  # JRD-AC1, AC 2
     repo, base = _scratch(tmp_path, {"docs/note.md": 40, "docs/more.md": 10})
     evidence = _evidence(repo, git_facts(repo, base))
@@ -146,19 +160,62 @@ def test_only_the_code_judge_has_a_time_limit_of_its_own() -> None:  # AC 2 (JDG
 # -- the quoted line and the search-line rule in every judge text ---------------------------------------------
 
 
+def _judge_files() -> list[str]:
+    """The brief file stems of every unit whose gate judge has one, from the loaded workflow."""
+    stems = []
+    for unit in SPEC.units.values():
+        judge = getattr(getattr(unit, "gate", None), "judge", None)
+        if judge is not None and judge.file:
+            stems.append(Path(judge.file).stem)
+    return sorted(set(stems))
+
+
+JUDGES = _judge_files()
+OPEN = "open with the read tool the file a row or a criterion names before you grade it"
+NOT_READING = "lines a search printed are not a reading of that file"
+MARK = "set unread true and give the path and lines to open as its fix"
+
+
+def test_the_judge_list_of_the_workflow_is_the_briefs_of_the_judges_folder() -> None:  # JRD-AC9, AC 7
+    assert JUDGES == sorted(p.stem for p in (ROOT / "judges").glob("*.md"))
+    assert {"phase", "independent_review", *UNITS} <= set(JUDGES)
+
+
 def _texts() -> dict[str, str]:
-    out = {u: (ROOT / "judges" / f"{u}.md").read_text(encoding="utf-8").split("# Brief", 1)[1] for u in UNITS}
+    out = {u: (ROOT / "judges" / f"{u}.md").read_text(encoding="utf-8").split("# Brief", 1)[1] for u in JUDGES}
     out["outcome stance"] = json.loads((ROOT / "outcome.json").read_text())["judge"]["stance"]
     return {k: _said(v) for k, v in out.items()}
 
 
-@pytest.mark.parametrize("name", [*UNITS, "outcome stance"])
+@pytest.mark.parametrize("name", [*JUDGES, "outcome stance"])
+def test_every_judge_text_opens_the_named_file_and_marks_a_grade_that_lacks_a_reading(name: str) -> None:
+    # JRD-AC9, JRD-AC10, AC 7
+    text = _texts()[name]
+    assert OPEN in text
+    assert NOT_READING in text
+    assert MARK in text
+
+
+def test_the_code_brief_never_marks_a_file_beyond_the_budget_unread() -> None:  # JRD-AC10, AC 7
+    brief = _code_brief()
+    assert "beyond the reading budget" in brief and "is unverifiable" in brief
+    assert "is never marked unread" in brief
+
+
+def test_the_outcome_record_takes_revision_30_for_issue_204() -> None:  # AC 9
+    outcome = json.loads((ROOT / "outcome.json").read_text())
+    assert outcome["revision"] == 30
+    last = outcome["revisions"][-1]
+    assert last["revision"] == 30 and "204" in last["note"]
+
+
+@pytest.mark.parametrize("name", [*JUDGES, "outcome stance"])
 def test_every_judge_text_asks_for_the_quoted_line_behind_a_met(name: str) -> None:  # JRD-AC6, AC 3
     text = _texts()[name]
     assert "behind every met, quote the line you relied on, with its path and line number" in text
 
 
-@pytest.mark.parametrize("name", [*UNITS, "outcome stance"])
+@pytest.mark.parametrize("name", [*JUDGES, "outcome stance"])
 def test_every_judge_text_grades_search_lines_alone_partial(name: str) -> None:  # JRD-AC7, AC 4
     text = _texts()[name]
     assert "grade a criterion partial, not met, when its only evidence is lines a search printed" in text
@@ -181,7 +238,7 @@ def test_the_code_seeds_carry_the_new_evidence_and_the_outcome_record_says_so() 
     assert any("one file per 50" in a and "first values" in a for a in outcome["assumptions"])
 
 
-@pytest.mark.parametrize("name", [*UNITS, "outcome stance"])
+@pytest.mark.parametrize("name", [*JUDGES, "outcome stance"])
 def test_every_judge_text_grades_a_check_verified_criterion_from_its_finding(name: str) -> None:  # JRD-AC8
     text = _texts()[name]
     assert "a criterion the gate's check verified is graded from the check's finding" in text

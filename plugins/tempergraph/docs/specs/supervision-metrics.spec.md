@@ -4,6 +4,27 @@
 
 How much a run needed someone, and who that was. A workflow you can trust is one that reaches a good result with few touches by anyone, not only with few touches by a person: a run babysat by an agent looks autonomous if only people are counted ([research `callers-supervision-and-babysitting-cost`](../research/callers-supervision-and-babysitting-cost.rsrch.md) D6, B3). This spec defines a touch, the per-run supervision record, a run's supervision level, the per-workflow aggregates, where each figure is written and read, and the supervision criteria for promoting a workflow ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md), [ADR `supervision-is-a-promotion-and-improvement-measure`](../adr/supervision-is-a-promotion-and-improvement-measure.adr.md)). Every figure is built from records written when the act happened: the `caller` blocks of [PRV](caller-provenance.spec.md) and, for the spend of supervising sessions, the supervision journal of [SCO](supervision-cost.spec.md); nothing is classified after the fact by a model. Building and writing them is best effort and never changes a run (OVR-B4); every reader is model-free (C13). Reports, the monitor, audit, eval suites, the improvement loop and the promotion check ([PRO](promotion-check.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `audit-rule-catalog.spec.md`: audit rule catalog
+- `caller-provenance.spec.md`: where the block is written (PRV-B17)
+- `central-run-stats.spec.md`: central run stats
+- `../../../tempergraph-monitor/docs/specs/cost-and-fleet.spec.md`: -
+- `engine-cli.spec.md`: engine CLI
+- `eval-suites.spec.md`: eval suites for checks, steps and workflows
+- `friction-causes.spec.md`: a pause that the caller that started the run decides is designed (FRC-B6)
+- `improvement-data.spec.md`: improvement data requirements
+- `orchestration.spec.md`: orchestration of runs
+- `orchestrator-skill.spec.md`: orchestrator skill
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-detail-document.spec.md`: run detail document
+- `run-events.spec.md`: run events for observers
+- `../../../tempergraph-monitor/docs/specs/run-view.spec.md`: -
+- `schedule-ticks-and-unattended-fires.spec.md`: what a scheduled run adds elsewhere (TCK-B24)
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-cost.spec.md`: supervision cost
+
 ## Behaviours
 
 ### SUP-B1 An agent-babysat run is not autonomous
@@ -49,9 +70,9 @@ WHEN an eval trial needs a higher level than its case's `max_level` THE engine S
 
 ### SUP-B7 Agent rescues feed the loop
 
-WHEN self-improvement reads runs in which agents answered the same gate's pause with `proceed` and no change THE engine SHALL cluster the `agent_decided:<pause cause>` findings by workflow, unit and pause cause across runs and machines, and file one workflow issue naming a check or the environmental cause as the remedy.
+WHEN self-improvement reads runs in which agents other than the caller that started the run answered the same gate's pause with `proceed` and no change THE engine SHALL cluster the `agent_decided:<pause cause>` findings by workflow, unit and pause cause across runs and machines, and file one workflow issue naming a check or the environmental cause as the remedy ([FRC-B6](friction-causes.spec.md)).
 
-- GIVEN seven runs on two machines in which an agent answered the `code` gate's `check_environmental` escalation with `proceed` and each run then passed WHEN self-improvement reads them THEN one cluster and one workflow issue result
+- GIVEN seven runs on two machines in which an agent that had not started the run answered the `code` gate's `check_environmental` escalation with `proceed` and each run then passed WHEN self-improvement reads them THEN one cluster and one workflow issue result
 
 ### SUP-B8 Promotion counts agents
 
@@ -103,7 +124,7 @@ WHEN an eval suite runs a workflow case ([EVS](eval-suites.spec.md)) THE engine 
 
 ### SUP-B16 Supervision in the improvement loop
 
-WHEN the improvement loop reads supervision ([SIL](self-improvement.spec.md)) THE engine SHALL make each agent's own rescue a friction finding with cause `agent_decided:<pause cause>` clustered as SUP-B7, and join supervision cost to the cost lens as its own figure, never summed into run cost.
+WHEN the improvement loop reads supervision ([SIL](self-improvement.spec.md)) THE engine SHALL make each agent's own rescue a friction finding with cause `agent_decided:<pause cause>` of the class that [FRC-B6](friction-causes.spec.md) gives it, clustered as SUP-B7, and join supervision cost to the cost lens as its own figure, never summed into run cost.
 
 - GIVEN a run with $0.40 run cost and $0.10 supervision cost WHEN the cost lens reads it THEN it shows the two figures apart
 

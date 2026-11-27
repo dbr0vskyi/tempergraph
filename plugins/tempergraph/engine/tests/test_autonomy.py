@@ -75,7 +75,7 @@ def stable_ticket(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, **extr
     return t
 
 
-def test_daily_cap_skips_the_judges_and_records(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-B19, SIL-B20
+def test_daily_cap_skips_the_judges_and_records(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-B19, SIL-B20, SIL-AC10
     stable_ticket(repo, "A-1", monkeypatch)
     root = repo / ".tempergraph"
     ledger(root, {"kind": "loop", "workflow": "demo", "cost": {"reported": 50.0}})

@@ -2,7 +2,14 @@
 
 ## Purpose
 
-A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned or as a duplicate, and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md) and [the record on a close as a duplicate](../adr/a-close-as-a-duplicate-mutes-a-loop-issues-cause.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
+A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned or as a duplicate that names no other issue, a comment on the named issue after a close as a duplicate that names one ([BND](cause-bindings.spec.md)), and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md) and [the record on a close as a duplicate](../adr/a-close-as-a-duplicate-mutes-a-loop-issues-cause.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
+
+## Depends on
+
+- `cause-bindings.spec.md`: a close as a duplicate that names an issue binds the cause to it (BND-B1, BND-B2, BND-B5)
+- `improvement-data.spec.md`: parameters with provenance (IMD-B23)
+- `runs-without-a-final-exit.spec.md`: the friction judge is told what answered a pause (SIL-B37)
+- `self-improvement.spec.md`: de-duplication by cause (SIL-B2); pattern rule (SIL-B3); fault sides (SIL-B11); filing by attribution or by count (SIL-B18); code host unreachable (SIL-B19)
 
 ## Behaviours
 
@@ -23,11 +30,11 @@ WHEN the loop opens an issue THE loop SHALL write its body as the hidden line of
 - GIVEN a filed workflow-side finding WHEN its issue body is read THEN its first line is the hidden line, its second the cause line, and its headings are `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, each with text under it
 - GIVEN that body WHEN its `## Fingerprint` section is read THEN it shows the fingerprint of the hidden line, and its `## Suggested remedy` section shows the cause's drafted remedy
 
-### ISS-B3 A close as not planned or as a duplicate mutes the fingerprint
+### ISS-B3 A close as not planned or as a duplicate that names no target mutes the fingerprint
 
-WHEN a finding that would file matches no open issue and the matching issue closed most recently was closed as not planned or as a duplicate less than `mute.days` (30) days ago THE loop SHALL open no issue and add no comment, and record the finding `muted` with that issue's URL.
+WHEN a finding that would file matches no open issue and the matching issue closed most recently was closed as not planned, or as a duplicate that binds its cause to no issue ([BND-B1, BND-B2](cause-bindings.spec.md)), less than `mute.days` (30) days ago THE loop SHALL open no issue and add no comment, and record the finding `muted` with that issue's URL.
 
-- GIVEN an issue of the fingerprint closed as not planned, or as a duplicate, 10 days ago and none open WHEN the finding files THEN no issue and no comment is made, and the finding is recorded `muted` with the closed issue's URL
+- GIVEN an issue of the fingerprint closed as not planned, or as a duplicate whose comments name no target, 10 days ago and none open WHEN the finding files THEN no issue and no comment is made, and the finding is recorded `muted` with the closed issue's URL
 - GIVEN that issue closed 31 days ago WHEN the finding files THEN a new issue opens and the finding is not muted
 - GIVEN that issue closed 10 days ago and a second issue of the fingerprint open WHEN the finding files THEN the open issue gets one "seen again" comment ([SIL-B2](self-improvement.spec.md)) and the finding is not muted
 - GIVEN an issue closed as completed 40 days ago and a later issue of the fingerprint closed as not planned 5 days ago WHEN the finding files THEN the finding is recorded `muted`
@@ -86,7 +93,7 @@ WHEN the loop looks for the issues of ISS-B7 THE loop SHALL read the repository'
 
 ### ISS-B10 A run-log excerpt with no free text
 
-WHEN the loop writes `## Run log` THE loop SHALL show the last segment's run-log records of the findings' units and the run's start and exit, one line each, at most 40 (saying how many earlier records were left out), each line holding only its time, kind, unit and the values of a fixed list of keys whose value is a number, a boolean, or an id, enum, version or model name of at most 64 characters with no space or slash, or a list or map of those; changed paths show only as their number.
+WHEN the loop writes `## Run log` THE loop SHALL show the run-log records of the findings' units and the run's start and exit, one line each, at most 40 (saying how many earlier records were left out), each line holding only its time, kind, unit and the values of a fixed list of keys whose value is a number, a boolean, or an id, enum, version or model name of at most 64 characters with no space or slash, or a list or map of those; changed paths show only as their number.
 
 - GIVEN a run log whose records hold a canary in the request, a check's notes, a judge's gap, a session's transcript path and a changed path WHEN its finding files THEN the canary is in no issue or comment
 - GIVEN 55 records of the unit WHEN the excerpt is written THEN it holds the last 40 and says 16 were left out
@@ -102,17 +109,56 @@ WHEN the loop opens an issue or adds a "seen again" comment for a finding that f
 
 ### ISS-B13 An issue gets a bounded number of "seen again" comments a day
 
-WHEN a finding would add a "seen again" comment to an open issue on which the loop has commented at least `seen_again.max_per_issue_per_day` times in the current UTC day (1, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)), as the `issue_commented` records of the workflow's runs show, THE loop SHALL replace the comment by one `loop_result` record with op `comment_capped` that holds the issue's number and no text.
+WHEN a finding would add a "seen again" comment to an open issue on which the loop has commented at least `seen_again.max_per_issue_per_day` times in the current UTC day (1, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)), as the `issue_commented` records of every workflow's runs show, THE loop SHALL replace the comment by one `loop_result` record with op `comment_capped` that holds the issue's number and no text.
 
 - GIVEN one open issue of a cause and three exits of the workflow in one UTC day, each with a finding of that cause WHEN each files THEN the issue gets one comment, its `issue_commented` record holds the issue's number, and each of the other two exits leaves one `comment_capped` record that holds that number and no text
 - GIVEN that issue commented on today WHEN the cause files at an exit on the next UTC day THEN the issue gets a second comment
 - GIVEN that issue with its comment of the day made WHEN the cause files at a unit the issue does not name THEN no comment is added and no new issue opens
 
+### ISS-B14 An issue shows the segment of its finding
+
+WHEN the loop opens an issue or adds a "seen again" comment THE loop SHALL write `## Run` and `## Run log` from the segment in which the first finding listed under `## Evidence` was made: the last segment or, for a finding of a segment that ended in a pause, that segment, with its exit code 3 and the pause's reason.
+
+- GIVEN a thread whose first segment paused at unit `a` with reason `unresolved_gap` and holds a finding of `a`, and that was resumed and finished with exit 0 WHEN that finding files THEN `## Run` shows the first segment's start, exit code 3 and the reason `unresolved_gap`, and `## Run log` shows that segment's records of `a` and none of the last segment's
+- GIVEN that thread and a finding of its last segment WHEN it files THEN `## Run` shows exit code 0 and the last segment's start
+- GIVEN one filing of a cause that holds a finding of the first segment and one of the last, the finding of the first segment listed first under `## Evidence` WHEN the issue opens THEN `## Run` and `## Run log` are those of the first segment
+
+### ISS-B15 An issue says what answered the pause of its finding
+
+WHEN the loop opens an issue or adds a "seen again" comment for a finding of a segment that ended in a pause THE loop SHALL write under `## Run` the facts that [SIL-B37](runs-without-a-final-exit.spec.md) tells the friction judge for that finding, and no word of any feedback or ruling.
+
+- GIVEN a thread that paused at unit `a` with reason `unresolved_gap`, was resumed by an agent with `retry`, a feedback text and `--reason judge_error`, and finished WHEN a finding of the paused segment files THEN `## Run` holds unit `a`, the reason `unresolved_gap`, the decision `retry`, the caller kind `agent`, that feedback was given, the operator reason `judge_error` and the workspace and next gate facts, and no word of the feedback
+- GIVEN a finding of the last segment WHEN it files THEN `## Run` holds none of those facts
+
+### ISS-B16 A waiting create is delivered as a comment when its cause has an open issue
+
+WHEN the loop delivers an entry of the outbox ([SIL-B19](self-improvement.spec.md)) that would open an issue, and an open loop issue of its repository holds one of its fingerprint lines or its cause line (ISS-B7), THE loop SHALL deliver it as one "seen again" comment on that issue and open no issue, within the bound of ISS-B13.
+
+- GIVEN an entry that would open an issue and an open loop issue that holds its fingerprint line WHEN the next filing delivers the entry THEN that issue gets one comment, no issue opens and the entry has left the outbox
+- GIVEN an open loop issue that holds only the cause line of the entry WHEN the next filing delivers it THEN that issue gets the comment
+- GIVEN that issue with its comment of the UTC day made WHEN the next filing delivers the entry THEN no comment is added, one `loop_result` record with op `comment_capped` holds the issue's number and no text, and the entry has left the outbox
+
+### ISS-B17 A waiting create whose cause is muted is dropped
+
+WHEN the loop delivers an entry of the outbox that would open an issue, no open loop issue holds its fingerprint lines or its cause line, and its cause is muted (ISS-B3, [BND-B5](cause-bindings.spec.md)), THE loop SHALL drop the entry, sending nothing and writing one `loop_result` record with op `outbox_dropped` and reason `muted` that holds its fingerprint and no text.
+
+- GIVEN an entry whose fingerprint an issue closed as not planned 10 days ago holds, and no open issue WHEN the next filing delivers the entry THEN nothing is sent, the entry has left the outbox and one `loop_result` record with op `outbox_dropped` and reason `muted` holds its fingerprint and no text
+- GIVEN that issue closed 31 days ago WHEN the next filing delivers the entry THEN a new issue opens
+- GIVEN a code host whose search of closed issues fails twice WHEN the entry is delivered THEN a new issue opens, as ISS-B6 says
+
+### ISS-B18 A waiting entry that is too old is dropped
+
+WHEN the loop delivers an entry of the outbox that was first queued more than `outbox.max_age_days` days earlier (30, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)) THE loop SHALL drop it, sending nothing and writing one `loop_result` record with op `outbox_dropped` and reason `expired` that holds the entry's kind, repository and fingerprint or issue number and no text.
+
+- GIVEN an entry that would open an issue, comment or reopen one, first queued 31 days earlier, and an open issue that holds its cause line WHEN the next filing delivers it THEN nothing is sent and one `loop_result` record with op `outbox_dropped` and reason `expired` holds its kind, repository and fingerprint or issue number and no text
+- GIVEN an entry first queued 29 days earlier WHEN the next filing delivers it THEN it is delivered
+- GIVEN an entry that holds no time of its first queue WHEN the next filing delivers it THEN it is not dropped for its age
+
 ## Acceptance criteria
 
 - ISS-AC1 (ISS-B1): Against a fake code host, a workflow-side, an engine-side and an executor-side finding each open an issue with the default labels and their side label, a workflow's declared `issue_labels` replaces the default list for its workflow-side findings only, and a declared value that is not a list of names leaves the default labels
 - ISS-AC2 (ISS-B2): Against a fake code host, the body of a filed issue starts with the hidden line and the cause line and holds `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, with the fingerprint under `## Fingerprint` and the cause's drafted remedy under the last
-- ISS-AC3 (ISS-B3): Against a fake code host that holds an issue closed as not planned or as a duplicate, a finding of its fingerprint opens no issue, adds no comment and is recorded `muted` when the close was 10 days ago, opens a new issue when the close was 31 days ago, comments on a second, open issue of the fingerprint instead of muting, and is muted by a later close as not planned over an earlier close as completed
+- ISS-AC3 (ISS-B3): Against a fake code host that holds an issue closed as not planned or as a duplicate whose comments name no target, a finding of its fingerprint opens no issue, adds no comment and is recorded `muted` when the close was 10 days ago, opens a new issue when the close was 31 days ago, comments on a second, open issue of the fingerprint instead of muting, and is muted by a later close as not planned over an earlier close as completed
 - ISS-AC4 (ISS-B4): Against a fake code host that holds an issue closed as completed, a finding of its fingerprint opens one new issue whose `## Summary` names the closed issue as a possible regression, on any close date, and the next occurrence comments on that new issue and opens no third
 - ISS-AC5 (ISS-B5): Against a fake code host that holds an issue closed with no reason, or with a reason the loop does not read, a finding of its fingerprint opens a new issue that names no regression and is not muted
 - ISS-AC6 (ISS-B6): Against a fake code host whose search of closed issues fails twice, a finding opens a new issue with no link and records that the search failed, and with one failure it retries and applies the close reason
@@ -122,6 +168,11 @@ WHEN a finding would add a "seen again" comment to an open issue on which the lo
 - ISS-AC10 (ISS-B10): A canary placed in a fixture run log's request, notes, evidence, gap, transcript, changed paths and in free-text values of listed keys reaches no issue or comment, the excerpt keeps the last 40 lines and counts the rest, and another unit's records are not shown
 - ISS-AC11 (ISS-B12): Against a fake code host, the issue of an outcome finding and the issue of a friction finding that each file by the pattern rule from three runs with three distinct requests show 3 runs, 3 requests and the machines counted under `## Evidence`, the "seen again" comment of a fourth run shows 4 runs and 4 requests, and the issue of a friction finding attributed at 0.9 from one run shows no figure of the pattern rule
 - ISS-AC12 (ISS-B13): Against a fake code host, three exits of one workflow in one UTC day with one open issue of the cause leave one comment on it and two `loop_result` records with op `comment_capped` that hold its number and no text, no second issue opens, and an exit on the next UTC day adds a second comment
+- ISS-AC13 (ISS-B14): Against a fake code host and a fixture thread that paused, was resumed and finished, the body of the issue for a finding of the paused segment shows under `## Run` that segment's start, exit code 3 and the reason of its pause, which differs from the reason of its exit record, also when no row of facts was made for the finding, and under `## Run log` that segment's records of the finding's unit and none of the last segment's, and the body for a finding of the last segment shows exit code 0 and the last segment's start
+- ISS-AC14 (ISS-B15): The body of the issue for that paused segment's finding holds under `## Run` the facts that the friction judge is told for it and no word of a fixture feedback text, and the body for a finding of the last segment holds none of them
+- ISS-AC15 (ISS-B16): Against a fake code host, an outbox entry that would open an issue is delivered as one comment on the open issue that holds its fingerprint line, and on the open issue that holds only its cause line, and opens no issue; with that issue's comment of the UTC day made it leaves one `loop_result` record with op `comment_capped` that holds the issue's number and no text; the entry has left the outbox in each case
+- ISS-AC16 (ISS-B17): Against a fake code host that holds an issue of the entry's fingerprint closed as not planned or as a duplicate whose comments name no target 10 days earlier and none open, an outbox entry that would open an issue is dropped with one `loop_result` record with op `outbox_dropped` and reason `muted` that holds its fingerprint and no text, and nothing is sent; with the close 31 days earlier, or with a search of closed issues that fails twice, it opens a new issue
+- ISS-AC17 (ISS-B18): Against a fake code host, an outbox entry of each kind (one that would open an issue, a comment, a reopen) first queued 31 days earlier is dropped with one `loop_result` record with op `outbox_dropped` and reason `expired` and sends nothing, also when an open issue holds its cause; one first queued 29 days earlier is delivered; one that a refused delivery put back keeps its first time; and one that holds no time is not dropped for its age
 
 ## Open questions
 

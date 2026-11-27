@@ -1322,6 +1322,7 @@ def test_the_prompts_name_the_shell_command_shapes() -> None:  # B24
 
 
 def test_the_context_block_prepare_wrote_is_listed_apart_from_the_changed_paths(repo: Path) -> None:
+    # PNR-AC11 (PNR-B8)
     (repo / "CLAUDE.md").write_text("# Project\n\nRun the tests with pytest.\n")
     _git(repo, "add", "-A")
     _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "base")

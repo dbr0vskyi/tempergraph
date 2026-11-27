@@ -6,7 +6,7 @@ How a plan that took the arm `phases` of the switch `code_mode` ([code mode](cod
 
 ## Depends on
 
-- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1)
+- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1); one re-ask (JDG-B2); one re-read (JDG-B17)
 - `../../../tempergraph/docs/specs/map-unit.spec.md`: trip back reruns every item (MAP-B3); item budgets, pauses and the join (MAP-B10); what is refused (MAP-B11)
 - `kept-marks.spec.md`: the code step is told to build only the rows without a mark (KMK-B7); a kept row's file need not change again (KMK-B8); a phase's marks are written in one edit after its tests pass (KMK-B9)
 - `session-record-checks.spec.md`: a phase's source changed before its tests fails the code check (SRC-B6); without a session record the criterion does not apply (SRC-B8)
@@ -78,7 +78,7 @@ WHEN the session record of a phase attempt shows a source file of the phase chan
 
 ### PHC-B9 Each phase attempt is judged on its own
 
-WHEN a phase attempt passes its check THE workflow SHALL grade it with one judge session of its own, on whether each row's change is in the file the row names and no file outside the rows of the phase and of earlier phases, other than the plan's marks and status, was changed since the phase step was entered.
+WHEN a phase attempt passes its check THE workflow SHALL grade it with one judge session of its own, apart from the re-asks that [JDG-B2](../../../tempergraph/docs/specs/judge-and-verdict.spec.md) and JDG-B17 state, on whether each row's change is in the file the row names and no file outside the rows of the phase and of earlier phases, other than the plan's marks and status, was changed since the phase step was entered.
 
 - GIVEN a plan of three phases that pass WHEN the phase items have run THEN the run holds three judge sessions for them, one for each, besides the judge session of the code step
 - GIVEN a phase attempt whose check fails WHEN the attempt ends THEN no judge session starts for it ([JDG-B1](../../../tempergraph/docs/specs/judge-and-verdict.spec.md))
@@ -182,6 +182,7 @@ WHEN the code step ends after the phase items THE code gate SHALL hand its judge
 - PHC-AC18 (PHC-B18): The brief of the phase judge says that the check sorted the changed paths into the two lists and that the judge takes that sorting as given and does not look for the step that changed a path, and tells the judge to grade `ts-phs-scope` on the first list alone, a path of the second list lowering no grade and setting no gap
 - PHC-AC19 (PHC-B19): In a stand-in run of two phases that pass, the evidence of the code gate holds the two lists counted from the commit at which the code step was entered, with the files of the two phases among the paths that only earlier steps changed, each listed with the step `phase`, and states that the first list holds no path when the code session changed no file
 - PHC-AC20 (PHC-B9, PHC-B16, PHC-B17): In a stand-in run of two phases on the arm `phases` in which an earlier step wrote a document and each phase changes only the files of its rows, the evidence of each phase lists the document with its step among the paths that only earlier steps changed, and each phase gate passes with no pause
+- PHC-AC21 (PHC-B9): In a stand-in run of two phases on the arm `phases` whose phase judge first answers with a marked `gap` and then with every blocker MET, the phase gate passes on its first attempt with no pause, and that attempt holds two judge sessions
 
 ## Open questions
 

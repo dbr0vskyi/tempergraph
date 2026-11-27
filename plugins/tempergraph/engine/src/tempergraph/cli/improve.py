@@ -117,6 +117,13 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     from tempergraph.cli.improve_review import add_review_parser
 
     add_review_parser(isub)  # SRV-B23
+    ob = isub.add_parser("outbox", help="the filing outbox: `list` its waiting entries, `clear` them (CLI-B21, CLI-B22)")
+    osub = ob.add_subparsers(dest="outbox_action", parser_class=parser_class)
+    osub.add_parser("list", help="print the waiting entries, oldest first, without their text")
+    cl = osub.add_parser("clear", help="remove every entry (--all) or those of one fingerprint (--fingerprint)")
+    cl.add_argument("--all", action="store_true", help="remove every entry")
+    cl.add_argument("--fingerprint", metavar="FINGERPRINT", help="remove the entries of this fingerprint")
+    _caller(cl)
 
 
 def _usage(msg: str) -> Exception:
@@ -325,6 +332,8 @@ def cmd_improve(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.improve import trials as trl
 
     root = _root(env)
+    if a.action == "outbox":
+        return _outbox(env, a, root)
     try:
         if a.action == "backlog":
             specs = [_spec(env, a.workflow)] if a.workflow else list(env.catalog.specs.values())
@@ -396,7 +405,51 @@ def cmd_improve(env: Any, a: argparse.Namespace) -> int:
             return 0
     except (prp.ProposalError, trl.TrialRefused) as exc:
         raise _usage(str(exc)) from exc
-    raise _usage("improve needs backlog, propose, trial, aa, open or show")
+    raise _usage("improve needs backlog, propose, trial, aa, open, show or outbox")
+
+
+def _age_days(entry: dict[str, Any], now: Any) -> float | None:
+    from datetime import UTC, datetime
+
+    try:
+        at = datetime.fromisoformat(str(entry.get("queued_at") or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    at = at if at.tzinfo else at.replace(tzinfo=UTC)
+    return round((now - at).total_seconds() / 86400, 1)
+
+
+def _outbox(env: Any, a: argparse.Namespace, root: Any) -> int:
+    """CLI-B21 to CLI-B23: list the filing outbox without a body, or clear it whole or by fingerprint."""
+    from datetime import UTC, datetime
+
+    from tempergraph.cli.main import _emit
+    from tempergraph.improve.filing import Outbox
+
+    box = Outbox.at(root)
+    if a.outbox_action == "list":
+        now = datetime.now(UTC)
+        rows = []
+        for e in box.entries():
+            row: dict[str, Any] = {"op": e.get("op"), "repo": e.get("repo")}
+            if e.get("op") == "create":
+                row["title"] = e.get("title")
+            else:
+                row["number"] = e.get("number")
+            row["fingerprint"] = e.get("fingerprint")
+            row["age_days"] = _age_days(e, now)
+            rows.append(row)
+        rows.sort(key=lambda r: (r["age_days"] is None, -(r["age_days"] or 0.0)))  # oldest first, none last
+        _emit(env, {"schema_version": 1, "entries": rows})
+        return 0
+    if a.outbox_action == "clear":
+        if bool(a.all) == bool(a.fingerprint):
+            raise _usage("improve outbox clear needs exactly one of --all and --fingerprint <fingerprint>")
+        caller = env.caller(a)
+        removed = box.remove(None if a.all else a.fingerprint)
+        _emit(env, {"schema_version": 1, "removed": removed, "caller": caller})
+        return 0
+    raise _usage("improve outbox needs list or clear")
 
 
 def _out(env: Any, a: argparse.Namespace, doc: Any, line: str) -> None:

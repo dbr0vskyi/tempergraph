@@ -296,8 +296,9 @@ def test_an_unreachable_host_keeps_the_record_and_queues_the_reopen(tmp_path: Pa
     assert [o["result"] for o in due(tmp_path, issues_host(down=True))] == ["regressed"]
     assert "regressed_after_release" in stored(tmp_path)
     queued = [json.loads(ln) for ln in (tmp_path / "filing-outbox.jsonl").read_text().splitlines()]
-    assert queued == [{"op": "reopen", "repo": "acme/notes", "number": 12},
-                      {"op": "reopen", "repo": "acme/notes", "number": 19}]
+    assert all(q.get("queued_at") for q in queued)  # ISS-AC17: the queue time travels with the entry
+    assert [{k: v for k, v in q.items() if k != "queued_at"} for q in queued] == [
+        {"op": "reopen", "repo": "acme/notes", "number": 12}, {"op": "reopen", "repo": "acme/notes", "number": 19}]
     up = issues_host()  # the next filing delivers them once
     results = filing.file([], up, filing.Outbox.at(tmp_path))
     assert [r["op"] for r in results] == ["redelivered", "redelivered"]

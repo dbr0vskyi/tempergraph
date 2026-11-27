@@ -188,9 +188,12 @@ def _when(ts: Any) -> datetime | None:
     return got if got.tzinfo else got.replace(tzinfo=UTC)
 
 
-def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
-    """SIL-B28: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
-    was handed: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made.
+def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str,
+                            home: Path | None = None) -> list[dict[str, Any]]:
+    """SIL-B28, SIL-B47, SIL-B48: the findings of the thread's segments that ended in a pause (exit 3) that no loop of
+    the thread has dealt with. A waiting or claimed ticket of the thread that holds the fingerprint covers it. A
+    `loop_started` record covers it when it names the fingerprint at or after the finding was made, was not held
+    (autonomy `record`, a dry run) and, for a friction fault, the loop log holds a judge answer for the fingerprint.
     Read at every final exit of the thread."""
     from tempergraph.improve import child
 
@@ -198,27 +201,36 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
             and str(f.get("thread")) == thread]
     if not held:
         return []
-    started = [(_when(r.get("ts")), set(r.get("fingerprints") or ())) for r in _jsonl(child.loop_log(root, workflow, task_id))
-               if r.get("kind") == "loop_started"]
+    in_tickets = child.held_by_tickets(root, thread, home)
+    log = _jsonl(child.loop_log(root, workflow, task_id))
+    started = [(_when(r.get("ts")), set(r.get("fingerprints") or ())) for r in log
+               if r.get("kind") == "loop_started" and r.get("held") is not True]
+    answered = {str(a.get("fingerprint")) for r in log if r.get("kind") == "loop_judged"
+                for a in r.get("answers") or () if isinstance(a, dict)}
     out = []
     for f in held:
+        fp = f.get("fingerprint")
+        if fp in in_tickets:
+            continue
         made = _when(f.get("at"))
-        covered = any(fps and f.get("fingerprint") in fps and (made is None or ts is None or ts >= made)
-                      for ts, fps in started)
+        friction = f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")
+        covered = any(fps and fp in fps and (made is None or ts is None or ts >= made)
+                      for ts, fps in started) and (not friction or str(fp) in answered)
         if not covered:
             out.append(f)
     return out
 
 
 def judged_units(seg: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
-    """SRV-B12, SRV-B31: per unit with a `judgement` record, `passed` (its last record has no blockers) and `gave`
-    (the attempts with a record whose `confidence_source` is not `engine_placeholder`: a real judgement)."""
+    """SRV-B12, SRV-B31, SRV-B44: per `unit.item` (the bare unit when the record has no `item`) with a `judgement`
+    record, `passed` (its last record has no blockers) and `gave` (the attempts with a record whose
+    `confidence_source` is not `engine_placeholder`: a real judgement)."""
     passed: dict[str, bool] = {}
     gave: dict[str, set[int]] = {}
     for r in seg:
         if r.get("kind") != "judgement" or not r.get("unit"):
             continue
-        unit = str(r["unit"])
+        unit = f"{r['unit']}.{r['item']}" if r.get("item") else str(r["unit"])
         passed[unit] = not (r.get("blockers") or [])
         held = gave.setdefault(unit, set())
         if r.get("confidence_source") != "engine_placeholder":
@@ -241,7 +253,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     since = exits[-2] if len(exits) >= 2 else ""  # interventions after the previous segment ended
     ivs = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == thread
            and str(r.get("ts") or "") >= since and (not seg_start or str(r.get("ts") or "") <= seg_start)]
-    found = causemod.derive(seg, ivs, row.get("grants") or ())
+    starter = next((r.get("caller") or {} for r in records if r.get("kind") == "run_started"), {})
+    found = causemod.derive(seg, ivs, row.get("grants") or (), starter=starter)
     decls = unit_decls(spec)
     try:  # SRV-B11, SRV-B12: digests first, their causes join the findings; never changes the exit (OVR-B4)
         digests = digestmod.write_segment(root, spec.name, task_id, seg, decls)
@@ -267,7 +280,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
         side = _side(f["cause"], f.get("executor"))
         owner = _child_owner(spec, f.get("child"), kids)  # SWF-B9: a child's unit is the child workflow's
         lines.append({"kind": "finding", "thread": thread, **keys, **owner, "segment_exit": row.get("exit_code"),
-                      "unit": f["unit"], "cause": f["cause"], "class": c.klass, "side": side, "count": f["count"],
+                      "segment_started": seg_start,
+                      "unit": f["unit"], "cause": f["cause"], "class": f.get("class") or c.klass, "side": side, "count": f["count"],
                       "remedy": c.remedy,
                       "fingerprint": fingerprint(side, str(owner.get("workflow") or spec.name), f["cause"], f["unit"]),
                       "at": at, "request_digest": digest,

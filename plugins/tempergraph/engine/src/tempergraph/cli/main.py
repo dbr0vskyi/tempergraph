@@ -36,6 +36,7 @@ VERBS = ("attention", "audit", "author", "batch", "blueprint", "carry", "config"
          "outcome", "promote-check", "report", "rerun", "resume", "run", "scaffold", "schedule", "self-check",
          "stats", "status", "stop", "store", "supervision", "update", "upgrade", "upgrade-check", "validate", "wait",
          "workflows", "worktree", "help")
+OPERATOR_REASONS = ("engine_defect", "judge_error", "environment", "plan", "request", "other")  # CLI-B24
 WORKSPACES = ("auto", "worktree", "in_place")
 CHECK_EXIT = {"ok": ExitCode.FINISHED, "needs": ExitCode.USAGE, "error": ExitCode.USAGE,
               "broken": ExitCode.INTERNAL}
@@ -123,6 +124,8 @@ def _parser() -> _Parser:
     res.add_argument("--apply-deadline", action="store_true",
                      help="apply the overdue deadline of a wait or an ask (FLX-B8)")
     res.add_argument("--unit", help="which pending gate the decision answers, when there are several (HUM-B3)")
+    res.add_argument("--reason", dest="operator_reason", choices=OPERATOR_REASONS, metavar="REASON",
+                     help="why the decision is made, one of: " + ", ".join(OPERATOR_REASONS) + " (CLI-B24)")
     res.add_argument("--unpin", action="store_true",
                      help="clear the thread's engine pin when this engine can resume it (MIG-B12, MIG-B13, MIG-B14)")
     res.add_argument("--escalate", action="store_true",
@@ -624,7 +627,7 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
     if len(words) > 1:
         raise UsageError("one --decision a resume; only answer:<name>=<value> repeats")
     settings = dataclasses.replace(_settings(env, a), answers=answers, apply_deadline=bool(a.apply_deadline),
-                                   unit=a.unit)
+                                   unit=a.unit, operator_reason=a.operator_reason)
     out = resume(spec, task, env.cwd, env.registry, decision=words[0] if words else None, feedback=feedback,
                  settings=settings)
     if out.exit_code == ExitCode.FINISHED:  # MIG-B12, MIG-B13, MIG-B14: a pin ends with its thread

@@ -23,6 +23,7 @@ import sys
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,11 @@ ALIAS = "medium"
 EFFORT = "max"  # the loop reads session logs: Sonnet thinks at its most (SIL-B17)
 TIMEOUT_S = 1800
 clock = time.time  # replaceable, so a test runs the wait of SIL-B25 on a fake clock
+
+
+def filing_clock() -> datetime:
+    """The time a ticket files at (ISS-B13 day bound, mute age); replaceable, so a test makes two UTC days."""
+    return datetime.now(UTC)
 sleep = time.sleep
 FENCE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.S)
 BRIEF = """You review the friction of one workflow run for a self-improvement loop.
@@ -52,6 +58,15 @@ follows an infrastructure failure, or a check failure that a person's ruling cau
 
 An answer `attributed: true` can file the finding by the count whatever its confidence, so answer attribution
 on the records, not on how sure you are of the remedy.
+
+The section `What answered each pause` appears when a finding comes from a segment that ended in a pause. Each row
+names the paused unit and item, why it paused, who answered it and how (the decision, whether a ruling or feedback
+was given, never its words), the class of the decision's touch, whether the workspace changed between the pause and
+the resume, and the verdict of the next gate of that unit and item. A `retry` that passes with the workspace
+unchanged points at the judge or the check and not at the step, because the same work passed on a second look.
+A `proceed` with a ruling says a person or the supervising caller overrode the gate, so the check's failure is not
+by itself a fault of the step. An operator reason other than `plan` or `request` points away from the workflow's
+step: `engine_defect`, `judge_error`, `environment` and `other` say the cause lay outside what the step did.
 
 End with one fenced JSON block:
 ```json
@@ -175,6 +190,39 @@ def started_for(root: Path, workflow: str, task_id: str, thread: str, trigger: s
     return False
 
 
+def held_by_tickets(root: Path, thread: str, home: Path | None = None) -> set[str]:
+    """SIL-B28: the fingerprints that a waiting or claimed ticket of the thread holds (`fingerprints` and
+    `pause_fingerprints`), read as `started_for` reads the tickets."""
+    folder = tickets_dir(home or home_path())
+    out: set[str] = set()
+    for path in [*folder.glob("*.json"), *folder.glob("*.claimed")] if folder.is_dir() else ():
+        try:
+            t = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(t, dict) and t.get("thread") == thread and str(t.get("state_root")) == str(root):
+            out |= {str(x) for x in [*(t.get("fingerprints") or ()), *(t.get("pause_fingerprints") or ())]}
+    return out
+
+
+def recorded_judgements(root: Path, workflow: str, task_id: str) -> dict[str, dict[str, Any]]:
+    """SIL-B49: the judge's answers recorded in the thread's loop log, the latest for each fingerprint; a failed read
+    gives none."""
+    out: dict[str, dict[str, Any]] = {}
+    try:
+        lines = loop_log(root, workflow, task_id).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for ln in lines:
+        with contextlib.suppress(ValueError, TypeError, KeyError):
+            r = json.loads(ln)
+            if isinstance(r, dict) and r.get("kind") == "loop_judged":
+                for a in r.get("answers") or ():
+                    out[str(a["fingerprint"])] = {"attributed": a["attributed"] is True,
+                                                  "confidence": float(a["confidence"])}
+    return out
+
+
 def launch(home: Path | None = None) -> bool:
     from tempergraph import detach
 
@@ -231,8 +279,15 @@ def _answered(findings: Sequence[Mapping[str, Any]], answers: Mapping[str, Mappi
         a = answers.get(str(f.get("fingerprint")))
         if a:
             w = a["workspace"]
-            rows.append(f"- `{f.get('fingerprint')}`: reason `{a['reason']}`; decision `{a['decision']}`; "
-                        f"caller `{a['caller']}`; feedback {a['feedback']}; "
+            ruling = a.get("ruling", "not recorded")
+            given = a.get("operator_reason")
+            op_reason = f"operator reason `{given}`" if given in pause_facts.OPERATOR_REASONS \
+                else "operator reason not given"
+            rows.append(f"- `{f.get('fingerprint')}`: unit `{a.get('unit', '-')}` item `{a.get('item', '-')}`; "
+                        f"reason `{a['reason']}`; decision `{a['decision']}`; caller `{a['caller']}`; "
+                        f"ruling {'given' if ruling == 'given' else 'not given' if ruling == 'not given' else 'not recorded'}; "
+                        f"feedback {a['feedback']}; touch `{a.get('touch', 'not recorded')}`; "
+                        f"{op_reason}; "
                         f"workspace {w if w in ('changed', 'unchanged') else 'not recorded'}; "
                         f"next gate verdict `{a['next_gate']}`")
     return "\n## What answered each pause\n" + "\n".join(rows) + "\n" if rows else ""
@@ -242,23 +297,40 @@ def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str,
            answers: Mapping[str, Mapping[str, str]] | None = None) -> str:
     """Metadata only: findings, what answered each paused segment's pause, and the last segment's record kinds per
     unit with criterion ids."""
-    start = max((i for i, r in enumerate(records) if r.get("kind") == "run_started"), default=0)
+    starts = [i for i, r in enumerate(records) if r.get("kind") == "run_started"] or [0]
+    bounds = list(zip(starts, [*starts[1:], len(records)], strict=False))
+    bound = {id(f): pause_facts.segment_of(f, records) for f in findings}  # SIL-B51: the same binding as the facts row
+    # SIL-B45: every earlier segment that holds a bound listed finding, then the last segment
+    chosen = [b for b in bounds[:-1] if any(v == b for v in bound.values())] + [bounds[-1]]
+    rows = [f"- `{f.get('fingerprint')}` cause `{f.get('cause')}` class {f.get('class')} side `{f.get('side')}` "
+            f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
+            + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
+            for f in findings]
+    sections = "".join(_segment_section(records[lo:hi], [f for f in findings if bound[id(f)] == (lo, hi)])
+                       for lo, hi in chosen)
+    return BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {}) + sections
+
+
+def _segment_section(seg_records: Sequence[Mapping[str, Any]], findings: Sequence[Mapping[str, Any]] = ()) -> str:
+    """One segment's record kinds per unit with criterion ids, headed by its exit code and the reason of its pause (the
+    run's own exit reason for a segment that did not pause); never text (SIL-B45)."""
     counts: dict[str, dict[str, int]] = {}
     blockers: dict[str, set[str]] = {}
-    for r in records[start:]:
+    for r in seg_records:
         unit = f"{r['child']}/{r.get('unit') or '-'}" if r.get("child") else str(r.get("unit") or "-")  # SWF-B9
         k = str(r.get("kind") or "")
         counts.setdefault(unit, {})[k] = counts.get(unit, {}).get(k, 0) + 1
         for cid in r.get("blockers") or () if k == "judgement" else ():
             blockers.setdefault(unit, set()).add(str(cid))
-    rows = [f"- `{f.get('fingerprint')}` cause `{f.get('cause')}` class {f.get('class')} side `{f.get('side')}` "
-            f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
-            + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
-            for f in findings]
+    done = next((r for r in reversed(seg_records) if r.get("kind") == "run_exit"), None)
+    head = ""
+    if done is not None and isinstance(done.get("exit_code"), int):
+        why = pause_facts.pause_reason(seg_records, findings) if done["exit_code"] == 3 else \
+            re.sub(r"[^A-Za-z0-9_.:-]", "", str(done.get("reason") or "-"))
+        head = f" (exit code {done['exit_code']}, reason {why})"
     seg = [f"- `{u}`: " + ", ".join(f"{k} {n}" for k, n in sorted(c.items()))
            + (f"; blocked on {', '.join(sorted(blockers[u]))}" if u in blockers else "") for u, c in counts.items()]
-    return (BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {})
-            + "\n## The segment's records\n" + "\n".join(seg) + "\n")
+    return f"\n## The segment's records{head}\n" + "\n".join(seg) + "\n"
 
 
 def parse(text: str) -> dict[str, dict[str, Any]]:
@@ -323,7 +395,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
-                       "fingerprints": sorted(judged_fps)})
+                       "fingerprints": sorted(judged_fps),
+                       "held": t.get("autonomy") == "record" or bool(t.get("dry_run"))})  # SIL-B47: handed again
     escaped: list[tuple[dict[str, Any], str]] = []  # the escape findings this read recorded, with their run's task
     if t.get("autonomy") != "record" and not t.get("dry_run"):  # PRP-B26, PRP-B27, PRP-B28: best effort (SIL-B1)
         try:
@@ -374,17 +447,20 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     if capped:
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "judges", "reason": "daily_cap"})
     try:  # FFD-B1: the answers recorded before this exit's own; a failed read gives none
-        earlier = filing.recorded_answers(root, wf)
+        earlier = filing.recorded_answers(root, wf, exclude=log)  # this thread's one answer is counted once, by decide
     except Exception:  # noqa: BLE001 - best effort (SIL-B1)
         earlier = {}
-    if (t.get("lenses") or {}).get("friction") and faults and not capped:
+    try:  # SIL-B37: what answered each pause; the loop is best effort (SIL-B1), so a failed read leaves it out
+        answered = pause_facts.of(root, wf, task, faults)
+    except Exception:  # noqa: BLE001
+        answered = {}
+    recorded = recorded_judgements(root, wf, task) if (t.get("lenses") or {}).get("friction") else {}
+    unanswered = [f for f in faults if str(f.get("fingerprint")) not in recorded]  # SIL-B49: one answer per fingerprint
+    judged = {k: v for k, v in recorded.items() if k in {str(f.get("fingerprint")) for f in faults}}
+    if (t.get("lenses") or {}).get("friction") and unanswered and not capped:
         ex = registry.get(str(t.get("executor") or "claude"))
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
-        try:  # SIL-B37: what answered each pause; the loop is best effort (SIL-B1), so a failed read leaves it out
-            answered = pause_facts.of(root, wf, task, faults)
-        except Exception:  # noqa: BLE001
-            answered = {}
-        req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task), answered), workdir=root,
+        req = SessionRequest(kind="judge", prompt=prompt(unanswered, _records(root, wf, task), answered), workdir=root,
                              alias=alias_of(t), session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
                              session_dir=sdir, options=options_of(t))
         res = ex.run_judge(req, ViewSet(), LiveSink(sdir))
@@ -392,13 +468,14 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             cost["reported"] += res.usage.reported_cost_usd
         else:
             cost["estimated_only"] += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
-        judged = parse(res.text) if res.ok else {}
+        got = parse(res.text) if res.ok else {}
+        judged.update({k: v for k, v in got.items() if k in {str(f.get("fingerprint")) for f in unanswered}})
         answers = [{"fingerprint": str(f.get("fingerprint")),  # SIL-B36: what the judge answered, none of its text
-                    "confidence": judged[str(f.get("fingerprint"))]["confidence"],
-                    "attributed": judged[str(f.get("fingerprint"))]["attributed"]}
-                   for f in faults if str(f.get("fingerprint")) in judged]
+                    "confidence": got[str(f.get("fingerprint"))]["confidence"],
+                    "attributed": got[str(f.get("fingerprint"))]["attributed"]}
+                   for f in unanswered if str(f.get("fingerprint")) in got]
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_judged", "lens": "friction", "executor": ex.name,
-                           "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
+                           "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(got), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id, "answers": answers})
     limited: list[dict[str, Any]] = []  # SIL-B25: the reviews that failed as `usage_limit`, with the reported reset
     categories: frozenset[str] = frozenset()
@@ -434,6 +511,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
                                       earlier_answers=earlier.get(str(f.get("fingerprint")), ()),
+                                      facts=answered.get(str(f.get("fingerprint")), {}),
                                       issue_labels=t.get("issue_labels"), review_categories=categories, **context))
     for f, etask in escaped:  # SIL-B34: an escape finding files by the pattern rule, not by calibration
         cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=False, request_digest=f.get("request_digest"),
@@ -445,12 +523,13 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         results = [{"op": "recorded", "fingerprint": d.candidate.finding.get("fingerprint"), "reason": "autonomy_record"}
                    for d in decisions]
     else:
-        try:  # ISS-B13: the "seen again" comments each issue got today; a failed read passes none
-            today: dict[tuple[str, int], int] | None = filing.comments_by_day(root, wf)
+        filed_at = filing_clock()
+        try:  # ISS-B13, BND-B3: the "seen again" comments each issue got today over every workflow's runs; a failed read passes none
+            today: dict[tuple[str, int], int] | None = filing.comments_by_day(root, None, filed_at)
         except Exception:  # noqa: BLE001 - best effort (SIL-B1)
             today = None
         results = filing.file(decisions, host, filing.Outbox.at(root), dry_run=bool(t.get("dry_run")),
-                              comments_today=today)
+                              now=filed_at, comments_today=today)
     by_fp = {str(d.candidate.finding.get("fingerprint")): d for d in decisions}
     for r in results:  # IMD-B21 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")

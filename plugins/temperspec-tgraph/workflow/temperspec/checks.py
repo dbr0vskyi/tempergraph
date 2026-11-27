@@ -15,7 +15,7 @@ from typing import Any
 
 from tempergraph.api import CheckFinding, checks
 
-from . import review, routing
+from . import regeneration, review, routing
 from . import specfmt as fmt
 
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "__pycache__", "evals", "fixtures", "dist",
@@ -563,12 +563,27 @@ def _source_lines(ctx: Any, sources: list[str]) -> dict[str, int] | None:
     return counts
 
 
+def _regenerated(ctx: Any) -> list[str]:
+    """RGN-B13: the changed paths the repository declares as outputs of a regeneration that only the regeneration
+    unit's commits changed. A path a later step edited stays a changed path; with no readable history there is none."""
+    if not ctx.git.base or not ctx.git.changed_paths:
+        return []
+    declared = [p for p in regeneration.declared_outputs(Path(ctx.workdir)) if p in ctx.git.changed_paths]
+    history = _history(ctx) if declared else None
+    if not history:
+        return []
+    return [p for p in dict.fromkeys(declared)
+            if all(_step_of(subject) == "regeneration" for _, subject, paths in history if p in paths)]
+
+
 def _reading_lines(ctx: Any) -> list[str]:
     """The evidence lines the code judge reads from: the changed source lines, the reading budget and the changed
     source files, the file with the most changed lines first (JRD-B1, JRD-B2)."""
     sources = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/") and not p.endswith(".md")]
     if _prepared_commands(ctx):
         sources = [p for p in sources if p != routing.COMMANDS_FILE]
+    written = _regenerated(ctx)
+    sources = [p for p in sources if p not in written]
     counts = _source_lines(ctx, sources)
     rule = f"one per {LINES_PER_FILE} lines, floor {READING_FLOOR}, ceiling {READING_CEILING}"
     if counts is None:
@@ -587,9 +602,11 @@ SOURCE_FILES = "Changed source files"
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
             links: list[str] | None = None, reading: list[str] | None = None,
-            facts: list[str] | None = None, *, commands: list[str] | None = None, step: str | None = None) -> Any:
+            facts: list[str] | None = None, *, commands: list[str] | None = None, step: str | None = None,
+            pause: bool = False) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
-    environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
+    environmental leads the evidence, and the result is marked environmental when no other finding fails, or with
+    `pause` (the outcome check) when any environmental finding fails, beside others. `reading` is the lines a
     judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files.
     `facts` is lines of plain evidence that follow the first line, never a finding (the outcome check's push line).
     `commands` are the lines that say how each verification command was answered: first, because a preview prints
@@ -599,7 +616,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
     bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
                             if f.status == "fail" and not isinstance(f, _Environmental)])
-    environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
+    environmental = any(isinstance(f, _Environmental) and f.status == "fail" for f in found) and (
+        pause or not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found))
     specs, _ = _edited_specs(ctx)
     head = [bad or f"{len(found)} checked"] + (facts or [])
     # an environmental command leads (it escalates to a person); otherwise the command lines lead for a preview
@@ -607,7 +625,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     commands_file = [routing.COMMANDS_FILE] if _prepared_commands(ctx) else []
-    changed = [p for p in changed if p not in prepared and p not in commands_file]
+    regenerated = _regenerated(ctx)
+    changed = [p for p in changed if p not in prepared and p not in commands_file and p not in regenerated]
     sorted_lists = step == "phase"
     if step is not None and not sorted_lists:
         sorted_lists = any(_step_of(s) == "phase" for _, s, _ in _history(ctx) or [])
@@ -623,6 +642,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     if commands_file:
         lines.append("Written by prepare (the repository's commands file, as prepare wrote it, no step's change): "
                      + routing.COMMANDS_FILE)
+    if regenerated:
+        lines.append("Written by the regeneration (no step's change): " + ", ".join(regenerated[:120]))
     if specs:
         lines.append("Edited specs: " + ", ".join(specs))
         related = _related(ctx, specs, _spec_index(ctx, _walk(ctx)), plan)
@@ -1615,7 +1636,7 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
         return [_find("n_a", criterion, message="the run is not in the quick lane")]
     fix = ("end the step with `UPSTREAM triage: the task is larger than the quick lane`, so triage plans it")
     described = set(_setup_specs(ctx))
-    prepared = {routing.COMMANDS_FILE} if _prepared_commands(ctx) else set()
+    prepared = ({routing.COMMANDS_FILE} if _prepared_commands(ctx) else set()) | set(_regenerated(ctx))
     changed = [p for p in ctx.git.changed_paths if not p.startswith(IGNORED_BY_LANE)
                and p not in ("CLAUDE.md", "AGENTS.md") and p not in described and p not in prepared]
     found = [_find("fail", criterion, p, "the quick lane changed a spec or a decision record", fix)
@@ -1905,6 +1926,9 @@ def _unseen(ctx: Any, head: str, path: str) -> bool:
         return True
 
 
+FIX_FRESH = "bring the head of the base branch into the run's branch, then answer retry"
+
+
 def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
     """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
     the run's base commit, when the head holds a commit that changed it and the run's branch lacks."""
@@ -1923,10 +1947,11 @@ def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
         moved = False
     if not moved:
         return [_ok("ts-spec-fresh")]
-    found = [_find("fail", "ts-spec-fresh", path,
-                   "the base branch changed this spec since the run started (it reads differently at its head than "
-                   "at the run's base commit)", "start the task again from the head of the base branch")
-             for path in specs
+    found: list[CheckFinding] = [
+        _Environmental(status="fail", criterion="ts-spec-fresh", place=path, fix=FIX_FRESH,
+                       message=f"{path} changed on the base branch since the run started (run base {base[:10]}, "
+                               f"base head {head[:10]})")
+        for path in specs
              if _at_ref(ctx, base, path) != _at_ref(ctx, head, path) and _unseen(ctx, head, path)]
     return found or [_ok("ts-spec-fresh")]
 
@@ -2006,11 +2031,14 @@ def outcome_check(ctx: Any) -> Any:
     else:
         found += _traced(ctx, specs, _walk(ctx))
         plan, path = _plan(ctx)
-        found += _verify(ctx, plan, "ts-verify") if plan is not None else [
+        found += _verify(ctx, plan, "ts-verify", compare=True) if plan is not None else [
             _find("fail", "ts-verify", path, "the plan cannot be read")]
     found += _collateral(ctx, specs)
     push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
-    return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
+    action = [f"To clear ts-spec-fresh: {FIX_FRESH}."] if any(
+        f.criterion == "ts-spec-fresh" and f.status == "fail" for f in found) else []
+    # evidence only: a push never decides the result; a fact no step can change pauses the run (`pause`)
+    return _result(ctx, found, _plan(ctx)[0], facts=[*action, push], pause=True)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -2053,10 +2081,51 @@ def _review_session(ctx: Any, criterion: str) -> list[CheckFinding]:
     return unique or [_ok(criterion)]
 
 
+def _read_input(ctx: Any, rel: str) -> str | None:
+    try:
+        return (Path(ctx.workdir) / rel).read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _review_inputs(ctx: Any, changed: list[str]) -> list[CheckFinding]:
+    """IRV-B15 to IRV-B18: `ts-rev-form` fails when the reader was not given the change of the run: a recorded git
+    failure, no base commit, inputs built from another base, or an empty change over a changed file."""
+    fix = "the inputs are rebuilt at the start of the reader's attempt; retry the review"
+    failed = _read_input(ctx, review.FAILED)
+    if failed is not None:
+        return [_find("fail", "ts-rev-form", review.FAILED, f"the reader's inputs could not be built: {failed.strip()}", fix)]
+    base = str(getattr(ctx.git, "base", "") or "") if ctx.git is not None else ""
+    if not base:
+        return [_find("fail", "ts-rev-form", review.BASE, "the run has no base commit, so the reader was given no change",
+                      "run the review in a worktree of a branch, where the engine records the base commit")]
+    found: list[CheckFinding] = []
+    built = (_read_input(ctx, review.BASE) or "").strip()
+    if not built:
+        found.append(_find("fail", "ts-rev-form", review.BASE,
+                           f"the inputs record no base commit; the check's commit is {base} and none was recorded", fix))
+    elif built != base:
+        found.append(_find("fail", "ts-rev-form", review.BASE,
+                           f"the inputs were built from {built}, the check's base commit is {base}", fix))
+    if changed and not (_read_input(ctx, review.CHANGE) or "").strip():
+        found.append(_find("fail", "ts-rev-form", review.CHANGE,
+                           "the reader was given no change although the run changed " + ", ".join(changed[:3]), fix))
+    return found
+
+
 def review_check(ctx: Any) -> Any:
     """ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step: the form of the findings document, the session record,
     commit state, and the step a blocking finding goes back to, as a finding the judge reads (IRV-B9, IRV-B10, IRV-B12)."""
     found: list[CheckFinding] = []
+    base = str(getattr(ctx.git, "base", "") or "") if ctx.git is not None else ""
+    task = str((ctx.request or {}).get("task_id") or "task")
+    try:
+        prepared = set(review.prepared_files(Path(ctx.workdir), base, task)) if base else set()
+    except review.GitFailed:
+        prepared = set()
+    all_changed = [p for p in (ctx.git.changed_paths if ctx.git is not None else ())
+                   if not review.HAND_OVER.search(p) and p not in prepared and not p.startswith(".tempergraph/")]
+    found += _review_inputs(ctx, all_changed)
     text, path = _read(ctx, "findings")
     evidence: list[str] = []
     if text is None:
@@ -2069,11 +2138,7 @@ def review_check(ctx: Any) -> Any:
                   for place, message in problems] or [_ok("ts-rev-form", path)]
         if not problems:
             doc = review.parse_document(text)
-            task = str((ctx.request or {}).get("task_id") or "task")
-            prepared = review.run_base(Path(ctx.workdir), task)[1]
-            changed = [p for p in (ctx.git.changed_paths if ctx.git is not None else ())
-                       if not review.HAND_OVER.search(p) and p not in prepared and not p.startswith(".tempergraph/")]
-            step = review.choose_step(doc.findings, changed)
+            step = review.choose_step(doc.findings, all_changed)
             if step and doc.earlier:
                 step = _first_trip(ctx) or step
             if step:

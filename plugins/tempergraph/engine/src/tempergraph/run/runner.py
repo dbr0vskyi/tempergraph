@@ -65,6 +65,8 @@ from tempergraph.workspace import (
     prepare_workspace,
     release_workspace,
     resolve_workspace,
+    take_pause_mark,
+    write_pause_mark,
 )
 
 STOP_EXIT = {"infra": ExitCode.BUDGET_OR_INFRA, "budget": ExitCode.BUDGET_OR_INFRA, "person": ExitCode.STOPPED}
@@ -114,6 +116,7 @@ class RunSettings:
     apply_deadline: bool = False  # `resume --apply-deadline` (FLX-B8)
     pause_before: tuple[str, ...] = ()  # `--pause-before <unit>`: operator breakpoints of this segment (FLX-B10)
     unit: str | None = None  # `resume --unit`: which of several pending gates the decision answers (HUM-B3)
+    operator_reason: str | None = None  # `resume --reason`: one fixed word on the decision's ledger row (CLI-B24)
     schedule: Mapping[str, Any] | None = None  # a scheduled run's `{schedule_id, fire_id, slot}` (TCK-B24)
     audit_seed: int | None = None  # a test hook: mixed into the audit judge's draw so a test's sampling is stable (JDG-B7)
 
@@ -272,6 +275,11 @@ def _root(target: Path) -> Path:
 
 def exit_file(state_root: Path, workflow: str, task_id: str) -> Path:
     return run_dir(state_root, workflow, task_id) / "exit.json"
+
+
+def pause_mark_file(state_root: Path, workflow: str, task_id: str) -> Path:
+    """The head and status of the worktree of a segment that ended to be resumed (WTR-B28)."""
+    return run_dir(state_root, workflow, task_id) / "pause-workspace.json"
 
 
 def _content_version(spec: WorkflowSpec) -> str:
@@ -465,6 +473,13 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             outcome.payload = {**(outcome.payload or {}), **capped}
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
                   cost_so_far=cost_so_far(cost.to_json()), **deg, **capped)
+        mark_ws = final.get("workspace") or {}
+        if outcome.exit_code in (ExitCode.PAUSED, ExitCode.STOPPED) and mark_ws.get("mode") == "worktree" \
+                and mark_ws.get("path") and Path(str(mark_ws["path"])).exists():
+            try:  # WTR-B28: what the resume compares the worktree with
+                write_pause_mark(pause_mark_file(root, spec.name, task_id), Path(str(mark_ws["path"])))
+            except OSError:
+                log.write("engine_error", scope="pause_workspace", error="OSError")
         try:
             write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                               "exit_code": int(outcome.exit_code),
@@ -1179,7 +1194,8 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             ws = carrymod.relocate(root, root.parent, spec.name, task_id, ws) if ws else ws
         if ws:
             try:
-                rec = attach_workspace(WorkspaceRecord.from_json(ws), tid, spec.worktree, root)
+                rec = attach_workspace(WorkspaceRecord.from_json(ws), tid, spec.worktree, root,
+                                       marked=take_pause_mark(pause_mark_file(root, spec.name, task_id)))
             except WorkspaceRefused as exc:
                 return _refuse(exc.word, str(exc), tid=tid)
             ws_update = rec.to_json()
@@ -1385,6 +1401,8 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
            "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
            "cause": "auto_reopen" if engine else reason or kind}
+    if settings.operator_reason:
+        row["operator_reason"] = settings.operator_reason
     Ledger(path=root / "ledger.jsonl").append(row)
     return row
 

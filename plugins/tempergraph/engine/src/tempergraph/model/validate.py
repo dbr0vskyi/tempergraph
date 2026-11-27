@@ -412,6 +412,38 @@ class _Validator:
             self.warn("fallback-unused", name, "`fallback` is set but neither `on_fail` nor `on_budget_spent` "
                                                "uses it")
 
+    def _back(self, name: str, g: Any) -> None:  # HUM-B18
+        if g.on_fail != "back":
+            return
+        if g.judge is not None:
+            self.err("back-with-judge", name, "`on_fail: back` is declared on a gate with a judge; the judge "
+                                              "decides where a run goes back")
+        if not g.back_targets:
+            self.err("back-target-missing", name, "`on_fail: back` needs one back target")
+        elif len(g.back_targets) > 1:
+            self.err("back-targets-many", name, "`on_fail: back` takes exactly one back target, "
+                                                f"not {len(g.back_targets)}")
+
+    def _may_skip(self, name: str, g: Any) -> None:  # WFM-B14
+        if not g.judge_may_skip:
+            return
+        if g.judge is None:
+            self.err("judge-may-skip-without-judge", name, "`judge_may_skip` is declared on a gate with no judge")
+        for pattern in g.judge_may_skip:
+            if pattern.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:", pattern):
+                self.err("judge-may-skip-absolute", name, f"`judge_may_skip` pattern {pattern!r} is absolute")
+                continue
+            depth = 0
+            for part in pattern.replace("\\", "/").split("/"):
+                if part == "..":
+                    depth -= 1
+                    if depth < 0:
+                        self.err("judge-may-skip-outside-repository", name,
+                                 f"`judge_may_skip` pattern {pattern!r} leaves the repository")
+                        break
+                elif part not in ("", "."):
+                    depth += 1
+
     def _routing(self) -> None:
         if not self.spec.routing.description.strip():
             self.err("routing-description-missing", None, "routing metadata needs a one-line description")
@@ -428,6 +460,8 @@ class _Validator:
             self.err("timeout-invalid", name, "`check_timeout_s` must be a positive integer")
         if g.check is not None:
             self._callable(name, g.check, "check")
+        self._may_skip(name, g)
+        self._back(name, g)
         self._fallback(name, u)
         if u.kind not in ("ask", "wait"):
             for label, d in (("ask", u.ask), ("wait", u.wait)):
@@ -507,6 +541,8 @@ class _Validator:
             self.err("map-invalid", name, f"on_empty {m.on_empty!r} is not one_item, stop or skip")
         if isinstance(m.max_items, bool) or not isinstance(m.max_items, int) or not 1 <= m.max_items <= 50:
             self.err("map-invalid", name, "`max_items` must be an integer from 1 to 50")
+        if u.gate.on_fail == "back":
+            self.err("back-on-map", name, "a map's gate takes no `on_fail: back` (MAP-B11)")
         if u.gate.back_targets:
             self.err("map-back-target", name, "a map's gate takes no back targets: a defect across items is found "
                                               "at the join (MAP-B11)")

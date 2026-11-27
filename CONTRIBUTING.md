@@ -9,6 +9,7 @@ Thank you for looking. Most of this guide describes how the maintainer and the a
 - **Questions, bugs and ideas** go in an issue, using the forms (section 2). A bug report that names the spec line or guide section it contradicts is the most useful kind.
 - **Security problems** never go in a public issue: see [SECURITY.md](SECURITY.md).
 - **Code or docs changes:** comment on the issue first to say you want to take it, and wait for the maintainer to assign it to you; you can't assign yourself without write access. Then fork the repository, work on a branch, and open a pull request against `main` from the template (section 3, steps 3 to 7). CI runs the suite, ruff and mypy on your pull request. You don't need a signed-in `claude` or any model spend: the test suite is offline.
+- **On a small budget:** pick an issue labelled `help wanted` or `good first issue` (section 2, State labels). Both can be finished by hand: no temperspec run, no signed-in tool for a live check, no maintainer's machine. Section 3 says how to build a change without a run.
 - **Agent comment markers** (section 5) are only for agents. Write ordinary comments.
 
 Everyone is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
@@ -53,7 +54,10 @@ State labels:
 - `needs: spec`: write the spec first.
 - `blocked`: the body names what it waits for.
 - `in progress`: someone has claimed it.
-- `good first issue`.
+- `help wanted`: standalone and well described. The issue has a done-when, names the files to start from and names the test files to run locally. It is not P0 or P1 and not blocked, it owes no owner decision and no spec, and it needs no live check and no change that makes a workflow package's stamp be regenerated. Its effort is XS or S, or it states a slice of something larger. CI runs the full suite.
+- `good first issue`: the `help wanted` issues that are also effort XS, touch one or two files, and whose behaviour a spec already states.
+
+Not for a small budget: `blocked`, `needs: owner-decision`, `needs: owner-machine`, `needs: spec`, `type: live-check`, effort M and above (one or more full temperspec runs), and any change to a workflow package's prompts, checks or workflow code (its stamp must be regenerated).
 
 **Effort** is measured the way this repository works:
 
@@ -87,11 +91,11 @@ Issues created through the API, as agents do, use the same section headings as t
    - New artifact files use a type suffix: `*.spec.md`, `*.adr.md`, `*.rsrch.md`, `*.plan.md`.
 4. **The engine names no workflow** ([ADR `the-engine-names-no-workflow`](plugins/tempergraph/docs/adr/the-engine-names-no-workflow.adr.md)). A workflow that needs an engine change writes the need in its own docs first. The engine change is then stated and tested as a general capability, with an engine fixture.
 5. **Verify.** From `plugins/tempergraph/engine/`, run `python -m pip install -e '.[dev]'`, then:
-   - `python -m pytest`
+   - `python -m pytest tests/<file>.py` for each test file you touched and each one that carries the id of a criterion you changed
    - `ruff check src tests`
    - `mypy`
 
-   Workflow packages' tests run inside the engine's suite. Live checks need `TEMPERGRAPH_LIVE=1` and a signed-in `claude`, and they spend money: say which ones you ran. CI (`.github/workflows/ci.yml`) runs the suite, ruff and mypy on Python 3.11 and 3.12 for every pull request; the pull request still says which live checks you ran.
+   CI (`.github/workflows/ci.yml`) runs the full suite, ruff and mypy on Python 3.11 and 3.12 for every push to a pull request, so you don't have to run the full suite locally. To run it anyway: `python -m pytest`, on up to four workers by default (`-n 0` for one process). Workflow packages' tests run inside the engine's suite. Live checks need `TEMPERGRAPH_LIVE=1` and a signed-in `claude`, and they spend money: say which ones you ran. The pull request still says which live checks you ran.
 6. **Commit** with [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, where the scope is a plugin name.
 7. **Open the pull request** from the template:
    - Write `Closes #<n>` for each issue it finishes.
@@ -100,11 +104,38 @@ Issues created through the API, as agents do, use the same section headings as t
 
 When a pull request finishes an issue, delete or update the spec's "Not built yet" line in the same pull request. The issue closes on merge.
 
+### Without a temperspec run
+
+A temperspec run is not required to contribute. Follow the same method by hand, in this order:
+
+1. The acceptance criteria: numbered, one behaviour each, each one testable.
+2. The spec line that states the behaviour.
+3. A test that carries the criterion's id.
+4. The code.
+
+A run is what maintainers use for larger work. It is expensive: one run is dozens of model sessions. The request shape a run takes also works as a checklist by hand; it is the first prompt in [docs/contributing/prompts.guide.md](docs/contributing/prompts.guide.md).
+
+### Review
+
+- Green gates, green CI or a finished run mean ready for review, not reviewed.
+- A maintainer reads the diff independently against the acceptance criteria, without the author's plan or notes. A finding is fixed in the pull request or becomes a follow-up issue.
+- A test that proves a criterion drives a real fixture run. It must not hand-write a record in a shape the system never emits.
+
+The review prompt is in [docs/contributing/prompts.guide.md](docs/contributing/prompts.guide.md); run it on your own diff before you ask for review.
+
+### Working on an executor
+
+An adapter's arguments, line parsing, failure classification and preflight are built and tested with no signed-in tool, against the stand-in CLI fixture (`plugins/tempergraph/engine/tests/fixtures/standin_cli.py`) and the recorded streams in `plugins/tempergraph/engine/tests/fixtures/recorded/`. A recorded stream comes from the real tool, so someone who has the tool captures it once. An executor issue is ready for outside work when its recorded streams are in the repository.
+
 ## 4. Running temperspec on this repository
 
-Much of this repository is built by running temperspec on its own issues. The run recipe (worktree mode, shared environment, `--worktree --worktree-base head`, concurrent run limits) is in [plugins/temperspec-tgraph/README.md](plugins/temperspec-tgraph/README.md).
+Much of this repository is built by running temperspec on its own issues. The run recipe (worktree mode, one shared environment, `--worktree --worktree-base head`, concurrent run limits, the launch environment) is in [plugins/temperspec-tgraph/README.md](plugins/temperspec-tgraph/README.md#running-it-on-this-repository).
 
-- Pass the issue's text as the run request, not its URL or a file outside the repository.
+- Claim the issue when the run starts, as in section 3 step 1: assign it, add `in progress` and post the `claim` comment with the run's task id. The maintainers' runs do the same, so an open issue that is assigned and labelled `in progress` is being built; pick another one. When the run ends, post the `result` comment and remove `in progress` unless a follow-up run on the same issue starts at once.
+- Pass the issue's text or a request file inside the repository as the run request, not the issue's URL or a file outside the repository.
+- One slice per request file, and the file holds only that slice's acceptance criteria. A criterion left in the text binds every later check, even when a sentence says it is cut.
+- The launch environment is part of the run. Start from a clean shell, with a temporary folder on disk outside the home folder under a plain name, and nothing exported that the run does not need.
+- The improvement loop runs at every exit that is not a pause, a stop included. When experimenting, pass `--dry-run` or set the workflow's level to `record` (the three holds are in the [improving workflows guide](plugins/tempergraph/docs/guides/improving-workflows.guide.md)).
 - Each run writes its plan and task notes under the owning package's `docs/plans/` and `docs/tasks/`.
 - Post the run's cost and outcome as a result comment on the issue.
 

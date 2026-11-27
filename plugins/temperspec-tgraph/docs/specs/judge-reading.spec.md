@@ -4,13 +4,18 @@
 
 What each judge of the temperspec workflow is told to read and to cite before it grades. The code gate hands its judge the list of changed source files and a reading budget sized to the change, so that the judge reads the code before it grades alignment ([code](code.spec.md)); every judge is asked for the line behind a MET, so that a grade rests on a file it read and not on search fragments. The owner who reads an escalation and the maintainers of the judge briefs depend on it. Part of the [overview](overview.spec.md).
 
+## Depends on
+
+- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: how a judge marks a grade that rests on a place it did not open (JDG-B16)
+- `regeneration.spec.md`: which changed files were written by the regeneration unit alone (RGN-B13)
+
 ## Behaviours
 
 ### JRD-B1 Every changed source file is listed
 
-WHEN the code gate hands its judge the check evidence of a change THE code gate SHALL list every source file the change touched (any file other than a Markdown document) with the lines it changed (lines added plus lines removed since the run's base), the file with the most changed lines first.
+WHEN the code gate hands its judge the check evidence of a change THE code gate SHALL list every source file the change touched (any file other than a Markdown document and any file that [RGN-B13](regeneration.spec.md) leaves out of the changed paths) with the lines it changed (lines added plus lines removed since the run's base), the file with the most changed lines first.
 
-- GIVEN a change that touches source files of 120, 80 and 30 changed lines and one Markdown document WHEN the code gate hands its judge the check evidence THEN the evidence lists the three source files in the order of 120, 80 and 30 lines, each with its count, and does not list the document
+- GIVEN a change that touches source files of 120, 80 and 30 changed lines, one Markdown document and one file that only the regeneration unit's commit changed WHEN the code gate hands its judge the check evidence THEN the evidence lists the three source files in the order of 120, 80 and 30 lines, each with its count, and does not list the document or the file the regeneration wrote
 - GIVEN a change that touches 40 source files WHEN the judge's prompt is built THEN the prompt names all 40 files
 - GIVEN a change that touches only Markdown documents WHEN the code gate hands its judge the check evidence THEN the evidence says the change has no source file
 
@@ -56,9 +61,22 @@ WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to gra
 
 - GIVEN the brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge WHEN each text is read THEN each says that a check-verified criterion is graded from the check's finding and is not UNVERIFIABLE for want of running it
 
+### JRD-B8 A file a row names is opened before the row is graded
+
+WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to open with the read tool the file that a row or a criterion names before it grades that row or criterion, and that lines a search printed are not a reading of the file.
+
+- GIVEN the brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge WHEN each text is read THEN each tells the judge to open with the read tool the file a row or a criterion names before grading it, and says that lines a search printed are not a reading of that file
+
+### JRD-B9 A grade that fails for want of a reading is marked
+
+WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to mark, as [JDG-B16](../../../tempergraph/docs/specs/judge-and-verdict.spec.md) says, a grade that fails only because the judge did not open a place it could open, with the path and lines to open as the finding's `fix`, and, for the code gate's judge, never to mark a file that the reading budget leaves unread (JRD-B4).
+
+- GIVEN the brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge WHEN each text is read THEN each tells the judge to mark a grade that fails only for want of a reading, with the path and lines to open as its `fix`
+- GIVEN the brief of the code gate's judge WHEN it is read THEN it tells the judge to grade a file beyond the reading budget UNVERIFIABLE, naming the file, and not to mark it
+
 ## Acceptance criteria
 
-- JRD-AC1 (JRD-B1): The check evidence of the code gate for a change that touches source files of 120, 80 and 30 changed lines and one Markdown document lists exactly the three source files, in the order of 120, 80 and 30 lines, each with its count
+- JRD-AC1 (JRD-B1): The check evidence of the code gate for a change that touches source files of 120, 80 and 30 changed lines, one Markdown document and one file that only the regeneration unit's commit changed lists exactly the three source files, in the order of 120, 80 and 30 lines, each with its count, and states 230 changed source lines
 - JRD-AC2 (JRD-B1): The judge's prompt for a change that touches 40 source files names all 40
 - JRD-AC3 (JRD-B2): The check evidence for changes of 120, 2,100, 2,101 and 5,000 changed source lines states reading budgets of 10, 42, 43 and 50 files
 - JRD-AC4 (JRD-B3): The code judge's brief tells the judge to read each source file the evidence lists (the file itself, not only search results from it), up to the reading budget, before it grades `ts-code-aligned` or `ts-code-related`
@@ -66,3 +84,5 @@ WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to gra
 - JRD-AC6 (JRD-B5): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge asks for the quoted line, with its path and line number, behind every MET
 - JRD-AC7 (JRD-B6): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
 - JRD-AC8 (JRD-B7): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge says that a criterion the gate's check verified is graded from the check's finding, quoted as the line behind its MET, and never UNVERIFIABLE because the judge cannot run the check
+- JRD-AC9 (JRD-B8): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge tells the judge to open with the read tool the file that a row or a criterion names before it grades that row or criterion, and says that lines a search printed are not a reading of the file
+- JRD-AC10 (JRD-B9): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge tells the judge to mark a grade that fails only because the judge did not open a place it could open, with the path and lines to open as the finding's `fix`, and the brief of the code gate's judge tells it not to mark a file the reading budget leaves unread
