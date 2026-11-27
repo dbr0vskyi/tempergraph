@@ -124,6 +124,16 @@ def test_jdg_ac10_the_answer_format_asks_for_the_marks() -> None:  # JDG-AC10, A
     assert "out of reach" in text
 
 
+def test_ssn_ac6_the_last_fenced_block_is_the_judgement_and_the_verdict_is_the_engines() -> None:  # SSN-AC6, AC 1
+    text = (block([row(1, "MET"), row(2, "MET")]) + "\nOn reflection:\n"
+            + block([row(1, "PARTIAL", unread=True, fix="notes.md lines 1-9"), row(2, "MET")],
+                    gap=True, gap_unread=True))
+    j = parse_judgement(text, GATE)
+    assert j.criteria[0].status == "PARTIAL" and j.criteria[0].unread and j.gap_unread
+    o = outcome([row(1, "UNMET"), row(2, "MET")], verdict="PROCEED")
+    assert o.verdict is Verdict.RETRY
+
+
 def test_gap_and_unverifiable_escalate() -> None:
     assert outcome([row(1, "MET"), row(2, "MET")], gap=True).verdict is Verdict.ESCALATE
     assert outcome([row(1, "UNVERIFIABLE")]).reason == "unresolved_gap"
