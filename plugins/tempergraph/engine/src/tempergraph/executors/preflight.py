@@ -1,4 +1,4 @@
-"""Refuse before spend (EXI-B1, OVR-B17).
+"""Refuse before spend (EXI-B1, EXI-B26, EXI-B27, OVR-B17).
 
 Runs with no model call. Validation already refuses unknown executors, unbound tier aliases, unmapped
 tools and unsupported options against the registered capability sets; the preflight adds what needs the
