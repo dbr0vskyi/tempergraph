@@ -413,13 +413,14 @@ def _call(capability: str, target: str | None, ok: bool = True) -> dict[str, Any
     return {"name": names[capability], "capability": capability, "target": target, "ok": ok}
 
 
-def _ctx(tmp_path: Path, session: list[dict[str, Any]] | None) -> CheckContext:
-    work = _work(tmp_path)
+def _ctx(tmp_path: Path, session: list[dict[str, Any]] | None, git: GitFacts | None = None) -> CheckContext:
+    """A check context; with `git` it sits on `tmp_path` as it is (a `_run` repository), else on a plain work folder."""
+    work = tmp_path if git is not None else _work(tmp_path)
     (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)
     (work / "docs" / "tasks" / "i1.review.md").write_text(_doc("None"))
     return CheckContext(unit="independent_review", workdir=work, request={"task_id": "i1"}, values={},
                         artifacts={"independent_review": {"findings": "docs/tasks/i1.review.md"}},
-                        git=GitFacts(), allow=SPEC.allow_commands, out_dir=tmp_path.parent / f"{tmp_path.name}.out",
+                        git=git or GitFacts(), allow=SPEC.allow_commands, out_dir=tmp_path.parent / f"{tmp_path.name}.out",
                         deadline_at=time.monotonic() + 60, session=None if session is None else tuple(session),
                         visit_session=None if session is None else tuple(session))
 
@@ -430,12 +431,7 @@ def _found(ctx: CheckContext, criterion: str) -> list[Any]:
 
 def _inputs_ctx(work: Path, base: str, changed: tuple[str, ...]) -> CheckContext:
     """A check context on a `_run` repository, with the reader's inputs built by the unit's own function."""
-    (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)
-    (work / "docs" / "tasks" / "i1.review.md").write_text(_doc("None"))
-    return CheckContext(unit="independent_review", workdir=work, request={"task_id": "i1"}, values={},
-                        artifacts={"independent_review": {"findings": "docs/tasks/i1.review.md"}},
-                        git=GitFacts(base=base, changed_paths=changed), allow=SPEC.allow_commands,
-                        out_dir=work.parent / f"{work.name}.out", deadline_at=time.monotonic() + 60)
+    return _ctx(work, None, GitFacts(base=base, changed_paths=changed))
 
 
 CHANGED = ("src/new.py", "tests/test_new.py", "docs/tasks/i1.triage.md", "CLAUDE.md")
