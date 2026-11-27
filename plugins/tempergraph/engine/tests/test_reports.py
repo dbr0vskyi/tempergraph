@@ -174,7 +174,8 @@ def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CL
     assert [i["thread_id"] for i in doc["items"]] == ["demo/T-1", "demo/T-2"]
     first = doc["items"][0]
     assert first["unit"] == "review" and first["kind"] == "escalation"
-    assert first["command"] == "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"
+    assert first["command"] == ("tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop> "
+                                "--reason <engine_defect|judge_error|environment|plan|request|other>")
     assert first["age_s"] is not None and first["decisions"] == ["proceed", "retry", "back:draft", "stop"]
     code, text, _ = cli(repo, None, "attention")
     assert code == 0 and "tempergraph resume demo T-2" in str(text)

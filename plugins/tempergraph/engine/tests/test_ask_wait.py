@@ -294,7 +294,8 @@ def test_a_wait_is_not_passable_by_word(repo: Path) -> None:  # HUM-B4, CMP-AC3 
     e = ex()
     out = begin(repo, spec, e)
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "event_wait" and e.calls == []
-    assert out.payload["resume"].endswith("--decision event:approved=<value>")
+    assert out.payload["resume"].endswith(
+        "--decision event:approved=<value> --reason <engine_defect|judge_error|environment|plan|request|other>")
     for word in ("proceed", "retry", "event:approved=maybe", "event:merged=yes"):
         refused = again(repo, spec, e, decision=word)
         assert refused.exit_code is ExitCode.USAGE, word

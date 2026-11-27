@@ -85,7 +85,8 @@ EXPECTED = {
         "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 2, from proceed)",
         "check review: PASS",
         "gate review: ESCALATE -> human", "paused at review (escalation): "
-        "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"],
+        "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop> "
+        "--reason <engine_defect|judge_error|environment|plan|request|other>"],
 }
 
 
@@ -111,7 +112,9 @@ def test_fixture_reproduces_the_expected_document(repo: Path) -> None:  # RDD-AC
     assert first["id"] == "c-file" and "missing" in first["evidence"]
     kept = run_dir(state_root_path(repo), "demo", "T-1") / "evidence" / "judgements" / "draft" / "1.1.json"
     assert kept.stat().st_mode & 0o777 == 0o600
-    assert doc["pause"]["resume"] == ["tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"]
+    assert doc["pause"]["resume"] == [
+        "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop> "
+        "--reason <engine_defect|judge_error|environment|plan|request|other>"]
     assert doc["pause"]["artifacts"] == [{"key": "verdict", "path": None}]  # a value, not a file
     assert doc["budgets"]["counters"]["draft.retries"]["limit"] == 2
     assert doc["health"]["waiting_for_person_s"] is not None
