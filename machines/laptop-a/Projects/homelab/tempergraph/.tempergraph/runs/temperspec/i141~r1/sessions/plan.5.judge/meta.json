@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.5.judge",
+  "kind": "judge",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/Projects/homelab/tempergraph/.tempergraph/runs/temperspec/i141~r1/sessions/plan.5.judge/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-25T14:30:07.950Z",
+  "ended_at": "2026-11-25T14:30:30.694Z",
+  "session_id": "353dbe91-352b-48f5-98c3-193170f85941",
+  "model": "claude-sonnet-5-5",
+  "pgid": 73706,
+  "cli_version": "2.1.332"
+}

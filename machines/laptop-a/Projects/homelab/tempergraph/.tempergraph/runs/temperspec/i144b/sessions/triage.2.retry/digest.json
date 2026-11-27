@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.2.retry",
+  "kind": "retry",
+  "unit": "triage",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 16,
+  "peak_context": 39429,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 36838,
+  "files_reread": 0,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 6,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.055
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 5,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 0.091
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.01
+    }
+  },
+  "declared_unused": [
+    "list"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "88893cbd3e12734c"
+  ]
+}

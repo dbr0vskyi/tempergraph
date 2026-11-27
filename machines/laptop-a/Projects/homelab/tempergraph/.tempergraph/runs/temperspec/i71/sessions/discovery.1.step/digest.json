@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 159,
+  "peak_context": 430452,
+  "turns_over_200k": 142,
+  "tokens_before_first_write": 402477,
+  "files_reread": 19,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 44,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.644
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.147
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 33,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.113
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.068
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.01
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "3cc3d4356d8bfa11",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 108,
+      "last_turn": 111
+    },
+    {
+      "tool": "Read",
+      "target": "f76b8e11379451bd",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 115,
+      "last_turn": 118
+    },
+    {
+      "tool": "Edit",
+      "target": "bb6c7194b6fd3c16",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 130,
+      "last_turn": 132
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 130,
+      "minutes": 12.1,
+      "tokens": 590
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "391fe8140790e39b",
+    "6e154303e2cfd758",
+    "999c5d27f2e50ed9"
+  ]
+}

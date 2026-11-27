@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.3.retry",
+  "kind": "retry",
+  "unit": "plan",
+  "attempt": 3,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 1,
+  "peak_context": 0,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {},
+  "declared_unused": [
+    "edit",
+    "list",
+    "read",
+    "search",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "partial"
+  },
+  "_commands": [],
+  "_wrote": [],
+  "prior_overlap": 0.0
+}

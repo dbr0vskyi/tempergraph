@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "workflows": [
+    {
+      "kind": "plugin",
+      "plugin": "doc-refresh-tgraph@tempergraph",
+      "registered_at": "2026-11-27T08:13:42.769Z",
+      "engine_pin": null,
+      "installed_into": [],
+      "path": "~/.claude/plugins/cache/tempergraph/doc-refresh-tgraph/0.1.0",
+      "last_checked_at": "2026-11-27T08:13:43.157Z",
+      "version": "0.1.0",
+      "workflow_version": "0.1.0+85dd88dcf3ec",
+      "requirements_digest": "e3b0c44298fc1c14",
+      "state": "ok",
+      "name": "doc-refresh"
+    },
+    {
+      "kind": "plugin",
+      "plugin": "release-notes-tgraph@tempergraph",
+      "registered_at": "2026-11-27T08:13:42.816Z",
+      "engine_pin": null,
+      "installed_into": [],
+      "path": "~/.claude/plugins/cache/tempergraph/release-notes-tgraph/0.1.0",
+      "last_checked_at": "2026-11-27T08:13:43.175Z",
+      "version": "0.1.0",
+      "workflow_version": "0.1.0+c0dec3911196",
+      "requirements_digest": "e3b0c44298fc1c14",
+      "state": "ok",
+      "name": "release-notes"
+    },
+    {
+      "kind": "local",
+      "path": "~/Projects/homelab/tempergraph/plugins/temperspec-tgraph",
+      "last_checked_at": "2026-11-27T08:13:43.186Z",
+      "version": "0.1.0",
+      "workflow_version": "0.1.0+9eb9e4ad4abf",
+      "requirements_digest": "e3b0c44298fc1c14",
+      "state": "ok",
+      "name": "temperspec",
+      "registered_at": "2026-11-25T13:33:11.813Z",
+      "engine_pin": null,
+      "installed_into": []
+    }
+  ]
+}

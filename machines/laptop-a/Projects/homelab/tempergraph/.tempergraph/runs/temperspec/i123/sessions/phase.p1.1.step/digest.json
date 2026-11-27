@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.step",
+  "kind": "step",
+  "unit": "phase",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 55,
+  "peak_context": 70590,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 59344,
+  "files_reread": 1,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 10,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.418
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.169
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 22,
+      "failures": 6,
+      "refused": 0,
+      "duration_s": 0.144
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.012
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 2,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 17.79
+    }
+  },
+  "declared_unused": [
+    "list"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "4593943f2c163ec5",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 29,
+      "last_turn": 32
+    },
+    {
+      "tool": "Edit",
+      "target": "ffe339741bf96886",
+      "error_class": "not_found",
+      "count": 6,
+      "first_turn": 40,
+      "last_turn": 45
+    },
+    {
+      "tool": "Edit",
+      "target": "ffe339741bf96886",
+      "error_class": null,
+      "count": 6,
+      "first_turn": 49,
+      "last_turn": 54
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "5acfad53564e241e"
+  ],
+  "_wrote": [
+    "202bf4a4670ff70c",
+    "391783593cabbd17",
+    "401c1b65b082b882",
+    "595173ce4994c542",
+    "a729babb6b9a5a87",
+    "d65fdb2b35d5d057",
+    "ee5e500e3b29216b"
+  ]
+}

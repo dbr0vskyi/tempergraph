@@ -20,8 +20,11 @@ The path below `machines/<machine-id>/` mirrors the source path relative to the 
 | id | hardware | system | collected (UTC) |
 |---|---|---|---|
 | `pi5-a` | Raspberry Pi 5 Model B, 4 cores (aarch64), 16 GB memory | Linux 6.12, Python 3.13, engine 0.2.0, executor `claude` | 2026-11-27 |
+| `laptop-a` | MacBook Pro, Apple M3 Pro, 12 cores (arm64), 18 GB memory | macOS 27.2, Python 3.14, engine 0.2.0, executor `claude` | 2026-11-27 |
 
 `pi5-a` ran 21 `temperspec` threads against this repository between 2026-11-25 and 2026-11-27 (`i123` to `i206`), one `demo` thread, and several stand-in test runs. Two threads (`i196`, `i206`) were still running at collection time, so their files are snapshots.
+
+`laptop-a` ran 9 `temperspec` threads against this repository on 2026-11-25 (`i7` to `i148`): 514 files, 2.1 MB, 502 replacements, same layout as `pi5-a` with the state root at `~/Projects/homelab/tempergraph/.tempergraph/`. It has no operator folder. Only the 25 rows of `~/.tempergraph/stats/` with `repo` equal to `tempergraph` are real runs; the other 110 (`user` `Test`, or a `repo` such as `repo`, `r`, `a`) come from test runs of the engine's suite whose state roots no longer exist, and so do the matching rows of `stats/sessions/` and the `index.json` roots under `/private/var/folders/`. Filter them out for cost or duration figures. One file was left out by the collector's guard: `runs/temperspec/i21/carry.local.json`, whose `error` field holds multi-line command output.
 
 ## Datasets
 

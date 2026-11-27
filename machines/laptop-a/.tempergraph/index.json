@@ -1,0 +1,647 @@
+{
+  "schema_version": 1,
+  "roots": [
+    {
+      "path": "~/Projects/homelab/tempergraph/.tempergraph",
+      "repository": "tempergraph",
+      "first_seen": "2026-11-25T13:37:52.784Z",
+      "last_run_at": "2026-11-25T16:14:45.873Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_each_of_three_gaps_gets_a0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:45.355Z",
+      "last_run_at": "2026-11-25T14:04:45.355Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_three_phases_run_one_afte0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:45.921Z",
+      "last_run_at": "2026-11-25T14:04:45.921Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac1_a_note_with_three0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:04:47.866Z",
+      "last_run_at": "2026-11-25T14:04:47.866Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_run_records_one_route_w0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:48.241Z",
+      "last_run_at": "2026-11-25T14:04:48.241Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_two_gaps_start_two_readin0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:49.813Z",
+      "last_run_at": "2026-11-25T14:04:49.813Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac1_two_of_three_answ0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:04:50.382Z",
+      "last_run_at": "2026-11-25T14:04:53.182Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_simple_plan_takes_singl0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:51.680Z",
+      "last_run_at": "2026-11-25T14:04:55.019Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_the_short_visit_starts_no0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:54.450Z",
+      "last_run_at": "2026-11-25T14:04:54.450Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_plan_of_one_phase_runs_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:55.611Z",
+      "last_run_at": "2026-11-25T14:04:55.611Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_always_with_no_ow0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:04:56.094Z",
+      "last_run_at": "2026-11-25T14:04:56.094Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_one_gap_and_no_gap_start_0/one/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:56.985Z",
+      "last_run_at": "2026-11-25T14:04:56.985Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_blocking_asks_the0/b/.tempergraph",
+      "repository": "b",
+      "first_seen": "2026-11-25T14:04:58.579Z",
+      "last_run_at": "2026-11-25T14:04:58.579Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:04:59.610Z",
+      "last_run_at": "2026-11-25T14:04:59.610Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_one_gap_and_no_gap_start_0/none/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:01.151Z",
+      "last_run_at": "2026-11-25T14:05:01.151Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_blocking_asks_the0/a/.tempergraph",
+      "repository": "a",
+      "first_seen": "2026-11-25T14:05:01.294Z",
+      "last_run_at": "2026-11-25T14:05:01.294Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_each_passing_phase_has_a_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:03.395Z",
+      "last_run_at": "2026-11-25T14:05:03.395Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_blocking_with_non0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:05:03.675Z",
+      "last_run_at": "2026-11-25T14:05:03.675Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:04.076Z",
+      "last_run_at": "2026-11-25T14:05:04.076Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_never_more_than_three_rea0/five/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:05.259Z",
+      "last_run_at": "2026-11-25T14:05:05.259Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_never_with_owner_0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:05:08.326Z",
+      "last_run_at": "2026-11-25T14:05:08.326Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l2/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:08.646Z",
+      "last_run_at": "2026-11-25T14:05:08.646Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_never_more_than_three_rea0/two/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:12.007Z",
+      "last_run_at": "2026-11-25T14:05:12.007Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_always_with_no_ga0/none/.tempergraph",
+      "repository": "none",
+      "first_seen": "2026-11-25T14:05:13.136Z",
+      "last_run_at": "2026-11-25T14:05:13.136Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_phase_that_fails_its_ga0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:13.280Z",
+      "last_run_at": "2026-11-25T14:05:13.280Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l3/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:13.411Z",
+      "last_run_at": "2026-11-25T14:05:13.411Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_always_with_no_ga0/cov/.tempergraph",
+      "repository": "cov",
+      "first_seen": "2026-11-25T14:05:17.251Z",
+      "last_run_at": "2026-11-25T14:05:17.251Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l4/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:18.007Z",
+      "last_run_at": "2026-11-25T14:05:18.007Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_the_writing_session_start0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:18.399Z",
+      "last_run_at": "2026-11-25T14:05:18.399Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_the_other_routes_0/short/.tempergraph",
+      "repository": "short",
+      "first_seen": "2026-11-25T14:05:21.963Z",
+      "last_run_at": "2026-11-25T14:05:21.963Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l5/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:22.595Z",
+      "last_run_at": "2026-11-25T14:05:22.595Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_phase_that_spends_its_r0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:23.094Z",
+      "last_run_at": "2026-11-25T14:05:23.094Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_a_reading_session_with_no0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:23.709Z",
+      "last_run_at": "2026-11-25T14:05:23.709Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_the_other_routes_0/plan/.tempergraph",
+      "repository": "plan",
+      "first_seen": "2026-11-25T14:05:24.276Z",
+      "last_run_at": "2026-11-25T14:05:24.276Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac2_the_other_routes_0/quick/.tempergraph",
+      "repository": "quick",
+      "first_seen": "2026-11-25T14:05:26.633Z",
+      "last_run_at": "2026-11-25T14:05:26.633Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_plan_over_exactly_one_l6/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:27.411Z",
+      "last_run_at": "2026-11-25T14:05:27.411Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac7_the_pause_shows_a0/day/.tempergraph",
+      "repository": "day",
+      "first_seen": "2026-11-25T14:05:29.075Z",
+      "last_run_at": "2026-11-25T14:05:29.075Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_the_writing_session_lists0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:29.089Z",
+      "last_run_at": "2026-11-25T14:05:29.089Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_phase_session_that_ends0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:30.556Z",
+      "last_run_at": "2026-11-25T14:05:30.556Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac7_the_pause_shows_a0/set/.tempergraph",
+      "repository": "set",
+      "first_seen": "2026-11-25T14:05:31.646Z",
+      "last_run_at": "2026-11-25T14:05:31.646Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_the_control_plan_inside_e0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:32.128Z",
+      "last_run_at": "2026-11-25T14:05:32.128Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac8_applying_the_dead0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:05:34.353Z",
+      "last_run_at": "2026-11-25T14:05:34.353Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_with_no_reading_session_t0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:34.474Z",
+      "last_run_at": "2026-11-25T14:05:34.474Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_missing_fact_takes_phas0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:35.652Z",
+      "last_run_at": "2026-11-25T14:05:35.652Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac8_after_the_deadlin0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:05:37.503Z",
+      "last_run_at": "2026-11-25T14:05:40.287Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_a_return_to_discovery_sta0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:39.031Z",
+      "last_run_at": "2026-11-25T14:05:39.031Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_repository_override_tha0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:40.264Z",
+      "last_run_at": "2026-11-25T14:05:40.264Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_the_brief_of_the_code_ste0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:40.436Z",
+      "last_run_at": "2026-11-25T14:05:40.436Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_owq_ac5_a_reading_called_0/r/.tempergraph",
+      "repository": "r",
+      "first_seen": "2026-11-25T14:05:43.482Z",
+      "last_run_at": "2026-11-25T14:05:46.875Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_the_operator_names_phases0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:45.377Z",
+      "last_run_at": "2026-11-25T14:05:45.377Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_a_return_to_discovery_sta1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:48.185Z",
+      "last_run_at": "2026-11-25T14:05:48.185Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_the_operator_names_single0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:50.055Z",
+      "last_run_at": "2026-11-25T14:05:50.055Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_single_session_run_and_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:50.793Z",
+      "last_run_at": "2026-11-25T14:05:50.793Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_the_report_counts_the_ope0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:53.487Z",
+      "last_run_at": "2026-11-25T14:05:53.522Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_the_report_divides_a_cell0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:53.666Z",
+      "last_run_at": "2026-11-25T14:05:53.736Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw0/test_a_quick_lane_run_takes_no0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:54.242Z",
+      "last_run_at": "2026-11-25T14:05:54.242Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_every_reading_session_has0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:56.806Z",
+      "last_run_at": "2026-11-25T14:05:56.806Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_single_session_run_and_1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:05:56.912Z",
+      "last_run_at": "2026-11-25T14:05:56.912Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_the_code_gate_checks_the_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:01.094Z",
+      "last_run_at": "2026-11-25T14:06:01.094Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_a_reading_session_the_jud0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:01.740Z",
+      "last_run_at": "2026-11-25T14:06:01.740Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw2/test_generated_standin_run_0/standin-repo/.tempergraph",
+      "repository": "standin-repo",
+      "first_seen": "2026-11-25T14:06:03.275Z",
+      "last_run_at": "2026-11-25T14:06:03.275Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_setup_reads_each_componen0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:06.985Z",
+      "last_run_at": "2026-11-25T14:06:06.985Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_plan_whose_status_is_no0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:09.457Z",
+      "last_run_at": "2026-11-25T14:06:09.457Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_setup_of_fewer_than_two_c0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:13.944Z",
+      "last_run_at": "2026-11-25T14:06:13.944Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_command_that_exits_zero0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:17.583Z",
+      "last_run_at": "2026-11-25T14:06:17.583Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_setup_of_fewer_than_two_c1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:19.737Z",
+      "last_run_at": "2026-11-25T14:06:19.737Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_each_component_reading_ha0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:25.843Z",
+      "last_run_at": "2026-11-25T14:06:25.843Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_claim_of_the_code_sessi0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:26.051Z",
+      "last_run_at": "2026-11-25T14:06:26.051Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw3/test_every_gate_holds_one_judg0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:32.698Z",
+      "last_run_at": "2026-11-25T14:06:32.698Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_claim_of_the_code_sessi1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:39.180Z",
+      "last_run_at": "2026-11-25T14:06:39.180Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_a_claim_of_the_code_sessi2/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:06:52.426Z",
+      "last_run_at": "2026-11-25T14:06:52.426Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_after_a_trip_back_that_ke0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:07:05.777Z",
+      "last_run_at": "2026-11-25T14:07:05.777Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-22/popen-gw1/test_after_a_trip_back_that_em0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:07:17.463Z",
+      "last_run_at": "2026-11-25T14:07:17.463Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_three_phases_run_one_afte0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:09:43.686Z",
+      "last_run_at": "2026-11-25T14:09:43.686Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_plan_of_one_phase_runs_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:09:52.270Z",
+      "last_run_at": "2026-11-25T14:09:52.270Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_each_passing_phase_has_a_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:09:59.174Z",
+      "last_run_at": "2026-11-25T14:09:59.174Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_phase_that_fails_its_ga0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:07.587Z",
+      "last_run_at": "2026-11-25T14:10:07.587Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_phase_that_spends_its_r0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:16.027Z",
+      "last_run_at": "2026-11-25T14:10:16.027Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_phase_session_that_ends0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:22.372Z",
+      "last_run_at": "2026-11-25T14:10:22.372Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_the_brief_of_the_code_ste0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:30.634Z",
+      "last_run_at": "2026-11-25T14:10:30.634Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_single_session_run_and_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:38.593Z",
+      "last_run_at": "2026-11-25T14:10:38.593Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_single_session_run_and_1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:43.548Z",
+      "last_run_at": "2026-11-25T14:10:43.548Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_the_code_gate_checks_the_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:47.075Z",
+      "last_run_at": "2026-11-25T14:10:47.075Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_plan_whose_status_is_no0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:10:54.261Z",
+      "last_run_at": "2026-11-25T14:10:54.261Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_command_that_exits_zero0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:11:01.224Z",
+      "last_run_at": "2026-11-25T14:11:01.224Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_claim_of_the_code_sessi0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:11:08.467Z",
+      "last_run_at": "2026-11-25T14:11:08.467Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_claim_of_the_code_sessi1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:11:19.997Z",
+      "last_run_at": "2026-11-25T14:11:19.997Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_a_claim_of_the_code_sessi2/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:11:32.755Z",
+      "last_run_at": "2026-11-25T14:11:32.755Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_after_a_trip_back_that_ke0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:11:45.593Z",
+      "last_run_at": "2026-11-25T14:11:45.593Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-26/test_after_a_trip_back_that_em0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:11:57.351Z",
+      "last_run_at": "2026-11-25T14:11:57.351Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_three_phases_run_one_afte0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:14:56.032Z",
+      "last_run_at": "2026-11-25T14:14:56.032Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_plan_of_one_phase_runs_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:05.566Z",
+      "last_run_at": "2026-11-25T14:15:05.566Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_each_passing_phase_has_a_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:12.540Z",
+      "last_run_at": "2026-11-25T14:15:12.540Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_phase_that_fails_its_ga0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:20.527Z",
+      "last_run_at": "2026-11-25T14:15:20.527Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_phase_that_spends_its_r0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:29.379Z",
+      "last_run_at": "2026-11-25T14:15:29.379Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_phase_session_that_ends0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:35.766Z",
+      "last_run_at": "2026-11-25T14:15:35.766Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_the_brief_of_the_code_ste0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:43.750Z",
+      "last_run_at": "2026-11-25T14:15:43.750Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_single_session_run_and_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:51.622Z",
+      "last_run_at": "2026-11-25T14:15:51.622Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_single_session_run_and_1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:56.586Z",
+      "last_run_at": "2026-11-25T14:15:56.586Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_the_code_gate_checks_the_0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:15:59.824Z",
+      "last_run_at": "2026-11-25T14:15:59.824Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_plan_whose_status_is_no0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:16:06.591Z",
+      "last_run_at": "2026-11-25T14:16:06.591Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_command_that_exits_zero0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:16:13.343Z",
+      "last_run_at": "2026-11-25T14:16:13.343Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_claim_of_the_code_sessi0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:16:20.119Z",
+      "last_run_at": "2026-11-25T14:16:20.119Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_claim_of_the_code_sessi1/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:16:31.090Z",
+      "last_run_at": "2026-11-25T14:16:31.090Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_a_claim_of_the_code_sessi2/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:16:43.242Z",
+      "last_run_at": "2026-11-25T14:16:43.242Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_after_a_trip_back_that_ke0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:16:55.505Z",
+      "last_run_at": "2026-11-25T14:16:55.505Z"
+    },
+    {
+      "path": "/private/var/folders/0m/gp3dxll11fj49l32kpgzspv00000gn/T/pytest-of-dbr0vskyi/pytest-27/test_after_a_trip_back_that_em0/repo/.tempergraph",
+      "repository": "repo",
+      "first_seen": "2026-11-25T14:17:06.807Z",
+      "last_run_at": "2026-11-25T14:17:06.807Z"
+    }
+  ]
+}

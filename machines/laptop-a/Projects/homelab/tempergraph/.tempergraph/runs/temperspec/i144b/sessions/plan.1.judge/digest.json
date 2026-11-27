@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "session_key": "plan.1.judge",
+  "kind": "judge",
+  "unit": "plan",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 8,
+  "peak_context": 28689,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 4,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.053
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.031
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "list",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "reads": [
+    "2a40eced73bf0f38",
+    "358e3bee912513b2",
+    "6e4b7bb89e838e40",
+    "88893cbd3e12734c"
+  ],
+  "changed_total": 0,
+  "changed_read": 0,
+  "_commands": [],
+  "_wrote": []
+}

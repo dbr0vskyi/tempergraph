@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "triage.1.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/Projects/homelab/tempergraph/.tempergraph/runs/temperspec/i7/sessions/triage.1.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-25T13:42:47.638Z",
+  "ended_at": "2026-11-25T13:43:27.956Z",
+  "session_id": "49eeed0d-124c-46d2-b106-24c2c1d629a6",
+  "model": "claude-sonnet-5-5",
+  "pgid": 3345,
+  "cli_version": "2.1.332"
+}

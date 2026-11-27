@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/Projects/homelab/tempergraph/.tempergraph/runs/temperspec/i7/sessions/discovery.1.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-25T13:44:54.934Z",
+  "ended_at": "2026-11-25T13:56:47.176Z",
+  "session_id": "124df2e6-e8d4-46fa-a8cc-880b76ed4b3b",
+  "model": "claude-sonnet-5-5",
+  "pgid": 25471,
+  "cli_version": "2.1.332"
+}

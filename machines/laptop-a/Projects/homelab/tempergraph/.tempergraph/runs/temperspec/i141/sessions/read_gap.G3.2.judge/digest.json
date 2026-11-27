@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G3.2.judge",
+  "kind": "judge",
+  "unit": "read_gap",
+  "attempt": 2,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 10,
+  "peak_context": 18563,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 5,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.112
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.096
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.047
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "reads": [
+    "0573d7cde1b9e1b4",
+    "34d4fdab341b6df0",
+    "6a73d4acfe4ac55c",
+    "de9a0f48e71a7002",
+    "f90b917462635e29"
+  ],
+  "changed_total": 0,
+  "changed_read": 0,
+  "_commands": [],
+  "_wrote": []
+}

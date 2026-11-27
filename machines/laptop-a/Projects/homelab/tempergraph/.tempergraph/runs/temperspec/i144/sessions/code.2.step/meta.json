@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "code.2.step",
+  "kind": "step",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "~/Projects/homelab/tempergraph/.tempergraph/runs/temperspec/i144/sessions/code.2.step/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-25T15:12:17.799Z",
+  "ended_at": "2026-11-25T15:28:26.554Z",
+  "session_id": "884abb9c-3af8-4726-a4ee-1debd137d673",
+  "model": "claude-sonnet-5-5",
+  "pgid": 87451,
+  "cli_version": "2.1.332"
+}
