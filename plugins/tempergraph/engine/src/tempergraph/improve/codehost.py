@@ -35,6 +35,16 @@ class CodeHost(Protocol):
     def reopen(self, repo: str, number: int) -> None: ...
 
 
+class IssueReadHost(Protocol):
+    """Read-only questions about one issue, whatever labels it carries (BND-B12, BND-B13). A comment holds its
+    text, its author kind (`person`, `bot` or `other`) and its time; an issue holds `number`, `state`, `state_reason`
+    (lower case), `closed_at`, `url`, `comments` (a count) and `is_pull_request`. An issue the host does not hold
+    raises `NotFound`."""
+
+    def issue_comments(self, repo: str, number: int) -> list[dict[str, Any]]: ...
+    def issue(self, repo: str, number: int) -> dict[str, Any]: ...
+
+
 class PullRequestHost(Protocol):
     """Draft pull requests for proposals (PRP-B8). There is no merge method, by design (PRP-AC2)."""
 
@@ -99,6 +109,12 @@ def _check(repo: str) -> str:
     return repo
 
 
+def _number(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise CodeHostError("the issue number is not a whole number")
+    return value
+
+
 @dataclass(kw_only=True)
 class GhCodeHost:
     timeout_s: float = 60.0
@@ -141,8 +157,32 @@ class GhCodeHost:
                 continue
             out.append({"number": r.get("number"), "url": r.get("html_url"), "body": r.get("body") or "",
                         "state_reason": str(r.get("state_reason") or "").lower(), "closed_at": r.get("closed_at") or "",
-                        "created_at": r.get("created_at") or ""})
+                        "created_at": r.get("created_at") or "",
+                        "comments": r.get("comments") if isinstance(r.get("comments"), int) else 0})
         return out
+
+    def issue_comments(self, repo: str, number: int) -> list[dict[str, Any]]:
+        """BND-B12: every page of one issue's comments through one paged REST GET, each with its author kind."""
+        n = _number(number)
+        text = self._run(["api", "--method", "GET", f"repos/{_check(repo)}/issues/{n}/comments",
+                          "-f", "per_page=100", "--paginate", "--jq", ".[]"])
+        return [{"text": str(r.get("body") or ""), "author_kind": _kind(r.get("user"), r.get("author_association")),
+                 "created_at": str(r.get("created_at") or "")} for r in _records(text)]
+
+    def issue(self, repo: str, number: int) -> dict[str, Any]:
+        """BND-B13: one REST GET of an issue by number, whatever labels it carries."""
+        n = _number(number)
+        try:
+            got = self._gh(["api", "--method", "GET", f"repos/{_check(repo)}/issues/{n}"])
+        except ValueError:
+            raise CodeHostError("the issue answer is not JSON") from None
+        if not isinstance(got, dict):
+            raise CodeHostError("the issue answer has no known shape")
+        count = got.get("comments")
+        return {"number": got.get("number"), "state": str(got.get("state") or ""),
+                "state_reason": str(got.get("state_reason") or "").lower(), "closed_at": got.get("closed_at") or "",
+                "url": got.get("html_url") or "", "comments": count if isinstance(count, int) else 0,
+                "is_pull_request": bool(got.get("pull_request"))}
 
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str:
         got = self._gh(["api", f"repos/{_check(repo)}/issues", "--method", "POST", "--input", "-"],
@@ -296,7 +336,44 @@ class MemoryCodeHost:
     files_asked: list[str] = field(default_factory=list)
     fail_search: int = 0
     fail_closed: int = 0
+    fail_issue: int = 0
+    fail_comments: int = 0
+    thread: list[dict[str, Any]] = field(default_factory=list)
     down: bool = False
+
+    def add_comment(self, repo: str, number: int, body: str, author_kind: str, at: str) -> None:
+        """Seeds a comment of a given author kind (`person`, `bot` or `other`) at an ISO time."""
+        self.thread.append({"repo": repo, "number": number, "text": body, "author_kind": author_kind, "created_at": at})
+
+    def _count(self, repo: str, number: int) -> int:
+        return sum(1 for c in self.thread if c["repo"] == repo and c["number"] == number)
+
+    def _find(self, repo: str, number: int) -> dict[str, Any]:
+        for i in self.issues:
+            if i["repo"] == repo and i["number"] == number:
+                return i
+        raise NotFound("HTTP 404")
+
+    def issue_comments(self, repo: str, number: int) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        if self.fail_comments:
+            self.fail_comments -= 1
+            raise CodeHostError("comments read failed")
+        self._find(repo, number)
+        return [{"text": c["text"], "author_kind": c["author_kind"], "created_at": c["created_at"]}
+                for c in self.thread if c["repo"] == repo and c["number"] == number]
+
+    def issue(self, repo: str, number: int) -> dict[str, Any]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        if self.fail_issue:
+            self.fail_issue -= 1
+            raise CodeHostError("issue read failed")
+        i = self._find(repo, number)
+        return {"number": i["number"], "state": i["state"], "state_reason": str(i.get("state_reason") or "").lower(),
+                "closed_at": i.get("closed_at") or "", "url": i["url"], "comments": self._count(repo, number),
+                "is_pull_request": bool(i.get("pull_request"))}
 
     def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
         if self.down:
@@ -339,7 +416,7 @@ class MemoryCodeHost:
             self.fail_closed -= 1
             raise CodeHostError("closed search failed")
         return [{"number": i["number"], "url": i["url"], "body": i["body"], "state_reason": i.get("state_reason") or "",
-                 "closed_at": i.get("closed_at") or ""}
+                 "closed_at": i.get("closed_at") or "", "comments": self._count(repo, i["number"])}
                 for i in self.issues if i["repo"] == repo and i["state"] == state
                 and LOOP_LABEL in (i.get("labels") or [LOOP_LABEL])]
 
@@ -361,6 +438,7 @@ class MemoryCodeHost:
         if self.down:
             raise CodeHostError("unreachable")
         self.comments.append({"repo": repo, "number": number, "body": body})
+        self.add_comment(repo, number, body, "other", "")
         return f"https://example.test/{repo}/issues/{number}#c{len(self.comments)}"
 
     def reopen(self, repo: str, number: int) -> None:
