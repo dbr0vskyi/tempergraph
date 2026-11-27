@@ -29,9 +29,11 @@ What a hold still runs and records. The loop child still runs its judge and any 
 
 A thread whose last exit was held has no later exit, so nothing hands its findings on again.
 
-**The outbox.** A payload the code host refused waits in the filing outbox and is delivered at the next filing as a comment on an open issue of its cause (within the one comment a day). It is dropped when its cause is muted or when it was first queued more than 30 days earlier (`outbox.max_age_days`), and each drop leaves a `loop_result` record `outbox_dropped`. `tempergraph improve outbox list` prints the waiting entries without their text. `tempergraph improve outbox clear --all` or `tempergraph improve outbox clear --fingerprint <fingerprint>` removes them; neither option, or both, is refused.
+**The outbox.** A payload the code host refused waits in the filing outbox and is delivered at the next filing as a comment on an open issue of its cause, or on the target of a bound cause (within the one comment a day): the waiting create of a bound cause is delivered as a comment and opens no issue. It is dropped when its cause is muted or when it was first queued more than 30 days earlier (`outbox.max_age_days`), and each drop leaves a `loop_result` record `outbox_dropped`. `tempergraph improve outbox list` prints the waiting entries without their text. `tempergraph improve outbox clear --all` or `tempergraph improve outbox clear --fingerprint <fingerprint>` removes them; neither option, or both, is refused.
 
-A close reason holds one cause instead of a workflow: close a loop issue as not planned or as a duplicate and for 30 days (`mute.days`) the same cause opens no issue and no comment and is recorded as `muted`. Reopen the issue to end it at once.
+A close reason holds one cause instead of a workflow: close a loop issue as not planned and for 30 days (`mute.days`) the same cause opens no issue and no comment and is recorded as `muted`. Reopen the issue to end it at once.
+
+A close as a duplicate with a comment of yours that says `Duplicate of #<n>` binds the cause to that issue and sends the cause's later sightings to that issue as comments, at most one a day, also after `mute.days`, and opens no new issue. Note that a duplicate with no such comment mutes the cause for `mute.days` as not planned does, and that reopening the loop issue ends the binding. Also, a closed target decides by its close reason as a closed loop issue does: completed opens a new issue that names a possible regression, not planned or duplicate mutes the cause for `mute.days` from the target's close, and a target that is open again takes the comments.
 
 ## 1. Label judgements
 

@@ -350,3 +350,35 @@ def test_an_unreadable_record_file_never_stops_the_filing(  # BND-AC9
     results, _ = run_one(tmp_path, monkeypatch, host, 1)
     assert [r["op"] for r in results] == ["commented"]
     assert json.loads((root / "filing-bindings.json").read_text())[REPO][key_of()]["target"] == 1
+
+
+def test_the_replay_of_five_causes_over_five_exits_on_two_utc_days(  # BND-AC12, BND-AC1, BND-AC6
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    day1 = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0)  # the findings are stamped now
+    monkeypatch.setitem(globals(), "DAY", day1)  # the closes of `seed` are relative to this day
+    host = MemoryCodeHost()
+    causes = ("c_one", "c_two", "c_three", "c_four", "c_five")
+    seed(host, [("person", "Duplicate of #1")], 31, cause=causes[0], people=3)  # one number
+    seed(host, [("person", "a duplicate of #2, and also duplicate of #3")], 31, cause=causes[1])  # two numbers
+    seed(host, [("person", "duplicate of #1 and duplicate of #3")], 31, cause=causes[2])  # first is c_one's target
+    seed(host, [], 10, cause=causes[3])  # closed as a duplicate with no comment
+    before = len(host.issues)
+    assert before == 7
+    reg = registry(standin("claude", judges=[judge_says(0.5) for _ in range(8)]))  # the count of three decides
+    root = tmp_path / ".tempergraph"
+    outcomes: list[list[str]] = []
+    for n in range(1, 6):
+        set_day(monkeypatch, day1 if n <= 3 else day1 + timedelta(days=1))
+        out = child.process(friction_ticket(root, n, causes), reg, host)
+        outcomes.append(sorted(r["op"] for r in out["results"] if r["op"] != "bound"))
+    early = outcomes[0] + outcomes[1]
+    assert "filed" not in early and "commented" not in early
+    assert outcomes[2].count("filed") == 1  # the pattern rule is met at the third exit, for the fifth cause only
+    assert outcomes[2].count("muted") == 1 and outcomes[2].count("commented") == 2
+    assert len(host.issues) == before + 1  # one issue opens over the five exits
+    assert "c_five" in host.issues[-1]["title"]
+    for exits in ((1, 2, 3), (4, 5)):  # one UTC day each: at most one comment a day for each target
+        sent = [r["number"] for n in exits for r in rows_of(root, n, kind="issue_commented")]
+        assert len(sent) == len(set(sent)), exits
+    assert {c["number"] for c in host.comments} <= {1, 2, before + 1}
+    assert "muted" in outcomes[3] and "muted" in outcomes[4]
