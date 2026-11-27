@@ -70,6 +70,60 @@ def test_unreasoned_na_is_unmet_unless_the_check_said_so() -> None:
     assert outcome([row(1, "N/A", evidence=""), row(2, "MET")], check).verdict is Verdict.PROCEED
 
 
+def _marking(rows: list[dict[str, Any]], **top: Any) -> Any:
+    from tempergraph.run.judging import marked_reading
+
+    return marked_reading(parse_judgement(block(rows, **top), GATE), GATE, None)
+
+
+def test_jdg_ac10_a_block_without_the_fields_is_not_marked() -> None:  # JDG-AC10, AC 1
+    j = parse_judgement(block([row(1, "PARTIAL"), row(2, "MET")]), GATE)
+    assert not any(f.unread for f in j.criteria) and j.gap_unread is False
+    m = _marking([row(1, "PARTIAL"), row(2, "MET")])
+    assert not m.marked and m.unmarked == [1] and not m.gap_marked
+    assert outcome([row(1, "PARTIAL")]).verdict is Verdict.RETRY
+    assert outcome([row(1, "MET"), row(2, "MET")]).verdict is Verdict.PROCEED
+
+
+def test_jdg_ac10_false_fields_are_not_marked() -> None:  # JDG-AC10, AC 1
+    j = parse_judgement(block([row(1, "PARTIAL", unread=False)], gap=True, gap_unread=False), GATE)
+    assert j.criteria[0].unread is False and j.gap_unread is False
+
+
+@pytest.mark.parametrize("status", ["PARTIAL", "UNVERIFIABLE"])
+def test_jdg_ac10_a_marked_partial_or_unverifiable_blocker_counts(status: str) -> None:  # JDG-AC10, AC 1
+    m = _marking([row(1, status, unread=True, fix="notes.md lines 1-40"), row(2, "MET")])
+    assert m.marked == [1] and m.unmarked == [] and m.gap_marked is False
+
+
+def test_jdg_ac10_a_mark_on_unmet_met_or_a_note_counts_for_nothing() -> None:  # JDG-AC10, AC 1
+    assert _marking([row(1, "UNMET", unread=True)]).marked == []
+    assert _marking([row(1, "UNMET", unread=True)]).unmarked == [1]
+    assert _marking([row(1, "MET", unread=True), row(2, "MET")]).marked == []
+    assert _marking([row(1, "MET"), row(2, "PARTIAL", unread=True)]).marked == []
+
+
+def test_jdg_ac10_a_met_without_evidence_is_read_as_partial() -> None:  # JDG-AC10, AC 1
+    m = _marking([row(1, "MET", evidence=" ", unread=True)])
+    assert m.marked == [1] and m.unmarked == []
+
+
+def test_jdg_ac10_gap_unread_is_read() -> None:  # JDG-AC10, AC 1
+    j = parse_judgement(block([row(1, "MET")], gap=True, gap_unread=True), GATE)
+    assert j.gap and j.gap_unread
+    assert _marking([row(1, "MET")], gap=True, gap_unread=True).gap_marked is True
+    assert _marking([row(1, "MET")], gap=True).gap_marked is False
+    assert _marking([row(1, "MET")], gap_unread=True).gap_marked is False  # no gap, nothing to mark
+
+
+def test_jdg_ac10_the_answer_format_asks_for_the_marks() -> None:  # JDG-AC10, AC 1
+    text = render_judge(JudgeInputs(gate=GATE, stance="", brief="", request="r"))
+    assert '"unread": false' in text and '"gap_unread": false' in text
+    assert "`unread`" in text and "`gap_unread`" in text
+    assert "`fix`" in text and "`summary`" in text
+    assert "out of reach" in text
+
+
 def test_gap_and_unverifiable_escalate() -> None:
     assert outcome([row(1, "MET"), row(2, "MET")], gap=True).verdict is Verdict.ESCALATE
     assert outcome([row(1, "UNVERIFIABLE")]).reason == "unresolved_gap"
