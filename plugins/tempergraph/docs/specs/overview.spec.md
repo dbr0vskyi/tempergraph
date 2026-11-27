@@ -114,6 +114,7 @@ The component specs, each owning what follows its name:
 - [subworkflow-unit.spec.md](subworkflow-unit.spec.md) SWF: a child workflow as a unit.
 - [test-suite.spec.md](test-suite.spec.md) TST: the engine's own test run: workers, one-process runs, folders no test shares.
 - [loop-issues.spec.md](loop-issues.spec.md) ISS: the labels and body of the loop's issues, and what a closed issue changes.
+- [cause-bindings.spec.md](cause-bindings.spec.md) BND: a loop issue closed as a duplicate that names another issue binds its cause to it: how the target is read from the closing comment and kept in a record, the comments sent there instead of new issues, and what a closed target decides.
 - [judge-read-share.spec.md](judge-read-share.spec.md) SRV (split from 44): the finding for a judge that read too small a share of the change.
 - [runs-without-a-final-exit.spec.md](runs-without-a-final-exit.spec.md) SIL (split from 16): a stop at a pause and a lost runner as final exits for the loop, recorded once.
 - [pull-request-read.spec.md](pull-request-read.spec.md) OUT (split from run-outcome): how the loop reads the pull request a run recorded into `later[]` entries: which are read, who counts as a person, the follow-up commits, the files the run wrote, the cost of a read, what a pull request that cannot be read leaves and the finding an escape owes.
