@@ -93,14 +93,14 @@ def _base_run(folder: Path, report: Path, monkeypatch: pytest.MonkeyPatch) -> di
 
 
 def test_scr_ac6_a_script_and_a_check_of_one_run_read_the_same_base_commit(
-        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # AC 1
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SCR-AC6, AC 1
     got = _base_run(repo, tmp_path / "check-base.txt", monkeypatch)
     assert got["check"], got  # a run in a repository has a base commit
     assert got["unit"] == got["before"] == got["after"] == got["check"], got
 
 
 def test_scr_ac6_a_run_in_place_gives_a_script_and_a_check_the_empty_base(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # AC 1
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SCR-AC6, AC 1
     folder = tmp_path / "plain"
     folder.mkdir()
     (folder / "first.md").write_text("no git here\n")
