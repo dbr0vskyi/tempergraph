@@ -385,6 +385,75 @@ def test_a_fixture_file_belongs_to_the_unit_under_test_when_two_units_produce_it
         assert got == {name: {"handoff": "handoff.md"}, "note": {"note": "note.md"}}, name
 
 
+def _git_fixture_spec(seen: list[dict[str, Any]]) -> Any:
+    """An engine fixture spec with no workflow: one unit whose check records its git facts, changed paths,
+    artifacts and the files of its workspace."""
+    from types import SimpleNamespace
+
+    from tempergraph.contracts import CheckResult
+
+    def check(ctx: Any) -> CheckResult:
+        seen.append({"git": ctx.git, "changed": ctx.changed_paths, "artifacts": dict(ctx.artifacts),
+                     "files": sorted(p.name for p in ctx.workdir.rglob("*") if p.is_file())})
+        return CheckResult(result="PASS", evidence="")
+
+    gate = SimpleNamespace(check=SimpleNamespace(resolve=lambda: check), criteria=[], check_timeout_s=30)
+    unit = SimpleNamespace(gate=gate, step=SimpleNamespace(produces={"notes": "file"}), script=None)
+    return SimpleNamespace(order=("u",), units={"u": unit}, allow_commands=())
+
+
+def _git_fixture_root(tmp_path: Path, git_json: str | None) -> Path:
+    root = tmp_path / "pkg"
+    for which in ("must-pass", "must-fail"):
+        folder = root / "evals" / "checks" / "u" / which / "case"
+        folder.mkdir(parents=True)
+        (folder / "notes.md").write_text("# notes\n", encoding="utf-8")
+        if git_json is not None:
+            (folder / "git.json").write_text(git_json, encoding="utf-8")
+    return root
+
+
+def test_fixture_git_json_gives_the_check_its_git_facts(tmp_path: Path) -> None:
+    """EVS-AC7 (EVS-B9): `git.json` at the top of a fixture folder is the check's git facts and changed paths, under
+    LF and CRLF, and is neither an artifact nor a file of the workspace."""
+    seen: list[dict[str, Any]] = []
+    root = _git_fixture_root(tmp_path, json.dumps({"base": "abc123", "changed_paths": ["a.py", "b.md"]}))
+    rows = selftest.fixture_runs(root, tmp_path / "work", _git_fixture_spec(seen))  # type: ignore[arg-type]
+    assert {r["crlf"] for r in rows} == {False, True} and len(seen) == 4
+    for s in seen:
+        assert s["git"].base == "abc123"
+        assert s["changed"] == ("a.py", "b.md")
+        assert s["files"] == ["notes.md"]
+        assert s["artifacts"] == {"u": {"notes": "notes.md"}}
+
+
+def test_fixture_without_git_json_keeps_the_default_facts(tmp_path: Path) -> None:
+    """EVS-AC7 (EVS-B9): a fixture with no `git.json` gets the default git facts and no changed path."""
+    from tempergraph.run.checks import GitFacts
+
+    seen: list[dict[str, Any]] = []
+    root = _git_fixture_root(tmp_path, None)
+    selftest.fixture_runs(root, tmp_path / "work", _git_fixture_spec(seen))  # type: ignore[arg-type]
+    assert seen and all(s["git"] == GitFacts() and s["changed"] == () for s in seen)
+
+
+@pytest.mark.parametrize("text", ["[1, 2]", "not json", json.dumps({"nope": 1})])
+def test_a_bad_fixture_git_json_is_an_error_naming_the_file(tmp_path: Path, text: str) -> None:
+    """EVS-AC7 (EVS-B9): a `git.json` that is not a JSON object of `GitFacts` fields raises an error naming it."""
+    root = _git_fixture_root(tmp_path, text)
+    with pytest.raises(ValueError, match=r"git\.json"):
+        selftest.fixture_runs(root, tmp_path / "work", _git_fixture_spec([]))  # type: ignore[arg-type]
+
+
+def test_standin_files_leave_git_json_out_of_the_workspace(tmp_path: Path) -> None:
+    """EVS-AC7 (EVS-B9): the stand-in run does not write `git.json` into the workspace."""
+    root = _git_fixture_root(tmp_path, json.dumps({"base": "abc123"}))
+    work = tmp_path / "ws"
+    work.mkdir()
+    selftest._standin_files(root, "u", {"notes": "file"}, work)
+    assert sorted(p.name for p in work.rglob("*") if p.is_file()) == ["notes.md"]
+
+
 def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None:
     """SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 rung 1 with AUT-B19, AUT-B20, AUT-B21: a vague final criterion fails the ladder before the comparison."""
     o = json.loads((pkg / "outcome.json").read_text())
