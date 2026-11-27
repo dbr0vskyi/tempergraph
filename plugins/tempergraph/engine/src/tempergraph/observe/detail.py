@@ -31,7 +31,7 @@ TEXT_CLIP = 200
 EVIDENCE_CLIP = 400
 MAX_BYTES = 1_000_000
 STEP_KINDS = frozenset({"step", "retry"})
-JUDGE_KINDS = frozenset({"judge", "judge_reask"})
+JUDGE_KINDS = frozenset({"judge", "judge_reask", "judge_reread"})
 ENTERED_WORDS = ("start", "proceed", "retry", "resume", "rerun")
 
 

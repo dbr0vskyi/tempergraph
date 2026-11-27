@@ -1858,6 +1858,7 @@ class EngineNodes:
             reports_actions=caps.reports_actions)
         if gr.status == "discarded":
             judgement = None
+        reread: dict[str, Any] | None = None
         if judgement is not None and reread_needed(judgement, g, cres):  # JDG-B17: one re-read, never a third session
             mk = marked_reading(judgement, g, cres)
             ckey = self._skey(unit, attempt, "judge_reread", item=iid)
@@ -1874,6 +1875,7 @@ class EngineNodes:
                 out.update(verdict=str(Verdict.ESCALATE), infra_spent=True, reason="judge_infra")
                 out["_cost"] = self._cost(state, all_results)
                 return out
+            reread = {"criteria": [g.criteria[i - 1].id or i for i in mk.marked], "gap": mk.gap_marked}  # JDG-B22
             judgement = None  # JDG-B19: the verdict comes from the re-read's judgement alone
             if not res3.timed_out:
                 try:
@@ -1916,6 +1918,7 @@ class EngineNodes:
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
             judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
             criteria_digest=criteria_digest(g.criteria), **({"claim": claim[0]} if claim else {}),
+            **({"reread": reread} if reread is not None else {}),
             **({"deferred": [{"capability": d.capability, "reason": d.reason} for d in views.deferred]}
                if views.deferred else {}),
             **({"level": risk["level"]} if risk is not None else {}))

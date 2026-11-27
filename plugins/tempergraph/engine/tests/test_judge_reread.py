@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import ScriptedExecutor, standin
 
@@ -203,3 +205,87 @@ def test_jdg_ac9_a_reread_runs_on_the_risk_rules_model_with_one_risk_record(repo
     assert (one.request.alias, two.request.alias) == ("large", "large")
     assert one.views is not None and two.views is not None and one.views.tools == two.views.tools
     assert len(recs(repo, "judge_risk")) == 1
+
+
+# -- the re-read in the records, the counts and the cost (JDG-B22 to JDG-B24; JDG-AC15; AC 5) ------------------------
+
+MARKED_FIRST = block([("MET", False, ""), ("PARTIAL", True, "open notes.md lines 1-9")], gap=True, gap_unread=True,
+                     summary="open notes.md")
+
+
+def reread_run(repo: Path) -> tuple[Any, ScriptedExecutor]:
+    return drive(repo, [MARKED_FIRST, CLEAN], steps=2)
+
+
+def test_jdg_ac15_the_reread_has_its_own_agent_run_folder_and_cost(repo: Path) -> None:  # AC 5
+    out, ex = reread_run(repo)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    runs = [r for r in records(repo) if r["kind"] == "agent_run"]
+    (own,) = [r for r in runs if r["session_kind"] == "judge_reread"]
+    assert own["session_key"].endswith("draft.1.judge_reread") and own["usage"]
+    assert len({r["session_key"] for r in runs}) == len(runs)
+    keys = {r["session_key"] for r in runs if r["session_kind"] in ("judge", "judge_reread")
+            and r["session_key"].startswith("draft.")}
+    assert keys == {"draft.1.judge", "draft.1.judge_reread"}
+    exit_rec = [r for r in records(repo) if r["kind"] == "run_exit"][0]
+    assert exit_rec["cost_so_far"]["reported"] == pytest.approx(0.01 * len(runs))
+
+
+def test_jdg_ac15_the_judgement_record_says_reread_with_criteria_and_gap(repo: Path) -> None:  # AC 5
+    reread_run(repo)
+    first = [r for r in records(repo) if r["kind"] == "judgement"][0]
+    assert first["reread"] == {"criteria": ["c-two"], "gap": True}
+    assert first["gap"] is False and first["blockers"] == []  # the re-read's judgement fills the other fields
+
+
+def test_jdg_ac15_a_reread_with_a_criterion_without_an_id_names_its_number(repo: Path) -> None:  # AC 5
+    spec = two_step()  # one criterion, read as number 1 when it has no id
+    units = dict(spec.units)
+    gate = units["draft"].gate
+    units["draft"] = dataclasses.replace(units["draft"], gate=dataclasses.replace(
+        gate, criteria=(dataclasses.replace(gate.criteria[0], id=None),)))
+    spec = dataclasses.replace(spec, units=units)
+    first = block([("PARTIAL", True, "open notes.md")])
+    ex = standin("claude", steps=[DRAFT] * 2 + [REVIEW] * 2, judges=[judge(first), judge(block([("MET", False, "")]))]
+                 + [judge(CLEAN)] * 4)
+    go(repo, ex, spec)
+    assert [r for r in records(repo) if r["kind"] == "judgement"][0]["reread"] == {"criteria": [1], "gap": False}
+
+
+def test_jdg_ac15_an_attempt_with_no_reread_has_no_reread_key(repo: Path) -> None:  # AC 5
+    drive(repo, [CLEAN, CLEAN], steps=2)
+    judgements = [r for r in records(repo) if r["kind"] == "judgement"]
+    assert judgements and all("reread" not in r for r in judgements)
+
+
+def test_jdg_ac15_the_report_counts_the_reread_with_the_judges_sessions(repo: Path) -> None:  # AC 5
+    from tempergraph.observe import report as rep
+    from tempergraph.store.layout import state_root_path
+
+    reread_run(repo)
+    runs = [r for r in records(repo) if r["kind"] == "agent_run"]
+    judges = [r for r in runs if r["session_kind"] in ("judge", "judge_reask", "judge_reread")]
+    doc = rep.report(state_root_path(repo), None)
+    assert doc["steps_and_judges"]["judges"]["sessions"] == len(judges)
+    assert doc["steps_and_judges"]["steps"]["sessions"] == len(runs) - len(judges)
+    thread = rep.fold(records(repo))
+    assert thread is not None
+    assert [s.cause for s in thread.sessions if s.kind == "judge_reread"] == ["re-read"]
+
+
+def test_jdg_ac15_the_detail_document_files_the_reread_with_the_judge_sessions(repo: Path) -> None:  # AC 5
+    from tempergraph.observe.detail import detail
+    from tempergraph.store.layout import state_root_path
+
+    reread_run(repo)
+    doc = detail(state_root_path(repo), two_blockers(), "demo/T-1")
+    assert doc is not None
+    att = doc["units"][0]["visits"][0]["attempts"][0]
+    assert [s["kind"] for s in att["judge"]["sessions"]] == ["judge", "judge_reread"]
+    assert [s["kind"] for s in att["step"]["sessions"]] == ["step"]
+
+
+def test_jdg_ac15_the_digest_knows_the_reread_as_a_judge_kind() -> None:  # AC 5
+    from tempergraph.improve import digest
+
+    assert "judge_reread" in digest.KINDS and "judge_reread" in digest.JUDGE_KINDS
