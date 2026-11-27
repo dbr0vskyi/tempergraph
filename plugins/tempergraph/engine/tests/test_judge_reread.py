@@ -329,7 +329,7 @@ def test_los_ac1_a_run_with_a_reread_has_the_stated_session_folders(repo: Path) 
                 assert os.stat(p).st_mode & 0o077 == 0, p
 
 
-def test_obs_ac4_only_agent_run_records_count_as_model_calls_and_the_reread_has_its_fields(repo: Path) -> None:  # AC 5
+def test_obs_ac4_only_agent_run_records_count_as_model_calls_and_the_reread_has_its_fields(repo: Path) -> None:  # OBS-AC4, AC 5
     from tempergraph.observe import report as rep
     from tempergraph.store.layout import state_root_path
 
