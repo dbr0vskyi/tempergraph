@@ -2208,6 +2208,12 @@
       "origin": "authored",
       "at": "2026-11-27T12:00:00.000Z",
       "note": "issue 204: the judge briefs and the outcome stance tell the judge to open with the read tool the file a row or a criterion names before grading it, that lines a search printed are not a reading of that file, and to mark a grade that fails for want of a reading with the path and lines to open as its fix (specs judge-reading, judge-and-verdict)"
+    },
+    {
+      "revision": 31,
+      "origin": "authored",
+      "at": "2026-11-27T18:00:00.000Z",
+      "note": "issue 136: the read_component gate checks that each rule file the prompt names and the repository holds was opened with the read tool in the session (ts-rdc-paths, ts-rdc-ruleread; spec read-component)"
     }
   ]
 }

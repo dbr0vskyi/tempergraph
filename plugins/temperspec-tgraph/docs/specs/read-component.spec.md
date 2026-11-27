@@ -9,6 +9,6 @@ Part of the [overview](overview.spec.md). The [setup](setup.spec.md) step starts
 ## 6. Acceptance criteria
 
 - [ ] ts-rdc-paths Each file path the component finding names exists in the workspace
-- [ ] ts-rdc-ruleread Each rule file the read_component prompt names and the repository holds was opened with the read tool in the session ([session-record-checks](session-record-checks.spec.md) SRC-B1)
+- [ ] ts-rdc-ruleread Each rule file the read_component prompt names and the repository holds was opened with the read tool in the session
 - [ ] ts-rdc-answers The findings (`component_finding`) of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched
 - [ ] ts-rdc-cited The findings (`component_finding`) name each file they rest on with its line ranges or ids

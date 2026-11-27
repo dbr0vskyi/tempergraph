@@ -31,7 +31,7 @@
         "component_finding"
       ],
       "gate": {
-        "check": false,
+        "check": true,
         "judge": true
       },
       "on_budget_spent": "stop",
