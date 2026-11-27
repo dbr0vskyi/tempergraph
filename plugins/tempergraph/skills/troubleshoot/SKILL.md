@@ -1,7 +1,7 @@
 ---
 name: troubleshoot
 description: Diagnose a tempergraph problem read-only and report ranked hypotheses with next actions for the person to run. Use when a run fails, hangs, pauses unexpectedly, costs more than expected, a start or resume is refused, a gate verdict or trip back confuses, or a workflow will not load, register or install.
-allowed-tools: Read, Grep, Glob, Bash(git status:*), Bash(git log:*), Bash(git diff:*), Bash(ls:*), Bash(cat:*), Bash(grep:*), Bash(ps:*), Bash(tempergraph status:*), Bash(tempergraph facts:*), Bash(tempergraph list:*), Bash(tempergraph graph:*), Bash(tempergraph validate:*), Bash(tempergraph audit:*), Bash(tempergraph workflows list:*), Bash(tempergraph executors:*), Bash(tempergraph worktree list:*), Bash(tempergraph outcome show:*), Bash(tempergraph upgrade-check:*), Bash(tempergraph install --check:*), Bash(tempergraph author show:*)
+allowed-tools: Read, Grep, Glob, Bash(git status:*), Bash(git log:*), Bash(git diff:*), Bash(ls:*), Bash(cat:*), Bash(grep:*), Bash(ps:*), Bash(tempergraph status:*), Bash(tempergraph facts:*), Bash(tempergraph events:*), Bash(tempergraph logs:*), Bash(tempergraph attention:*), Bash(tempergraph list:*), Bash(tempergraph graph:*), Bash(tempergraph validate:*), Bash(tempergraph audit:*), Bash(tempergraph workflows list:*), Bash(tempergraph executors:*), Bash(tempergraph worktree list:*), Bash(tempergraph outcome show:*), Bash(tempergraph upgrade-check:*), Bash(tempergraph install --check:*), Bash(tempergraph author show:*)
 ---
 
 # Troubleshoot tempergraph
@@ -21,8 +21,10 @@ You gather evidence, rank hypotheses and tell the person what to run next. **You
 
 1. **Restate** the problem in one sentence, and what working would look like.
 2. **Gather**, scoped to the problem:
-   - `tempergraph status` and `tempergraph facts <thread>` for the run's state, exit code, reason and next step (`status` records a lost runner once, see above)
-   - the run folder `.tempergraph/runs/<workflow>/<thread>/`: `run.jsonl` (one record per line, oldest first) and `sessions/<unit>.<attempt>.<kind>/`
+   - `tempergraph status` and `tempergraph facts <thread>` for the run's state, exit code, reason and next step (`status` records a lost runner once, see above); a thread is named `<workflow>/<task id>` or by its alias
+   - `tempergraph status <thread> --detail [--unit <unit>]` for each unit's attempts, verdicts, blockers and cost, and `tempergraph attention` for what waits on a person
+   - `tempergraph events <thread>` for the run log in order, and `tempergraph logs <thread>` for the list of its logs, then `tempergraph logs <thread> --kind check|raw|stderr|engine` for one of them; never with `--follow`
+   - only when those do not answer: the run folder `.tempergraph/runs/<workflow>/<thread>/` (`run.jsonl`, one record per line, oldest first, and `sessions/<unit>.<attempt>.<kind>/`)
    - a held lock under `.tempergraph/locks/<workflow>/` means the thread is still running somewhere
    - `git status`, `git log` and `git diff` where the workflow changes code; `tempergraph worktree list` when it runs in a worktree
    - `tempergraph validate <workflow>` and `tempergraph audit <workflow> --format json` for the definition

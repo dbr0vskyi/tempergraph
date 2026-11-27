@@ -194,6 +194,7 @@ You mostly work through Claude Code. The plugin's skills turn plain requests int
 | `install` | Install the engine with one plan and one yes, then probe that `claude` is ready |
 | `bootstrap` | Make a repository ignore the engine's run state |
 | `run` | Start, resume and report runs; every pause goes back to you |
+| `operate` | Let an agent answer the pauses you hand it, for example a batch of runs while you are away; it marks each answer as its own |
 | `author` | Turn a process, script, template or idea into a workflow, starting from the good outcome |
 | `troubleshoot` | Find out, read-only, why a run failed, stalled or cost more than expected |
 | `evals` | Run a workflow's eval suites, score its judges and grade what needs a person |
