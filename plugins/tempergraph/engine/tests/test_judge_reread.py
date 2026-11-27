@@ -136,7 +136,7 @@ def placeholder_checks(out: Any, ex: ScriptedExecutor, repo: Path) -> None:
     assert rec["blockers"] == [] and "retry" not in request_kinds(ex)
 
 
-def test_jdg_ac14_a_reread_that_times_out_is_an_unparsed_judgement(repo: Path) -> None:  # AC 3
+def test_jdg_ac14_a_reread_that_times_out_is_an_unparsed_judgement(repo: Path) -> None:  # JDG-AC14, AC 3
     timed_out = dataclasses.replace(judge(CLEAN), timed_out=True, ok=False)
     out, ex = drive(repo, [PARTIAL_FIRST, timed_out], steps=1)
     assert request_kinds(ex)[:3] == ["step", "judge", "judge_reread"]
@@ -184,7 +184,7 @@ def test_jdg_ac14_an_infra_failure_of_the_reread_ends_the_attempt_as_judge_infra
     assert set(request_kinds(ex)) <= {"step", "judge", "judge_reread"}
 
 
-def test_jdg_ac9_a_reread_runs_on_the_risk_rules_model_with_one_risk_record(repo: Path) -> None:  # AC 6
+def test_jdg_ac9_a_reread_runs_on_the_risk_rules_model_with_one_risk_record(repo: Path) -> None:  # JDG-AC9, AC 6
     from tempergraph.api import Risk
     from tempergraph.executors.standins import standin as make
     from tempergraph.run.runner import RunSettings, start
