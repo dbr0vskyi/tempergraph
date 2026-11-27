@@ -1,0 +1,8 @@
+diff --git a/src/tool/config.py b/src/tool/config.py
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/tool/config.py
+@@ -0,0 +1,2 @@
++def load(path):
++    return path.read_text()
