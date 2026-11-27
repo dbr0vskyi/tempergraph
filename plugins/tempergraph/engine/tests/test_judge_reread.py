@@ -201,7 +201,7 @@ def _failure(name: str) -> list[Any]:
 
 @pytest.mark.parametrize("name", ["timeout", "unparsed", "guard", "infra"])
 @pytest.mark.parametrize("where", ["first", "reread"])
-def test_jdg_ac4_no_judging_failure_ever_yields_proceed(repo: Path, where: str, name: str) -> None:  # AC 3
+def test_jdg_ac4_no_judging_failure_ever_yields_proceed(repo: Path, where: str, name: str) -> None:  # JDG-AC4, AC 3
     answers = _failure(name) if where == "first" else [judge(PARTIAL_FIRST)] + _failure(name)
     out, ex = drive(repo, answers, steps=1)
     assert out.exit_code is not ExitCode.FINISHED, out.message
