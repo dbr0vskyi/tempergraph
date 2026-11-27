@@ -137,6 +137,90 @@ def test_a_resume_with_the_setting_false_writes_no_dry_run(repo: Path) -> None: 
     assert first["dry_run"] is True and "dry_run" not in second
 
 
+def resolved(repo: Path, task: str) -> dict[str, Any] | None:
+    """The row of the key in the newest `settings_resolved` record of the thread."""
+    log = repo / ".tempergraph" / "runs" / "demo" / task / "run.jsonl"
+    recs = [r for r in (json.loads(x) for x in log.read_text().splitlines()) if r.get("kind") == "settings_resolved"]
+    return next((r for r in recs[-1]["rows"] if r["key"] == KEY), None)
+
+
+def finish(repo: Path, *argv: str) -> None:
+    ex = standin_paused()
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", *argv)
+    assert code == 0, err
+
+
+def pause(repo: Path, task: str, *argv: str, spec: Any = None) -> None:
+    cat = Catalog(specs={"demo": spec or two_step()})
+    code, _, err = cli(repo, standin_paused(), "run", "demo", "notes", "--task-id", task, *argv, catalog=cat)
+    assert code == 3, err
+
+
+def test_help_lists_both_arguments(capsys: pytest.CaptureFixture[str]) -> None:  # ROP-AC13
+    from tempergraph.cli.main import main
+
+    for verb in ("run", "resume"):
+        capsys.readouterr()
+        try:
+            main([verb, "--help"])
+        except SystemExit:
+            pass
+        out = capsys.readouterr().out
+        assert "--dry-run" in out and "--no-dry-run" in out, verb
+
+
+def test_the_arguments_are_recorded_as_the_flag(repo: Path) -> None:  # ROP-AC13
+    run_with(repo, "A-1", "--dry-run")
+    run_with(repo, "A-2", "--no-dry-run")
+    one, two = resolved(repo, "A-1"), resolved(repo, "A-2")
+    assert one and one["value"] is True and one["layer"] == "flag"
+    assert two and two["value"] is False and two["layer"] == "flag"
+
+
+def test_both_arguments_are_refused_before_any_file(repo: Path) -> None:  # ROP-AC13
+    pause(repo, "A-3")
+    before = hash_tree(repo)
+    for argv in (("run", "demo", "notes", "--check"), ("run", "demo", "notes", "--task-id", "A-4"),
+                 ("resume", "demo", "A-3", "--decision", "proceed")):
+        code, _, err = cli(repo, standin_paused(), *argv, "--dry-run", "--no-dry-run")
+        assert code == 2 and "--no-dry-run" in err and "--dry-run" in err, argv
+    assert hash_tree(repo) == before
+
+
+def test_the_value_given_last_wins_on_resume(repo: Path) -> None:  # ROP-AC12
+    pause(repo, "R-1", "--dry-run")
+    finish(repo, "R-1", "--decision", "proceed", "--no-dry-run")
+    row = resolved(repo, "R-1")
+    assert row and row["value"] is False and row["layer"] == "flag"
+    pause(repo, "R-2", "--no-dry-run")
+    finish(repo, "R-2", "--decision", "proceed", "--dry-run")
+    row = resolved(repo, "R-2")
+    assert row and row["value"] is True and row["layer"] == "flag"
+
+
+def test_a_resume_with_neither_keeps_and_unset_returns_to_declared(repo: Path) -> None:  # ROP-AC8, ROP-AC12
+    pause(repo, "K-1", "--no-dry-run", spec=two_step(loop_dry_run=True))
+    cat = Catalog(specs={"demo": two_step(loop_dry_run=True)})
+    ex = standin_paused()
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", "K-1", "--decision", "proceed", catalog=cat)
+    row = resolved(repo, "K-1")
+    assert code == 0 and row and row["value"] is False and row["layer"] == "flag", err
+    pause(repo, "K-2", "--no-dry-run", spec=two_step(loop_dry_run=True))
+    ex = standin_paused()
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", "K-2", "--decision", "proceed", "--unset", KEY, catalog=cat)
+    row = resolved(repo, "K-2")
+    assert code == 0 and row and row["value"] is True and row["layer"] == "workflow:default", err
+
+
+def test_the_named_option_lands_after_set(repo: Path) -> None:  # ROP-AC12
+    run_with(repo, "S-1", "--set", f"{KEY}=true", "--no-dry-run")
+    row = resolved(repo, "S-1")
+    assert row and row["value"] is False and row["layer"] == "flag"
+
+
 def test_the_real_run_count_leaves_out_a_declared_dry_run(repo: Path) -> None:  # PRO-AC7
     run_with(repo, "P-1", spec=two_step(loop_dry_run=True))
     run_with(repo, "P-2", "--set", f"{KEY}=false", spec=two_step(loop_dry_run=True))

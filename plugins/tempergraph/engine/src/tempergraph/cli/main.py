@@ -303,7 +303,10 @@ def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     p.add_argument("--carry", action="store_true", help="carry this thread's state on its own branch (CAR)")
     _settings_options(p, resume=not start)
     p.add_argument("--pause-before", action="append", default=[], metavar="UNIT")
-    p.add_argument("--dry-run", action="store_true", help="self-improvement files nothing; every step runs")
+    p.add_argument("--dry-run", action="store_const", const=True, default=None,
+                   help="self-improvement files nothing; every step runs (the flag run.loop_dry_run true)")
+    p.add_argument("--no-dry-run", action="store_true",
+                   help="self-improvement files; ends a dry run (the flag run.loop_dry_run false)")
     if start:
         p.add_argument("--alias")
         p.add_argument("--label")
@@ -397,6 +400,12 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
         v = getattr(a, dest, None)
         if v is not None:
             flags[key] = parse_value(v)
+    if getattr(a, "dry_run", None) and getattr(a, "no_dry_run", False):
+        raise UsageError("argument --no-dry-run: not allowed with argument --dry-run")
+    if getattr(a, "dry_run", None):
+        flags["run.loop_dry_run"] = True
+    elif getattr(a, "no_dry_run", False):
+        flags["run.loop_dry_run"] = False
     for dest, name in PER_UNIT.items():
         for pair in getattr(a, dest, None) or []:
             unit, sep, v = pair.partition("=")
@@ -438,8 +447,6 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
         fields.update(origin="schedule", schedule={k: block[k] for k in ("schedule_id", "fire_id", "slot")})
     if hasattr(a, "alias"):
         fields.update(alias=a.alias, label=a.label)
-    if hasattr(a, "dry_run"):
-        fields["dry_run"] = bool(a.dry_run)
     if getattr(a, "escalate", False):
         fields["escalate"] = True
     if getattr(a, "carry", False):

@@ -272,4 +272,4 @@ def test_pause_before_and_dry_run(repo: Path) -> None:  # ROP-B1 to ROP-B13, FLX
     assert code == 0, err
     log = (repo / ".tempergraph" / "runs" / "demo" / "D-2" / "run.jsonl").read_text().splitlines()
     started = [json.loads(x) for x in log if '"run_started"' in x][0]
-    assert started["dry_run"] is True and "run.auto_reopen" in started["overridden_keys"]
+    assert started["dry_run"] is True and {"run.auto_reopen", "run.loop_dry_run"} <= set(started["overridden_keys"])  # ROP-AC12
