@@ -322,3 +322,48 @@ def wait(state_root: Path, spec: WorkflowSpec, tid: str, timeout_s: float, *, po
         if clock() - start >= timeout_s:
             return WaitOutcome(state="running", exit_code=ExitCode.BUDGET_OR_INFRA, reason="timeout")
         sleep(poll_s)
+
+
+@dataclass(kw_only=True)
+class WaitAnyOutcome:
+    state: str
+    exit_code: ExitCode
+    row: dict[str, Any] = field(default_factory=dict)
+    reason: str = ""
+    threads: list[dict[str, Any]] = field(default_factory=list)
+
+
+def wait_any(state_root: Path, threads: list[tuple[WorkflowSpec, str]], timeout_s: float, *, poll_s: float = 0.5,
+             clock: Callable[[], float] = time.monotonic,
+             sleep: Callable[[float], None] = time.sleep) -> WaitAnyOutcome:
+    """DUR-B16: block until the first of several threads is not running (a pause or any end), or the timeout passes.
+
+    A new gate verdict on a running thread does not end the wait. Each thread's row is rebuilt only when one of its
+    files moved."""
+    watched: list[list[Path]] = []
+    for spec, tid in threads:
+        _, task = split_thread(tid)
+        db = engine_file.checkpoint_of(state_root, spec.name, task)
+        watched.append([db, db.with_name(db.name + "-wal"), lock_path(state_root, spec.name, task),
+                        run_dir(state_root, spec.name, task) / "run.jsonl"])
+    sigs: list[tuple[tuple[int, int], ...] | None] = [None] * len(threads)
+    states: dict[str, str] = {}
+    start = clock()
+    while True:
+        for i, (spec, tid) in enumerate(threads):
+            now_sig = _signature(watched[i])
+            if now_sig == sigs[i]:
+                continue
+            sigs[i] = now_sig
+            r = row(state_root, spec, tid)
+            states[tid] = r["state"]
+            if r["state"] != "running":
+                code = r.get("exit_code")
+                exit_code = ExitCode(code) if isinstance(code, int) and code in set(ExitCode) else EXIT_FOR.get(
+                    r["state"], ExitCode.INTERNAL)
+                return WaitAnyOutcome(state=r["state"], exit_code=exit_code, row=r, reason="state",
+                                      threads=[{"thread_id": t, "state": states.get(t)} for _, t in threads])
+        if clock() - start >= timeout_s:
+            return WaitAnyOutcome(state="running", exit_code=ExitCode.BUDGET_OR_INFRA, reason="timeout",
+                                  threads=[{"thread_id": t, "state": states.get(t)} for _, t in threads])
+        sleep(poll_s)

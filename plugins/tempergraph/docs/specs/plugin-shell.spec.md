@@ -7,7 +7,8 @@ The `tempergraph` plugin wraps the engine CLI in skills a person uses from a con
 ## Depends on
 
 - `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
-- `caller-provenance.spec.md`: decider (PRV-B14); person turns (PRV-B15)
+- `caller-provenance.spec.md`: caller provenance; decider (PRV-B14); person turns (PRV-B15)
+- `durability-and-resume.spec.md`: wait for the first of several threads (DUR-B16)
 - `eval-suites.spec.md`: eval suites for checks, steps and workflows
 - `judge-calibration.spec.md`: judge calibration and acceptance
 - `lifecycle-hooks.spec.md`: lifecycle hooks
@@ -23,7 +24,7 @@ The `tempergraph` plugin wraps the engine CLI in skills a person uses from a con
 
 ### SHL-B5 The skills and what they never do
 
-WHEN the plugin is installed THE plugin SHALL ship the run driver `tempergraph:run` (turn a request into CLI calls, start in the background, report outcomes by exit code, walk the person through each pause; never answer a pause, default a value the workflow asks for or edit run state), the orchestrator ([OSK](orchestrator-skill.spec.md)), the optional schedule skill ([TCK-B21, TCK-B22](schedule-ticks-and-unattended-fires.spec.md); never fire runs from Claude Code's own scheduled tasks, save a schedule the person did not confirm or schedule a tool grant), the project bootstrap `tempergraph:bootstrap` (the state-root ignore rule only; never stage, commit or delete), the install, update and upgrade skills ([LSK](lifecycle-skills.spec.md)), the authoring skill `tempergraph:author` ([AUT](workflow-authoring.spec.md), [AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25](workflow-authoring.spec.md); never edit the engine or draw a diagram by model), the troubleshooter `tempergraph:troubleshoot` (read-only diagnosis with ranked hypotheses and next actions; never write, commit, install or run a mutating command) and the eval skill `tempergraph:evals` (never call a model from the runner, never grade, never label).
+WHEN the plugin is installed THE plugin SHALL ship the run driver `tempergraph:run` (turn a request into CLI calls, start in the background, report outcomes by exit code, walk the person through each pause; never answer a pause, default a value the workflow asks for or edit run state), the orchestrator ([OSK](orchestrator-skill.spec.md)), the optional schedule skill ([TCK-B21, TCK-B22](schedule-ticks-and-unattended-fires.spec.md); never fire runs from Claude Code's own scheduled tasks, save a schedule the person did not confirm or schedule a tool grant), the project bootstrap `tempergraph:bootstrap` (the state-root ignore rule only; never stage, commit or delete), the install, update and upgrade skills ([LSK](lifecycle-skills.spec.md)), the authoring skill `tempergraph:author` ([AUT](workflow-authoring.spec.md), [AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25](workflow-authoring.spec.md); never edit the engine or draw a diagram by model), the operator `tempergraph:operate` (SHL-B17), the troubleshooter `tempergraph:troubleshoot` (read-only diagnosis with ranked hypotheses and next actions; never write, commit, install or run a mutating command) and the eval skill `tempergraph:evals` (never call a model from the runner, never grade, never label).
 
 - GIVEN any shipped skill WHEN the structure test reads it THEN it has frontmatter, its links resolve and it names no shipped workflow
 - GIVEN a backticked `tempergraph …` call in a skill WHEN the structure test reads it THEN it is a verb of the CLI with options the parser builds
@@ -91,9 +92,16 @@ WHEN a skill or agent is named THE shell SHALL name it by plugin path (`<plugin>
 
 ### SHL-B12 Troubleshooter stays read-only
 
-WHEN the troubleshooter runs THE troubleshooter SHALL be granted, through its `allowed-tools`, only file read, search and glob and one `Bash(<prefix>:*)` rule per read (git status, log and diff; `ls`, `cat`, `grep`; `ps`; the engine's `status`, `facts`, `list`, `graph`, `validate`, `audit`, `workflows list`, `executors`, `worktree list`, `outcome show`, `upgrade-check`, `install --check`, `author show`), forbid `upgrade-check --stamp` in its text, keep one reference per symptom group (steps, timeouts and infra; judge and gate; self-improvement; install and workflow checks; run state and refused starts), and list a verb the engine refuses as unknown as a read not available.
+WHEN the troubleshooter runs THE troubleshooter SHALL be granted, through its `allowed-tools`, only file read, search and glob and one `Bash(<prefix>:*)` rule per read (git status, log and diff; `ls`, `cat`, `grep`; `ps`; the engine's `status`, `facts`, `events`, `logs`, `attention`, `list`, `graph`, `validate`, `audit`, `workflows list`, `executors`, `worktree list`, `outcome show`, `upgrade-check`, `install --check`, `author show`), forbid `upgrade-check --stamp` in its text, keep one reference per symptom group (steps, timeouts and infra; judge and gate; self-improvement; install and workflow checks; run state and refused starts),, read the engine's `status --detail`, `events` and `logs` before the run folder's raw files, and list a verb the engine refuses as unknown as a read not available.
 
 - GIVEN the troubleshooter's frontmatter WHEN read THEN no rule grants a mutating command
+
+### SHL-B17 The operator answers only what it was handed
+
+WHEN a person has asked an agent to answer the pauses of runs THE operator skill SHALL start each run after `run --check`, mark every `run` and `resume` with `--as-agent` ([PRV](caller-provenance.spec.md)), wait on several threads with one `wait --any` ([DUR-B16](durability-and-resume.spec.md)), read a pause through `status --detail --unit` and `attention`, answer only what the repository's documents settle, hand every other question and every step that cannot be undone to the person, and never answer `proceed` after an infrastructure failure.
+
+- GIVEN a pause whose answer the task's criteria settle WHEN the operator answers it THEN the resume carries `--as-agent`
+- GIVEN a pause that asks for an owner's decision the documents do not settle WHEN the operator reads it THEN it goes to the person and no resume is run
 
 ### SHL-B13 Eval skill order
 
@@ -128,6 +136,7 @@ WHEN a tracker integration (issue states, autonomy levels, rollout) is wanted TH
 - SHL-AC4 (SHL-B5, SHL-B7, SHL-B12): The structure test passes on every skill, the run driver names only its verbs, and the troubleshooter's grant holds no mutating command
 - SHL-AC5 (SHL-B8): The ignore rule is added once with the file's line endings, and tracked state files are reported and not untracked
 - SHL-AC6 (SHL-B14, SHL-B15): The hooks run with a 2 s timeout, never fail the host call, and write nothing inside an engine session or with supervision off
+- SHL-AC8 (SHL-B12, SHL-B17): The troubleshooter's grant holds the reads `events`, `logs` and `attention` and no mutating command, and the operator skill's every `run` and `resume` call carries `--as-agent` and its waits on several threads use `wait --any`
 - SHL-AC7 (SHL-B4, SHL-B6, SHL-B9, SHL-B10, SHL-B11, SHL-B13, SHL-B16): A rubric scenario covers each skill rule these behaviours state
 
 ## Open questions

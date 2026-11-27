@@ -105,6 +105,14 @@ WHEN `wait` names a thread THE engine SHALL exit when the run pauses, completes,
 - GIVEN a run that pauses WHEN `wait` is waiting on it THEN `wait` exits 3
 - GIVEN `wait --timeout 5` on a running thread with no change WHEN 5 s pass THEN it exits 5 with state `running`
 
+### DUR-B16 Wait for the first of several threads
+
+WHEN `wait --any` names one or more threads THE engine SHALL exit when the first of them is not running (paused, finished, stopped or unfinished), with that thread's exit code as DUR-B5 gives it and its row, or with 5 and state `running` when the timeout passes, without ending the wait on a new gate verdict of a running thread.
+
+- GIVEN two named threads, one running and one that pauses WHEN `wait --any` is waiting THEN it exits 3 with the paused thread's row
+- GIVEN one named thread that records a new gate verdict and keeps running WHEN `wait --any --timeout 5` waits THEN it exits 5 with state `running` after 5 s
+- GIVEN two named threads WHEN `wait` runs without `--any` THEN it exits 2
+
 ### DUR-B6 Old checkpoints resume
 
 WHEN the current engine resumes a checkpoint written by an earlier release THE engine SHALL answer it correctly for each of paused, stopped, unfinished, fork, map and wait.
@@ -139,3 +147,4 @@ WHEN a start gives `--alias <name>` THE engine SHALL keep it in `runs/aliases.js
 - DUR-AC11 (DUR-B13): The `status` row of a fixture thread paused for a usage limit holds `usage_limit_resets_at` equal to the reset its stand-in executor reported (the latest of them when several gates of a parallel block are paused for it), null when it reported none, and the row of that thread while it runs after a `resume` holds no such key
 - DUR-AC12 (DUR-B14): A fixture thread a person stopped and a fixture thread stopped with its budget spent are each refused on `resume` with exit 2 and a message naming the unit and the reason `person` or `budget`, writing nothing, and a `retry` resume of each is accepted
 - DUR-AC13 (DUR-B15): The `status --json` row of a fixture thread stopped by request holds a `resume` command that a plain `resume` accepts, and the rows of a fixture paused thread and a fixture running thread hold none
+- DUR-AC14 (DUR-B16): `wait --any` over a fixture finished thread and a fixture paused thread exits with the code and row of the first named thread that is not running, a running fixture thread whose verdict changes does not end it before the timeout, which exits 5 with state `running`, and `wait` naming two threads without `--any` exits 2

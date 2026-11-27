@@ -13,6 +13,7 @@ catalog.
 
 - **The person decides every pause**, one at a time, also the last one, also in auto mode. Never resume on your
   own, never pick a decision word for them.
+  When the person asks you to answer pauses yourself, use the `operate` skill instead.
 - **Ask, never guess.** A value the workflow asks for is never defaulted, inferred, or copied from an example.
   Ask the person. Pass their words quoted as one shell word (`--input ticket='…'`).
 - **Check before spend.** Run `tempergraph run --check` with the exact arguments first. It spends nothing.

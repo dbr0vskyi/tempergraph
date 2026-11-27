@@ -73,7 +73,7 @@ def test_every_engine_call_exists(skill: Path) -> None:
     assert calls > 0 or skill.parent.name == "bootstrap"  # the bootstrap skill runs its helper, not the engine
 
 
-READ_ONLY = re.compile(r"^(Read|Grep|Glob|Bash\((git (status|log|diff)|ls|cat|grep|ps|tempergraph (status|facts|list|graph|"
+READ_ONLY = re.compile(r"^(Read|Grep|Glob|Bash\((git (status|log|diff)|ls|cat|grep|ps|tempergraph (status|facts|events|logs|attention|list|graph|"
                        r"validate|audit|workflows list|executors|worktree list|outcome show|upgrade-check|"
                        r"install --check|author show)):\*\))$")
 
@@ -102,3 +102,16 @@ def test_install_skill_runs_only_its_fixed_commands() -> None:
 
             known = {o for a in parser()._actions for o in a.option_strings}
             assert set(re.findall(r"--[a-z-]+", c)) <= known, c
+
+
+def test_operator_marks_its_answers_and_waits_once() -> None:
+    """SHL-AC8 (SHL-B17): every `run` and `resume` the operator skill names carries `--as-agent`, and it waits on
+    several threads with `wait --any`; the troubleshooter reads `events`, `logs` and `attention`."""
+    text = (PLUGIN / "skills" / "operate" / "SKILL.md").read_text(encoding="utf-8")
+    calls = CALL.findall(text)
+    starts = [c for c in calls if c.split()[0] in ("run", "resume") and "--check" not in c]
+    assert starts and all("--as-agent" in c for c in starts), starts
+    assert any(c.startswith("wait ") and "--any" in c for c in calls)
+    grant = re.search(r"^allowed-tools: (.+)$",
+                      (PLUGIN / "skills" / "troubleshoot" / "SKILL.md").read_text(encoding="utf-8"), re.M)
+    assert grant and all(f"Bash(tempergraph {v}:*)" in grant.group(1) for v in ("events", "logs", "attention"))
