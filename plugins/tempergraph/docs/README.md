@@ -50,7 +50,7 @@ Acceptance criteria rank above specs and decision records, then plans, then code
 
 Since 2026-11-22 the engine's specs follow temperspec's [spec rule](../../temperspec-tgraph/rules/spec.rule.md) ([spec-migration plan](plans/spec-migration.plan.md)); the engine test `tests/test_spec_form.py` holds the set to it:
 
-- **Sections.** `# Title`, `## Purpose`, `## Behaviours`, `## Acceptance criteria`, and `## Open questions` only while a question is open. No front matter, no status, no numbered sections, no contract or error tables, no design notes, no references list, no code blocks, no checkboxes.
+- **Sections.** `# Title`, `## Purpose`, `## Depends on` and `## Does not own` when they have a row (the spec rule), `## Behaviours`, `## Acceptance criteria`, and `## Open questions` only while a question is open. No front matter, no status, no numbered sections, no contract or error tables, no design notes, no references list, no code blocks, no checkboxes.
 - **Behaviours.** `### PREFIX-Bn Name`, then one line `WHEN <event> THE <system> SHALL <response>`, then at least one scenario `- GIVEN … WHEN … THEN …`. A verb, an option, a field, a file path, a default, an exit code or a record kind that someone outside the capability depends on is named in a behaviour.
 - **Criteria.** `- PREFIX-ACn (behaviour ids): <what an observer can verify>`. Every behaviour is named by at least one criterion.
 - **Open questions.** One item each: the question, `Until answered:` the default the engine applies, `Owner:`. Work a spec describes and the code does not hold yet is a `Not built yet:` item with its owner.

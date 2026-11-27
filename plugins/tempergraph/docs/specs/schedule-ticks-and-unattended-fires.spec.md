@@ -4,6 +4,30 @@
 
 A schedule ([SCH](schedules.spec.md)) must fire when nobody is at a terminal or in a conversation. This spec owns what makes it fire: the tick, one OS-agnostic, deterministic, model-free routine that decides what is due and starts it; the triggers that call the tick, of which the engine's own portable loop is the default and OS schedulers, pipelines and any other scheduler are optional adapters; the fire token that marks a scheduled run as the scheduler's; the credentials a run needs when nobody is present to sign in; what a fire leaves in the records; and the `tempergraph:schedule` skill ([ADR `a-model-free-tick-behind-os-agnostic-triggers`](../adr/a-model-free-tick-behind-os-agnostic-triggers.adr.md)). All scheduling logic (slots, zones, catch-up, overlap, budgets, idempotence) lives in the tick and reads only the engine's files, so it behaves the same on macOS, Linux and Windows and under any trigger; a trigger only decides when the tick is called. The tick is a sibling of the orchestration supervisor ([ORC](orchestration.spec.md)): both start work only through the engine's own verbs and answer no gate (OVR-B20). Operators, the schedule skill, pipelines and caller provenance ([PRV](caller-provenance.spec.md)) depend on it; design notes and assumptions are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: a pipeline job (PRV-B7)
+- `central-run-stats.spec.md`: central run stats
+- `durability-and-resume.spec.md`: durability and resume
+- `engine-cli.spec.md`: engine cli
+- `engine-update.spec.md`: engine install and update
+- `executor-agent-sdk.spec.md`: claude agent sdk executor
+- `executor-antigravity.spec.md`: antigravity executor
+- `executor-claude-code.spec.md`: claude code executor
+- `executor-interface.spec.md`: executor interface
+- `executor-messages-api.spec.md`: messages api executor
+- `lifecycle-and-evals.spec.md`: lifecycle and evals
+- `local-observability-store.spec.md`: home layout (LOS-B10)
+- `observability-and-cost.spec.md`: observability and cost
+- `orchestration.spec.md`: the supervisor's mark (ORC-B17)
+- `overview.spec.md`: refusal before spend (OVR-B17)
+- `plugin-shell.spec.md`: plugin shell
+- `run-events.spec.md`: run events for observers
+- `schedules.spec.md`: ambiguity in words is asked, not guessed (SCH-B2); time zones and daylight saving (SCH-B20); missed slots (SCH-B21); overlap (SCH-B22); failures (SCH-B23); spend (SCH-B24); fire log (SCH-B28)
+- `security.spec.md`: launch rules (SEC-B5)
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+
 ## Behaviours
 
 ### TCK-B1 The default trigger is portable

@@ -54,6 +54,8 @@ Rows grouped by origin: this repository first, then other repositories on this m
 | Attempt | `attempt n` of the unit in flight, `↻` if n > 1 |
 | Last verdict | status |
 | Elapsed, or waiting time | status, health |
+| Questions | for a run waiting at an ask: `<open> of <total> questions open`, from the status document's `input` gate ([ASK-B4](../../../tempergraph/docs/specs/ask-unit.spec.md)); the pause view shows the same line |
+| Sign of life | for a live run's unit in flight: the open tool and how long it has run, else `quiet <time>` since the session's last event (the run's `silent_s` without a live block), led by `stall?` when the engine suspects a stall; from the detail document's live block and `health` ([RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md)) |
 | Cost | estimated (and reported where every session reported), flag |
 | Executors | first letters of executors used (`c` claude, `s` agent-sdk, `m` messages-api, `a` antigravity) |
 | Supervision | the run's supervision level so far and who acted (`obs`, `appr`, `cons·agent`, `collab·person`, …) and, for a waiting run, whom it waits on (`person` or the supervising host), from the detail document's `supervision` block ([RDD-B7 to RDD-B11, RDD-B13, RDD-B15](../../../tempergraph/docs/specs/run-detail-document.spec.md), [SUP-B11](../../../tempergraph/docs/specs/supervision-metrics.spec.md)) |
@@ -101,6 +103,8 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 **MRV-B5 Pane opens itself only where it fits.** Given a terminal 100 columns wide, when a run starts, then the pane does not open on its own; the band row appears and `/tg` opens the pane inline.
 
+**MRV-B6 A long session shows a sign of life.** Given a live run whose session writes no run-log record for 15 minutes, when the run list is drawn, then its row's sign of life changes at least every 10 s from the detail document read on the clock of MDS §2.1, and once the engine sets `suspect_stall` the row reads `stall?`.
+
 ## 4. Error conditions
 
 | Condition | Result |
@@ -113,7 +117,7 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 - The key map keeps the workflows view's muscle memory; where tempergraph has no matching verb (pause, restart, skip) the key is reused or absent rather than faked ([MADR `borrow-the-workflows-view-and-add-gates`](../adr/borrow-the-workflows-view-and-add-gates.adr.md)).
 - The node strip is the one new visual idea: it makes "which of step, check, judge, gate is running" readable at a glance, which a workflow's agent rows cannot say because a workflow has no gates.
-- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the run list (filter on `f`, a pin button per run, pins kept in `$.store` across sessions) and the run view (unit rows with the node strip, trip-back lines, narrator, touch strip, the cut note, pause question; `g` opens the pause view, `c` the cost tab, `x` fills stop) are drawn from the status and detail documents. Every row is a `Button`, so arrows and Enter are the surface's own focus keys. Deviations: back out is a footer `Button` with hotkey `b`, since a mod's `Button` hotkey is one letter or digit and `Esc` is the surface's own; `j` and `k` are not bound because the pane's scroll is the surface's; `l` and `a` are not bound, as the log tail is a session tab and every action is its own button. With `scope = machine` the run list adds "Other repositories on this machine" (each row opens a card) and one `missing` line per gone root; `m` opens the fleet tab. The run view's touch line starts with the run's supervision level from the engine's record (`level consultant by agent`). Map item rows, the orchestration view and the mobile reduction are not built (maps and orchestration are release 2).
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the run list (filter on `f`, a pin button per run, pins kept in `$.store` across sessions) and the run view (unit rows with the node strip, trip-back lines, narrator, touch strip, the cut note, pause question; `g` opens the pause view, `c` the cost tab, `x` fills stop) are drawn from the status and detail documents. Every row is a `Button`, so arrows and Enter are the surface's own focus keys. Deviations: back out is a footer `Button` with hotkey `b`, since a mod's `Button` hotkey is one letter or digit and `Esc` is the surface's own; `j` and `k` are not bound because the pane's scroll is the surface's; `l` and `a` are not bound, as the log tail is a session tab and every action is its own button. With `scope = machine` the run list adds "Other repositories on this machine": each row is labelled with its own repository and its four hex characters hash that root with the thread id, so one thread id in two roots reads as two runs; live, waiting and orphaned rows are shown and open a card, ended ones fold under one line with their count that opens them; gone roots are one `missing` line with their count and the first three names; `m` opens the fleet tab. The run view's touch line starts with the run's supervision level from the engine's record (`level consultant by agent`). Map item rows, the orchestration view and the mobile reduction are not built (maps and orchestration are release 2).
 - One pane with levels, rather than one pane per run, keeps the band and the pane in step and matches the workflows view's single entry point ([MADR `one-pane-many-levels`](../adr/one-pane-many-levels.adr.md)).
 
 ## 6. Acceptance criteria
@@ -121,6 +125,7 @@ Opened from an orchestration row; drawn from the orchestration status document (
 - [ ] MRV-AC-1 MRV-B1 to MRV-B4 pass as UI tests on the terminal and desktop surfaces from fixture detail documents.
 - [ ] MRV-AC-2 Every key of §2.2 has a footer Button with the same action (test presses both).
 - [ ] MRV-AC-3 A run view of 40 units and a map of 50 items draws within the surface's room without a refused tree.
+- [ ] MRV-AC-4 MRV-B6 passes in a session test on a mocked clock: a running session whose detail document gains no run-log record shows `quiet 10s`, then `quiet 20s` 10 s later, then `stall? quiet 30s` once the engine suspects a stall.
 
 ## Open questions
 

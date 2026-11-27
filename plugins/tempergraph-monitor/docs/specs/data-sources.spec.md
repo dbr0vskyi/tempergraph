@@ -22,13 +22,15 @@ What the monitor reads, from where, how often, and the rule that it never writes
 | Run rows | `tempergraph status --json` per watched root (the verb is run in that root) | Every 5 s while any row is alive or the pane is open; every 30 s otherwise; at once when a watched run log grew | [DUR-B11](../../../tempergraph/docs/specs/durability-and-resume.spec.md) |
 | Change signal | `$.fs.stat` of each live thread's `run.jsonl` | Every 1 s | [LOS-B7, LOS-B8, LOS-B9](../../../tempergraph/docs/specs/local-observability-store.spec.md) |
 | Run-log tail | `$.fs.read` with `{offset, length}` from the last offset read | When the change signal moved | [EVT-B8, EVT-B9](../../../tempergraph/docs/specs/run-events.spec.md) |
-| Detail document | `tempergraph status --detail <thread> --json` (with `--unit` when the document says it was cut) | When the person opens a run, then when its run log grew, at most every 2 s | [RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md) |
+| Detail document | `tempergraph status --detail <thread> --json` (with `--unit` when the document says it was cut) | When the person opens a run, then when its run log grew, at most every 2 s; for a live run's list row, when its run log grew and every 10 s while it lives ([MRV-B6](run-view.spec.md)) | [RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md) |
 | Live session | `$.fs.read` of `live.json`; tail of `activity.jsonl` | Every 1 s while a session view is open | [EVT-B17, EVT-B18, EVT-B7, EVT-B19](../../../tempergraph/docs/specs/run-events.spec.md) |
 | Processes | `ps -A -o pid=,pgid=,ppid=,etime=,comm=` (constant argv, POSIX), filtered to the session's `pgid` | Every 2 s while a session view's Processes tab is open | [RDD-B12](../../../tempergraph/docs/specs/run-detail-document.spec.md) |
 | Engine home | `sh -c 'printf %s "${TEMPERGRAPH_HOME:-$HOME/.tempergraph}"'` (constant argv, POSIX), run once per session and only when the `engine_path` setting and `PATH` have both exited 127 | Never repeated | [MAC-B6](actions-and-safety.spec.md) |
 | Log tails | `$.fs.read` of the last 64 KB of `raw.jsonl`, `stderr.log`, a check's `stdout.log` | On request in a session or check view | [LOS](../../../tempergraph/docs/specs/local-observability-store.spec.md) |
 | Orchestrations | `tempergraph orchestrate list --json`, then `orchestrate status <id> --json` | Every 5 s while one is live or open | [ORC-B25](../../../tempergraph/docs/specs/orchestration.spec.md) |
 | Projection | `tempergraph stats --projection --by workflow --json` | Every 10 min, and when a run of a new workflow appears | [CST-B14, CST-B15, CST-B16](../../../tempergraph/docs/specs/central-run-stats.spec.md) |
+| Schedules | `tempergraph schedule list --all --json`, then `schedule show <id> --json` for an id the list printed | Every 60 s while a view that shows schedules is open | [SCH](../../../tempergraph/docs/specs/schedules.spec.md) |
+| Calibration | `tempergraph evals bar [<workflow>] --json` | Every 10 min while a view that shows gates is open | [JCL-B18](../../../tempergraph/docs/specs/judge-calibration.spec.md) |
 | Fleet | `tempergraph stats --live --json`, which reads the home folder's fleet copy (`~/.tempergraph/fleet/`); the mod stats `synced.json` to know when it changed | Every 60 s while the fleet tab is open or `alerts.fleet = on` | [CST-B14, CST-B15, CST-B16](../../../tempergraph/docs/specs/central-run-stats.spec.md) |
 
 Every verb is run by `$.process.run` with list argv built from constants and values the engine itself printed (thread ids, session keys, sink names from config), never from text a person typed into the pane ([MAC](actions-and-safety.spec.md)). The constant `ps` listing and the engine-home probe are the only programs that are not the engine. A call has a 20 s timeout; at most two verb calls run at once (release 1 runs one at a time: one timer tick reads, and a tick that finds the last one still running is skipped).
@@ -50,6 +52,7 @@ Every verb is run by `$.process.run` with list argv built from constants and val
 | Write, create, lock or delete anything under a state root, `~/.tempergraph/` or a sink folder | Read |
 | Open a checkpoint database | `status` verb |
 | Call a verb that writes (`run`, `resume`, `stop`, `batch`, `store prune`, `hooks add`, `update`) | Fill the prompt ([MAC](actions-and-safety.spec.md)) |
+| Call a writing subcommand of `schedule` or `evals` (`schedule add`, `evals score`, …) | Only the shapes of MDS-B8 |
 | Parse an executor's raw stream for meaning | Normalized activity journal; raw lines are shown as text only |
 
 The mod's own memory across sessions (pinned runs, last alerted `seq` per thread, settings) is in Claude Code's plugin store (`$.store`), never in an engine folder.
@@ -69,6 +72,8 @@ The mod's own memory across sessions (pinned runs, last alerted `seq` per thread
 **MDS-B6 No place holds the engine.** Given each place of MAC-B5 exits 127 for an engine verb, when the monitor has tried them all, then it marks the engine not installed: the band row reads "tempergraph not found" and polling stops.
 
 **MDS-B7 The pane names where it looked.** Given the engine is marked not installed, when the pane is drawn, then it says "tempergraph is not installed here." and names each place the monitor looked at: the path in the `engine_path` setting unless MAC-B7 ignored it, `PATH`, and the path of the shim in the engine home.
+
+**MDS-B8 Read-only subcommands by name.** Given the verbs `schedule` and `evals`, which also write, when the mod builds a call of either, then only `schedule list [--all] --json`, `schedule show <id> --json` (an id the engine printed) and `evals bar [<workflow>] --json` pass the read-only guard, and every other subcommand or extra argument of those verbs is refused.
 
 ## 4. Error conditions
 
@@ -94,6 +99,7 @@ The mod's own memory across sessions (pinned runs, last alerted `seq` per thread
 - [ ] MDS-AC-4 The idle and live poll counts of MDS-B1 hold under a replaced clock.
 - [ ] MDS-AC-5 MDS-B6 passes in a session test where every program exits 127: each place is run once for the first engine verb, and no engine verb is run after that.
 - [ ] MDS-AC-6 MDS-B7 passes in a session test where every program exits 127: the pane text holds "tempergraph is not installed here.", `PATH`, the path of the shim in the engine home and, when the `engine_path` setting holds an accepted path, that path.
+- [ ] MDS-AC-7 MDS-B8: the guard accepts each listed shape and refuses `schedule add`, `schedule remove`, `evals score`, a shape without `--json`, one with an extra argument and an id that is not a schedule id.
 
 ## Open questions
 

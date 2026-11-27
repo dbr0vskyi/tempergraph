@@ -238,3 +238,15 @@ def test_cst_ac14_the_verb_takes_no_month(repo: Path, tmp_path: Path) -> None:  
     assert code == 0, err
     assert doc["roots"] == [{"state_root": str(s["gone"]), "rows": 5}]
     assert _ids(rows.stats_path(s["home"], s["month"])) == {"run-live"}
+
+
+def test_cst_ac6_a_home_with_no_stats_folder_cleans_the_index(repo: Path, tmp_path: Path) -> None:  # CST-AC6
+    import shutil
+
+    s = seed(tmp_path)
+    shutil.rmtree(s["home"] / "stats")
+    code, doc, err = cli(repo, None, "stats", "forget")
+    assert code == 0, err
+    index = json.loads((s["home"] / "index.json").read_text(encoding="utf-8"))
+    assert [r["path"] for r in index["roots"]] == [str(s["live"])]
+    assert not (s["home"] / "stats").exists()  # nothing to rewrite, and no folder made for a lock

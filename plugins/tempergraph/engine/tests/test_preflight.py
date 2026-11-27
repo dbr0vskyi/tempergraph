@@ -1,4 +1,4 @@
-"""Registry, judge executor selection and the preflight refusals (EXI-B16, EXI-B17, EXI-B24, EXI-B1, B10, B12;
+"""Registry, judge executor selection and the preflight refusals (EXI-B16, EXI-B17, EXI-B24, EXI-B1, EXI-B26, EXI-B27, B10, B12;
 EXI-AC2, AC-8)."""
 
 from __future__ import annotations

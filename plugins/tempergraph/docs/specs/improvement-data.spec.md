@@ -4,6 +4,21 @@
 
 What the self-improvement loop ([SIL](self-improvement.spec.md), [PRP](improvement-proposals.spec.md), [FBK](feedback-and-judge-reliability.spec.md), [LSN](workflow-lessons.spec.md)) needs to read, stated as requirements on the run data store that the observability design owns: the per-repository state under `.tempergraph/` and the cross-machine aggregate, which in this release is the directory sink of [CST](central-run-stats.spec.md). This spec designs no store of its own ([ADR `improvement-data-is-a-requirement-on-the-run-store`](../adr/improvement-data-is-a-requirement-on-the-run-store.adr.md)): it lists the records and fields the loop reads, which may leave the machine and which may not, the events the loop emits, the parameters whose values must carry provenance, and the figures that measure the loop itself. The requirements add to what [OBS](observability-and-cost.spec.md) records; where it names a field differently, its name wins. Pseudonymous machine ids and keyed request digests are the smallest identity that makes cross-machine pattern counting work without sending text. The analysis behind it is [research `self-improvement-gap-analysis`](../research/self-improvement-gap-analysis.rsrch.md) F2. The loop, its reports and the monitor depend on it.
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `central-run-stats.spec.md`: identity and privacy (CST-B11)
+- `feedback-and-judge-reliability.spec.md`: label record (FBK-B8)
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `overview.spec.md`: observability never changes a run (OVR-B4); secrets scrubbed (OVR-B11)
+- `reruns-and-feedback.spec.md`: reruns, rewinds and feedback
+- `run-events.spec.md`: in-process observers (EVT-B23)
+- `run-settings-and-overrides.spec.md`: run settings and overrides
+- `security.spec.md`: the publish boundary is a file boundary (SEC-B9)
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+
 ## Behaviours
 
 ### IMD-B5 Join keys

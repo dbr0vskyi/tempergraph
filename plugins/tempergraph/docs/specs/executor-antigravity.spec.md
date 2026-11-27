@@ -4,6 +4,10 @@
 
 The `antigravity` executor runs each step attempt as one headless Antigravity CLI session: `agy` in streaming mode, the prompt sent as one `stream-json` user event on standard input and the event stream read from standard output, under the [executor interface](executor-interface.spec.md). Facts about the CLI come from [research `antigravity-cli-headless`](../research/antigravity-cli-headless.rsrch.md). `agy` reports tokens but no cost, has no per-invocation flag for settings, permission rules or MCP servers, keeps its config home under `~/.gemini`, and its plan mode is not an enforcement boundary. So the executor restricts a session only through an isolated session home with generated configuration and an engine-owned gatekeeper hook ([ADR `isolated-config-home-for-antigravity`](../adr/isolated-config-home-for-antigravity.adr.md)), and declares judge restriction false until probes P-AG-1 to P-AG-3 confirm that design; until then its steps are judged on an executor that can restrict tools ([ADR `cross-executor-judging`](../adr/cross-executor-judging.adr.md)). The probes P-AG-1 to P-AG-10, none run yet, are listed in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md) under EAG. Workflow authors and operators who choose this executor depend on what it declares.
 
+## Depends on
+
+- `executor-interface.spec.md`: cross-executor judge (EXI-B10)
+
 ## Behaviours
 
 ### EAG-B8 Declared capabilities

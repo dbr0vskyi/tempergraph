@@ -36,14 +36,14 @@ We will add the capability `skill:<plugin>:<name>`. It is not read-only (a skill
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | Claude Code's headless permission layer can allow the skill tool; whether a per-skill rule is accepted is probe P-CC-8. Until it passes, the claude executor allows the skill tool and the after-the-fact tool record checks the skill name. | [ECC-B7](../specs/executor-claude-code.spec.md) |
+| K1 | Measured on Claude Code 2.1.332 (live row L-44): an allow rule `Skill(<plugin>:<name>)` does not limit which skills run, and a deny rule `Skill(<name>)` does. So the claude executor allows each declared skill by name, denies by name every other skill the session lists, and switches skills off for a step that declares none; the tool record still names each skill called. | [ECC-B7, ECC-B25](../specs/executor-claude-code.spec.md) |
 | K2 | The Agent SDK exposes skills like Claude Code when the step's setting sources include the workflow plugin. | [EAS](../specs/executor-agent-sdk.spec.md) |
 
 ## Consequences
 
 - Positive: temperspec's skill-using steps keep "grant exactly what is declared".
 - Negative: one more probe on each of two executors.
-- Risk: a per-skill rule is not supported and the bare tool is allowed. Mitigation: the tool record names the skill called; a call to an undeclared skill is a `denied`-class friction finding ([TSA](../specs/tool-surface-audit.spec.md)).
+- Risk: a skill the session lists appears after the listing launch read the list (a CLI update between the two launches). Mitigation: the tool record names the skill called; a call to an undeclared skill is a `denied`-class friction finding ([TSA-B14](../specs/tool-surface-audit.spec.md)).
 
 ## Revisit when
 

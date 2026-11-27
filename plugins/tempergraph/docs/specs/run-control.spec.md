@@ -4,6 +4,14 @@
 
 The one control an observer may ask for: stop a live run. A person asks for it with the `stop` verb, typed or filled into the prompt by the monitor and sent by the person; the orchestration supervisor stops its node runs with the same verb ([ORC-B17, ORC-B24, ORC-B26](orchestration.spec.md)). The running engine stops through the launcher's stop contract ([EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15](executor-interface.spec.md)), so the thread ends resumable and nothing the engine already wrote is lost. A stop never decides a gate: a run paused for a person is already stopped, and its decision stays theirs. Why a request file and no pause or skip verb: [ADR `stop-verb-as-the-only-observer-control`](../adr/stop-verb-as-the-only-observer-control.adr.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: classification (PRV-B13)
+- `durability-and-resume.spec.md`: cut-off attempt (DUR-B2)
+- `local-observability-store.spec.md`: state root top level (LOS-B7); run folder (LOS-B8); session folder (LOS-B9)
+- `run-events.spec.md`: run started (EVT-B10); keys added to existing records (EVT-B16)
+- `runs-without-a-final-exit.spec.md`: a lost runner is a final exit (SIL-B29)
+
 ## Behaviours
 
 ### RCT-B6 Stop writes one request file

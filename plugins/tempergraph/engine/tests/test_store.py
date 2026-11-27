@@ -151,3 +151,27 @@ def test_engine_log_filtered_by_thread(repo: Path) -> None:
                                              + json.dumps({"thread_id": "demo/T-9", "msg": "other"}) + "\nbad\n")
     code, text, _ = cli(repo, None, "logs", "demo/T-1", "--kind", "engine")
     assert code == 0 and text == {"thread_id": "demo/T-1", "msg": "mine"}  # one line, parsed by the helper
+
+
+def test_sco_ac7_store_prune_removes_journals_past_90_days(repo: Path) -> None:  # SCO-AC7 (SCO-B17)
+    import json as _json
+    from datetime import UTC, datetime, timedelta
+
+    from tempergraph.observe.supervision_cost import journal_path
+    from tempergraph.store.layout import home_path
+
+    def journal(session: str, days_ago: int) -> Path:
+        p = journal_path(home_path(), "claude-code", session)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        at = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat().replace("+00:00", "Z")
+        p.write_text(_json.dumps({"kind": "session", "at": at}) + "\n", encoding="utf-8")
+        p.with_suffix(".offsets.json").write_text("{}\n", encoding="utf-8")
+        return p
+
+    old, new = journal("s-old", 91), journal("s-new", 1)
+    code, doc, _ = cli(repo, None, "store", "prune", "--dry-run")
+    assert code == 0 and doc["journals_would_remove"] == [str(old), str(old.with_suffix(".offsets.json"))]
+    assert old.exists()
+    code, doc, _ = cli(repo, None, "store", "prune", "--json")
+    assert code == 0 and str(old) in doc["journals_removed"]
+    assert not old.exists() and not old.with_suffix(".offsets.json").exists() and new.exists()

@@ -4,6 +4,26 @@
 
 A sub-workflow unit runs another registered workflow, the child, as one unit of a parent workflow. The compiler states the shape (a registered workflow compiled as a subgraph under the parent's checkpointer, depth at most three, no recursion, [CMP](compiler-and-flow.spec.md)) and flow extensions map one over items ([FLX-B7](flow-extensions.spec.md)); this spec fills in which version of the child runs, what it reads and gives back, and where its records, spend, pauses, outcome and findings go ([research `release-three-readiness-and-gaps`](../research/release-three-readiness-and-gaps.rsrch.md) F3, [ADR `a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap`](../adr/a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md)). The first asker is a delivery workflow whose repository setup should be a workflow of its own, used alone or inside the delivery run; the design names no workflow ([ADR `the-engine-names-no-workflow`](../adr/the-engine-names-no-workflow.adr.md)), and any registered workflow can be a child. Workflow authors, status, carrying ([CAR](run-state-on-a-branch.spec.md)), the monitor and the improvement loop depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `compiler-and-flow.spec.md`: state channels (CMP-B17)
+- `contracts.spec.md`: step fields (CON-B6); template grammar (CON-B8)
+- `judge-calibration.spec.md`: judge calibration and acceptance
+- `observability-and-cost.spec.md`: observability and cost
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `run-outcome.spec.md`: the outcome file (OUT-B8); the outcome record (OUT-B18)
+- `run-settings-and-overrides.spec.md`: layers (RST-B22)
+- `run-state-on-a-branch.spec.md`: run state carried on a branch
+- `self-improvement.spec.md`: self-improvement loop
+- `state-and-run-migration.spec.md`: what a thread records (MIG-B8); a workflow changed under a thread (MIG-B15)
+- `step-values-and-template-keys.spec.md`: template keys (VAL-B8)
+- `upgrade-workflow.spec.md`: built-in upgrade workflow
+- `version-metadata.spec.md`: workflow version fields (VER-B14); workflow change notes (VER-B17)
+- `workflow-package.spec.md`: loading manifests and levels (PKG-B15)
+- `workflow-upgrade.spec.md`: a sub-workflow's change reaches its parent (WUP-B6)
+- `workspace-and-concurrency.spec.md`: what needs git (WSP-B18)
+
 ## Behaviours
 
 ### SWF-B1 A child as a unit

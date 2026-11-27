@@ -4,6 +4,13 @@
 
 How a plan that took the arm `phases` of the switch `code_mode` ([code mode](code-mode.spec.md)) is built. After the expand step has written its task rows, the phase step runs once for each phase of the plan, one after another, a phase item each. A phase item is a session of its own that builds only that phase's rows, tests first, and is committed and checked on its own. The code step then runs as the join, on the whole change. A large plan so gets a fresh context for each phase, and a phase that fails runs again alone, with the phases already committed left as they are ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)). A phase's gate has no line back to an earlier step ([MAP-B11](../../../tempergraph/docs/specs/map-unit.spec.md)), so every check of the whole change and the lines back to the plan, discovery and triage steps stay with the code step's gate. The arm `single` is unchanged: its one code session builds the whole plan ([CDM-B6](code-mode.spec.md)). A step is entered when its first attempt of a visit begins, and the commit at which it was entered is the one the run's branch holds at that moment. The owner who waits for a large plan and the maintainers of the plan, expand and code steps depend on it. Part of the [overview](overview.spec.md); the unit is [phase](phase.spec.md).
 
+## Depends on
+
+- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1)
+- `../../../tempergraph/docs/specs/map-unit.spec.md`: trip back reruns every item (MAP-B3); item budgets, pauses and the join (MAP-B10); what is refused (MAP-B11)
+- `kept-marks.spec.md`: the code step is told to build only the rows without a mark (KMK-B7); a kept row's file need not change again (KMK-B8); a phase's marks are written in one edit after its tests pass (KMK-B9)
+- `session-record-checks.spec.md`: a phase's source changed before its tests fails the code check (SRC-B6); without a session record the criterion does not apply (SRC-B8)
+
 ## Behaviours
 
 ### PHC-B1 One phase item for each phase, in plan order

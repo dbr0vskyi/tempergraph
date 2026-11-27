@@ -4,6 +4,16 @@
 
 A paused run resumes only where its state root is. Until pipelines arrive, a person may carry one run's state through git: the engine commits a scrubbed, thread-scoped copy of the run's state to a state branch of its own, pushes it, and another machine pulls it and resumes; when the thread finishes, the engine deletes the state branch locally and on the remote, so no trace stays in the work branch, its pull request or the remote ([research `carrying-run-state-on-a-branch`](../research/carrying-run-state-on-a-branch.rsrch.md), [ADR `a-run-carries-scrubbed-thread-state-on-its-own-branch`](../adr/a-run-carries-scrubbed-thread-state-on-its-own-branch.adr.md)). Carrying is off unless a person turns it on for the run, and it never carries transcripts, prompts, operator config, executor scratch or another thread's state. A person moving a paused run between machines, and later the pipeline stage ([PRO](promotion-check.spec.md)), depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `local-observability-store.spec.md`: state root top level (LOS-B7)
+- `overview.spec.md`: observability never changes a run (OVR-B4)
+- `security.spec.md`: canary (SEC-B2); scrubbing (SEC-B8)
+- `state-and-run-migration.spec.md`: state and run migration across releases
+- `supervision-metrics.spec.md`: supervision metrics
+- `worktree-mode.spec.md`: resolving auto (WTR-B18); locations and names (WTR-B20)
+
 ## Behaviours
 
 ### CAR-B1 Pause on one machine, resume on another

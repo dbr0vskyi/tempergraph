@@ -4,6 +4,35 @@
 
 A workflow package is one folder that is at the same time a Claude Code plugin and a tempergraph workflow ([ADR `a-workflow-package-is-one-claude-plugin`](../adr/a-workflow-package-is-one-claude-plugin.adr.md)), with three halves: the plugin half (the prompts, judge briefs, skills and agents specific to the workflow, in the layout Claude Code reads, [research `workflow-packages-authoring-and-good-outcomes`](../research/workflow-packages-authoring-and-good-outcomes.rsrch.md) A1, A2); the Python half (the declaration module the engine imports to build the `WorkflowSpec`, the checks, routes, resolver and finalizer it names, and the Python requirements the engine installs); and the docs half (the workflow's own design set in the engine's shape, provisional until temperspec owns the format, [ADR `the-workflow-docs-set-is-provisional-until-temperspec-owns-it`](../adr/the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md)). Its good outcome is a file of its own owned by [OUT](run-outcome.spec.md); authoring writes a package through the scaffold ([SCF](blueprint-and-scaffold.spec.md)), and a person may write one by hand. This spec owns the layout, the engine manifest, the declaration format and builders, the callable signatures [CHK](check-contract-and-command-runs.spec.md) and [FIN](finalizer-contract.spec.md) do not already own, how the engine loads a package, what of the plugin reaches each executor, and the minimal package; it gives `load()` of [WFM](workflow-model.spec.md) its body. Registration and dependency installation stay in [UPD](engine-update.spec.md); version fields, digests and the stamp in [VER](version-metadata.spec.md). Design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint, scaffold and authoring checks
+- `check-contract-and-command-runs.spec.md`: the context a check receives (CHK-B10); command resolution (CHK-B11); the check worker and its limit (CHK-B16)
+- `contracts.spec.md`: workflow fields (CON-B4); template grammar (CON-B8); input and routing declarations (CON-B9)
+- `engine-cli.spec.md`: engine cli
+- `engine-update.spec.md`: workflow registry (UPD-B20)
+- `eval-suites.spec.md`: workflow cases and trials (EVS-B12)
+- `executor-claude-code.spec.md`: a step calls only the skills it declares (ECC-B25)
+- `executor-messages-api.spec.md`: messages api executor
+- `finalizer-contract.spec.md`: what it receives (FIN-B6)
+- `improvement-proposals.spec.md`: change classes (PRP-B14); case set (PRP-B17)
+- `independence-guard.spec.md`: independence guard and judge views
+- `judge-and-verdict.spec.md`: judge and verdict
+- `judge-calibration.spec.md`: gold case set (JCL-B9)
+- `lifecycle-and-evals.spec.md`: lifecycle and evals
+- `map-unit.spec.md`: map unit
+- `overview.spec.md`: the engine names no workflow (OVR-B10); read-only verbs call no model (OVR-B15); refusal before spend (OVR-B17)
+- `plugin-shell.spec.md`: executor choice with consequences (SHL-B3)
+- `prompt-audit.spec.md`: prompt audit
+- `prompt-rendering.spec.md`: prompt rendering and output contract
+- `run-outcome.spec.md`: run-level good outcome
+- `script-units-and-hybrid-steps.spec.md`: script declaration (SCR-B5)
+- `version-metadata.spec.md`: engine release record (VER-B8); workflow version fields (VER-B14); stamp record (VER-B16); workflow change notes (VER-B17)
+- `workflow-audit.spec.md`: workflow audit
+- `workflow-authoring.spec.md`: workflow authoring
+- `workflow-lessons.spec.md`: workflow lessons
+- `workflow-model.spec.md`: workflow model and validation
+
 ## Behaviours
 
 ### PKG-B1 One folder, two readers
@@ -82,7 +111,7 @@ WHEN a package ships `hooks/hooks.json` or a `hooks` key (`plugin-hooks`), `.mcp
 
 ### PKG-B13 Engine manifest
 
-WHEN `tempergraph.json` is read by `read_manifest(package_path) -> PackageManifest | list[Finding]`, with no import and no model THE engine SHALL read `schema_version` (`1`); `name` (the workflow name, PKG-B14); `entry` (`<module>:<function>`, `<module>` a folder under `workflow/`); `workflow_api` (the declaration interface level, [VER-B8](version-metadata.spec.md)); `docs` (`provisional` or a rule set id, PKG-B21); optional `surfaces` (executor to `SurfaceForm`, PKG-B24); optional `audit` `{ignore: [{rule, unit?, reason, until?}]}` of accepted findings ([AUD](workflow-audit.spec.md)), an entry without a reason being the error `audit-ignore-invalid`; and optional `step_files`, package-relative glob patterns of the files its steps are told to read at run time (standards, rule files, reference documents, [PRP-B14](improvement-proposals.spec.md)), an absolute pattern or one with `..` being the error `manifest`; warn `manifest-field-unknown` on any other field; never repeat the version, which comes from `plugin.json` ([VER-B14](version-metadata.spec.md)); treat a folder with no `tempergraph.json` as not a workflow package, `register` refusing it and reconcile skipping the plugin silently; and give `package_files(package_path) -> PackageInventory`, what is where, to digests, audit and the docs check.
+WHEN `tempergraph.json` is read by `read_manifest(package_path) -> PackageManifest | list[Finding]`, with no import and no model THE engine SHALL read `schema_version` (`1`); `name` (the workflow name, PKG-B14); `entry` (`<module>:<function>`, `<module>` a folder under `workflow/`); `workflow_api` (the declaration interface level, [VER-B8](version-metadata.spec.md)); `docs` (`provisional` or a rule set id, PKG-B21); optional `surfaces` (executor to `SurfaceForm`, PKG-B24); optional `audit` `{ignore: [{rule, unit?, reason, until?}]}` of accepted findings ([AUD](workflow-audit.spec.md)), an entry without a reason being the error `audit-ignore-invalid`; and optional `step_files`, package-relative glob patterns of the files its steps are told to read at run time (standards, rule files, reference documents, [PRP-B14](improvement-proposals.spec.md)), an absolute pattern or one with `..` being the error `manifest`; optional `text_budgets` (PKG-B26); warn `manifest-field-unknown` on any other field; never repeat the version, which comes from `plugin.json` ([VER-B14](version-metadata.spec.md)); treat a folder with no `tempergraph.json` as not a workflow package, `register` refusing it and reconcile skipping the plugin silently; and give `package_files(package_path) -> PackageInventory`, what is where, to digests, audit and the docs check.
 
 - GIVEN a plugin folder without `tempergraph.json` WHEN `workflows register` runs on it THEN it is refused
 
@@ -142,7 +171,7 @@ WHEN `validate` runs the docs check THE engine SHALL keep a criterion's text onl
 
 ### PKG-B23 What reaches each executor
 
-WHEN plugin content is needed in a session THE engine SHALL render every prompt, brief, stance and lesson itself on every executor ([PRM](prompt-rendering.spec.md)); reach skills and agents by one declared route per executor or refuse the step before spend (OVR-B17, [ADR `plugin-content-reaches-each-executor-by-a-declared-route`](../adr/plugin-content-reaches-each-executor-by-a-declared-route.adr.md)): on `claude` through `--plugin-dir` with `skill:` allow rules ([ECC](executor-claude-code.spec.md), P-CC-8, P-CC-9); on `agent-sdk` through `plugins=[{"type": "local", "path": <root>}]`, an init message that does not list the plugin being `session_failed: plugin_not_loaded`; on `messages-api` not at all ([EMA](executor-messages-api.spec.md)), a template naming an agent warning; on `antigravity` not until P-AG-10, then copied into the session's isolated config home ([ADR `isolated-config-home-for-antigravity`](../adr/isolated-config-home-for-antigravity.adr.md)); agents through the loaded plugin and the `subagent` capability; never load the workflow plugin into a judge session (`--bare` or `--setting-sources ""`, `setting_sources=[]` with no `plugins`, [GRD](independence-guard.spec.md)); refuse a skill capability whose `skills/<name>/SKILL.md` is missing from the package or an installed dependency; and refuse the other executors' routes `not_in_release` while only `claude` ships ([ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md)).
+WHEN plugin content is needed in a session THE engine SHALL render every prompt, brief, stance and lesson itself on every executor ([PRM](prompt-rendering.spec.md)); reach skills and agents by one declared route per executor or refuse the step before spend (OVR-B17, [ADR `plugin-content-reaches-each-executor-by-a-declared-route`](../adr/plugin-content-reaches-each-executor-by-a-declared-route.adr.md)): on `claude` through `--plugin-dir`, each declared skill allowed and every other listed skill denied ([ECC-B25](executor-claude-code.spec.md), P-CC-8, P-CC-9); on `agent-sdk` through `plugins=[{"type": "local", "path": <root>}]`, an init message that does not list the plugin being `session_failed: plugin_not_loaded`; on `messages-api` not at all ([EMA](executor-messages-api.spec.md)), a template naming an agent warning; on `antigravity` not until P-AG-10, then copied into the session's isolated config home ([ADR `isolated-config-home-for-antigravity`](../adr/isolated-config-home-for-antigravity.adr.md)); agents through the loaded plugin and the `subagent` capability; never load the workflow plugin into a judge session (`--bare` or `--setting-sources ""`, `setting_sources=[]` with no `plugins`, [GRD](independence-guard.spec.md)); refuse a skill capability whose `skills/<name>/SKILL.md` is missing from the package or an installed dependency; and refuse the other executors' routes `not_in_release` while only `claude` ships ([ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md)).
 
 - GIVEN a judged gate on `claude` WHEN its judge session starts THEN its launch loads no workflow plugin
 
@@ -158,6 +187,13 @@ WHEN the scaffold writes a one-step blueprint THE scaffold SHALL write the small
 
 - GIVEN the minimal package WHEN `claude plugin validate --strict` runs THEN it passes
 
+### PKG-B26 Text budgets
+
+WHEN `validate` reads a package whose `tempergraph.json` maps a package-relative glob to a number of characters under `text_budgets` THE engine SHALL fail with `text-over-budget` for each matched file that holds more characters than the smallest budget matching it, a budget that is not a positive whole number or a glob with `..` being the error `manifest`; a package with no `text_budgets` has no budget.
+
+- GIVEN `text_budgets` `{"prompts/*.md": 12000}` and a 12,400-character template WHEN `validate` runs THEN it fails with `text-over-budget` naming the template
+- GIVEN no `text_budgets` WHEN `validate` runs THEN no file has a budget
+
 ## Acceptance criteria
 
 - PKG-AC1 (PKG-B1, PKG-B11, PKG-B13, PKG-B25): The minimal package passes `claude plugin validate`, loads, validates, compiles and runs on scripted stand-ins with no field beyond those listed
@@ -167,6 +203,7 @@ WHEN the scaffold writes a one-step blueprint THE scaffold SHALL write the small
 - PKG-AC5 (PKG-B7, PKG-B23, PKG-B24): No judge session of any executor loads a workflow plugin (checked on the session-started record of each conformance fixture), and each executor's skill route or refusal has a fixture
 - PKG-AC6 (PKG-B9, PKG-B21, PKG-B22): The docs check passes on the scaffold's output, and fails with `docs-drift` on each of a unit without a spec, a missing criterion id, an unknown id and a changed text
 - PKG-AC7 (PKG-B21): The content digest changes when any of `outcome.json`, a prompt, a brief, a skill, an agent, a file declared in `step_files`, a Python source or `pyproject.toml` dependencies changes, and not when only `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or a file of another folder that `step_files` does not declare changes
+- PKG-AC9 (PKG-B26): A fixture package whose template is above its `text_budgets` glob's budget fails `validate` with `text-over-budget` and passes under a larger budget, and a negative budget stops the manifest
 - PKG-AC8 (PKG-B8, PKG-B10, PKG-B14): A package whose plugin name lacks the `-tgraph` suffix (or carries `.tgflow`, `-tg-graph`) fails to load with `plugin-name-suffix`; each workflow name rule has a fixture; `run <workflow>-tgraph` starts the same workflow as `run <workflow>`; the scaffold writes `<name>-tgraph`; and no engine source or test names a package
 
 ## Open questions

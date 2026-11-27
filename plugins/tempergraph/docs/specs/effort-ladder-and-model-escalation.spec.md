@@ -4,6 +4,25 @@
 
 A retry may run with more effort, and as a last resort on the next model tier up, only on evidence that a stronger session is the likely fix; every other failure retries on the same rung or pauses, as it would without a ladder ([research `effort-ladders-and-one-step-model-escalation`](../research/effort-ladders-and-one-step-model-escalation.rsrch.md), [research `judge-model-by-risk-and-evidence-for-escalation`](../research/judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [ADR `ladders-climb-only-on-trusted-substantive-evidence`](../adr/ladders-climb-only-on-trusted-substantive-evidence.adr.md)). Workflow authors declare the ladder; the gate, the run records, reports and improvement trials depend on what it does. It replaces release 1's retry-count model list ([BUD-B7](budgets-and-failures.spec.md)). A ladder changes only the effort or model of attempts the retry budget already allows: it never adds an attempt, never reaches a judge, member, chair or slot, and never runs where the workflow did not declare it. The remedy order for one unit is the effort ladder, then a re-arm to a more detailed decomposition ([CXR](complexity-routing.spec.md)), then one model step, then a person ([ADR `complexity-chooses-a-decomposition-through-a-measured-switch`](../adr/complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: cause picks the counter (BUD-B1); causes that escalate at once (BUD-B11)
+- `caller-provenance.spec.md`: widening and answers need a person (PRV-B21); other uses of provenance (PRV-B22)
+- `complexity-routing.spec.md`: arm contract (CXR-B4); declaring a complexity switch (CXR-B7); re-arm rules (CXR-B11)
+- `gate-and-human.spec.md`: what pauses as an escalation (HUM-B7); what never pauses (HUM-B11)
+- `improvement-data.spec.md`: improvement data requirements
+- `improvement-proposals.spec.md`: proposal record (PRP-B13)
+- `judge-calibration.spec.md`: acceptance state (JCL-B17)
+- `judge-model-by-risk.spec.md`: resolution order (JRK-B8)
+- `map-unit.spec.md`: map unit
+- `measured-switches.spec.md`: arm overrides (SWM-B6)
+- `observability-and-cost.spec.md`: observability and cost
+- `promotion-check.spec.md`: a new version runs unpromoted (PRO-B4); stage of a run (PRO-B7); promotion stamp (PRO-B10)
+- `run-events.spec.md`: run started (EVT-B10); keys added to existing records (EVT-B16)
+- `run-settings-and-overrides.spec.md`: layers (RST-B22); three rules that keep the guarantees (RST-B23)
+- `version-metadata.spec.md`: compatibility changelog entries (VER-B9)
+- `workflow-upgrade.spec.md`: the baseline (WUP-B15); the plan (WUP-B16)
+
 ## Behaviours
 
 ### LAD-B9 Declaring a ladder

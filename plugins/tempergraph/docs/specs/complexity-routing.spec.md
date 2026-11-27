@@ -4,6 +4,15 @@
 
 A workflow may do the same job in a simple shape (one step does the whole task) or a detailed shape (a plan step, a map over its items, a join), and choose per run by how complex the task is or by another parameter, because per-phase work can cost more than one session on small plans while long single sessions time out on large ones ([research `routing-by-complexity-between-decompositions`](../research/routing-by-complexity-between-decompositions.rsrch.md) F1). A complexity switch is a measured switch ([SWM](measured-switches.spec.md)) whose predicate the engine builds from declared measures and a rules file, with five added rules: measures are model-free, the most detailed arm is the failsafe and wins the margin, re-arming runs one way and once, every arm honours one arm contract for the units after it, and the choice is reported by arm and zone ([ADR `complexity-chooses-a-decomposition-through-a-measured-switch`](../adr/complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)); no new unit kind is added ([ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)). Workflow authors, the gate, effort ladders ([LAD](effort-ladder-and-model-escalation.spec.md)) and the promotion check ([PRO](promotion-check.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `compiler-and-flow.spec.md`: compiler and flow
+- `effort-ladder-and-model-escalation.spec.md`: climbing evidence (LAD-B10); escalation conditions (LAD-B12)
+- `map-unit.spec.md`: declaration (MAP-B7); what is refused (MAP-B11)
+- `measured-switches.spec.md`: shadow mode (SWM-B5); re-arming (SWM-B7)
+- `promotion-check.spec.md`: promotion check and workflow stages
+- `schedule-ticks-and-unattended-fires.spec.md`: schedule ticks and unattended fires
+
 ## Behaviours
 
 ### CXR-B1 Zones

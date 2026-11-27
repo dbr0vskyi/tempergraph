@@ -4,19 +4,24 @@
 
 The discovery and setup steps read before they write. When a step has two or more subjects to read (the gaps of the triage note, the component folders of a repository), it first starts one read-only reading session for each, a few at a time on the engine's concurrent map ([MAP-B7](../../../tempergraph/docs/specs/map-unit.spec.md), [MAP-B9](../../../tempergraph/docs/specs/map-unit.spec.md)), and its one writing session then closes the gaps or writes the specs from their findings, which reach it as [VAL-B9](../../../tempergraph/docs/specs/step-values-and-template-keys.spec.md) renders them. The reading sessions write no document, so every spec, the hand-off and every commit stay the writing session's, and the criteria of [discovery](discovery.spec.md) and [setup](setup.spec.md) judge its output. A reading session that fails runs again alone ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)), and the sessions in flight share the run's cost cap ([BUD-B12](../../../tempergraph/docs/specs/budgets-and-failures.spec.md)). The owner who waits for a run and the maintainers of the two steps depend on it. Part of the [overview](overview.spec.md).
 
+## Depends on
+
+- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1); one re-ask (JDG-B2)
+
 ## Behaviours
 
-### PRL-B1 One reading session for each gap
+### PRL-B1 One reading session for each gap and each open question to read
 
-WHEN the full discovery step is entered from triage or from the short visit and the triage note lists two or more gaps THE discovery step SHALL start one reading session for each gap.
+WHEN the full discovery step is entered from triage or from the short visit and the triage note lists two or more rows to read THE discovery step SHALL start one reading session for each gap row and one for each uncertainty row that says `Blocks` or `Shapes` and is routed to `code`, `docs` or `source`.
 
 - GIVEN a triage note that lists three gaps WHEN the full discovery step runs THEN three reading sessions run, one for each gap
 - GIVEN a triage note that lists two gaps WHEN the full discovery step runs THEN two reading sessions run
+- GIVEN a triage note that lists one gap and the uncertainty rows U1 (`Shapes`, `Route: code`), U2 (`Blocks`, `Route: owner`) and U3 (`Detail`, `Route: plan`) WHEN the full discovery step runs THEN two reading sessions run, one for the gap and one for U1
 - GIVEN a triage note whose four gaps each say `Covered by` WHEN the run takes the short visit THEN no reading session starts
 
-### PRL-B2 No reading session for fewer than two gaps
+### PRL-B2 No reading session for fewer than two rows to read
 
-WHEN the discovery step is entered and the triage note lists no gap or one gap THE discovery step SHALL start no reading session.
+WHEN the discovery step is entered and the triage note lists fewer than two rows to read (gap rows, and uncertainty rows that say `Blocks` or `Shapes` and are routed to `code`, `docs` or `source`) THE discovery step SHALL start no reading session.
 
 - GIVEN a triage note that lists one gap WHEN the full discovery step runs THEN one writing session runs and no reading session starts
 - GIVEN a triage note that lists no gap and a plan gate that sends the run back to discovery WHEN the discovery step runs THEN one writing session runs and no reading session starts
@@ -109,7 +114,7 @@ WHEN a gate of the workflow judges an attempt THE workflow SHALL start one judge
 
 ## Acceptance criteria
 
-- PRL-AC1 (PRL-B1): In a stand-in run of the full discovery step on a triage note that lists three gaps, three reading sessions run, one for each gap; with two gaps two run; a run that takes the short visit starts none
+- PRL-AC1 (PRL-B1): In a stand-in run of the full discovery step on a triage note that lists three gaps, three reading sessions run, one for each gap; with two gaps two run; a run that takes the short visit starts none; the items read from a note with one gap and uncertainty rows routed to the code, to the owner and to the plan are the gap and the row routed to the code
 - PRL-AC2 (PRL-B2): In a stand-in run of the full discovery step on a triage note that lists one gap, and in one on a note that lists no gap, one writing session runs and no reading session starts
 - PRL-AC3 (PRL-B3, PRL-B11): In a stand-in run in which a plan gate, and in another a code gate, sends the run back to discovery after a visit with three reading sessions, one more writing session runs, no reading session starts, and the brief of that writing session lists the same three findings
 - PRL-AC4 (PRL-B4): In a stand-in run of the setup step on a repository with the folders `src`, `tests`, `docs`, `node_modules` and `.github`, reading sessions run for `src` and `tests` only, and for no other folder

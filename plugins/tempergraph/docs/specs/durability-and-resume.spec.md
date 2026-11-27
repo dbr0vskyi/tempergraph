@@ -4,6 +4,20 @@
 
 A run is a durable thread in a per-workflow SQLite checkpoint under the state root ([ADR `sqlite-checkpointer`](../adr/sqlite-checkpointer.adr.md); Postgres stays a seam for many hosts or about 50 concurrent runs). Resume is defined for every thread state, and the engine reads that state before it spends anything. Status and wait are read-only, model-free observers. Operators, skills, CI and the `tempergraph-monitor` plugin depend on the thread states, the resume rules and the status document; its per-thread detail form is [RDD](run-detail-document.spec.md). State is JSON merged by reducers under a stable thread id, and a fresh run never merges into a thread.
 
+## Depends on
+
+- `contracts.spec.md`: tolerant read (CON-B1)
+- `finalizer-contract.spec.md`: what it returns (FIN-B8)
+- `gate-and-human.spec.md`: what pauses for a usage limit (HUM-B14)
+- `local-observability-store.spec.md`: state root top level (LOS-B7); run folder (LOS-B8); session folder (LOS-B9)
+- `orchestration.spec.md`: orchestration of runs
+- `reruns-and-feedback.spec.md`: rewind (RRN-B16); rerun (RRN-B17); rerun workspace (RRN-B18); thread state against action (RRN-B19)
+- `run-settings-and-overrides.spec.md`: snapshot and resume (RST-B26); effective settings record (RST-B27)
+- `run-state-on-a-branch.spec.md`: run state carried on a branch
+- `runs-without-a-final-exit.spec.md`: a lost runner is a final exit (SIL-B29)
+- `schedule-ticks-and-unattended-fires.spec.md`: scheduled-run ledger (TCK-B23); what a scheduled run adds elsewhere (TCK-B24)
+- `state-and-run-migration.spec.md`: what a thread records (MIG-B8); a thread at its next resume (MIG-B12); one database per checkpoint format (MIG-B13); clearing a pin (MIG-B14)
+
 ## Behaviours
 
 ### DUR-B1 Fresh run never merges
@@ -63,7 +77,7 @@ WHEN `status` or `wait` runs THE engine SHALL open the checkpoint read-only, pro
 
 ### DUR-B11 Status document
 
-WHEN `status` prints a thread THE engine SHALL write one row, under schema version 1, with `thread_id`, `workflow`, `state`, `alive` (from the lock probe), `attempt_in_flight` (unit, item, attempt number, executor, start time), `pending_gates` (unit, item, pause kind, resume command), `finalizer` (the `outcome`, `reason` and `manual_steps` of the `finalize` event, present only for a finalizer that returned manual steps or ended with outcome `error`, [FIN-B8](finalizer-contract.spec.md)), `carry` for a carried thread (`on`, `pushed`, `pulled`, `unpushed` or `delete_failed`, [CAR](run-state-on-a-branch.spec.md)), `engine` and `engine_pin` (`{engine, reason, since}`, [MIG-B8, MIG-B12, MIG-B13, MIG-B14](state-and-run-migration.spec.md)), `last_verdict`, `cost` (`reported`, `estimated`, `incomplete`), `executors` with CLI versions, `log_path` (local only), `alias`, `label`, `origin` (`cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `upgrade`, `hook`, `ci`, `schedule` or `rerun`), `rerun_of`, `reruns` (with `same_branch: true` on a `--same-branch` one) and `superseded_by` ([RRN-B17, RRN-B18](reruns-and-feedback.spec.md)), `settings_digest`, `overridden_keys` and `settings_stale` (true when the settings files now resolve differently from the snapshot, null while one cannot be read, [RST-B27](run-settings-and-overrides.spec.md)), `parent` ([ORC](orchestration.spec.md)), `schedule` (`schedule_id`, `fire_id`, `slot`, and `declared: true` for a pipeline export, [TCK-B23, TCK-B24](schedule-ticks-and-unattended-fires.spec.md)) and `resume_count`.
+WHEN `status` prints a thread THE engine SHALL write one row, under schema version 1, with `thread_id`, `workflow`, `state`, `alive` (from the lock probe), `attempt_in_flight` (unit, item, attempt number, executor, start time), `pending_gates` (unit, item, pause kind, resume command), `finalizer` (the `outcome`, `reason` and `manual_steps` of the `finalize` event, present only for a finalizer that returned manual steps or ended with outcome `error`, [FIN-B8](finalizer-contract.spec.md)), `carry` for a carried thread (`on`, `pushed`, `pulled`, `unpushed` or `delete_failed`, [CAR](run-state-on-a-branch.spec.md)), `engine`, `engine_digest` (the build: a managed engine's folder digest, else the digest of the source it runs from) and `program` (the path of the program that ran the thread's last process, local only as `log_path` is), from the thread's `engine.json`, and `engine_pin` (`{engine, reason, since}`, [MIG-B8, MIG-B12, MIG-B13, MIG-B14](state-and-run-migration.spec.md)), `last_verdict`, `cost` (`reported`, `estimated`, `incomplete`), `executors` with CLI versions, `log_path` (local only), `alias`, `label`, `origin` (`cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `upgrade`, `hook`, `ci`, `schedule` or `rerun`), `rerun_of`, `reruns` (with `same_branch: true` on a `--same-branch` one) and `superseded_by` ([RRN-B17, RRN-B18](reruns-and-feedback.spec.md)), `settings_digest`, `overridden_keys` and `settings_stale` (true when the settings files now resolve differently from the snapshot, null while one cannot be read, [RST-B27](run-settings-and-overrides.spec.md)), `parent` ([ORC](orchestration.spec.md)), `schedule` (`schedule_id`, `fire_id`, `slot`, and `declared: true` for a pipeline export, [TCK-B23, TCK-B24](schedule-ticks-and-unattended-fires.spec.md)) and `resume_count`.
 
 - GIVEN a thread started by a schedule WHEN `status` prints it THEN `origin` is `schedule` and `schedule` holds its ids and slot
 - GIVEN a status reader of an earlier version WHEN it reads a row with a field it does not know THEN it ignores the field ([CON-B1](contracts.spec.md))
@@ -90,6 +104,14 @@ WHEN `wait` names a thread THE engine SHALL exit when the run pauses, completes,
 
 - GIVEN a run that pauses WHEN `wait` is waiting on it THEN `wait` exits 3
 - GIVEN `wait --timeout 5` on a running thread with no change WHEN 5 s pass THEN it exits 5 with state `running`
+
+### DUR-B16 Wait for the first of several threads
+
+WHEN `wait --any` names one or more threads THE engine SHALL exit when the first of them is not running (paused, finished, stopped or unfinished), with that thread's exit code as DUR-B5 gives it and its row, or with 5 and state `running` when the timeout passes, without ending the wait on a new gate verdict of a running thread.
+
+- GIVEN two named threads, one running and one that pauses WHEN `wait --any` is waiting THEN it exits 3 with the paused thread's row
+- GIVEN one named thread that records a new gate verdict and keeps running WHEN `wait --any --timeout 5` waits THEN it exits 5 with state `running` after 5 s
+- GIVEN two named threads WHEN `wait` runs without `--any` THEN it exits 2
 
 ### DUR-B6 Old checkpoints resume
 
@@ -118,10 +140,11 @@ WHEN a start gives `--alias <name>` THE engine SHALL keep it in `runs/aliases.js
 - DUR-AC4 (DUR-B6): Fixture checkpoints from each earlier release resume in tests, and the oldest is never regenerated
 - DUR-AC5 (DUR-B1, DUR-B10): A fresh start on an existing thread and a second process on a held lock both exit 2 before any spend
 - DUR-AC6 (DUR-B2): A killed attempt reruns under the same number without charging the budget
-- DUR-AC7 (DUR-B11): A status row of a fixture thread holds every field of DUR-B11 that applies to it: `finalizer` equal to the `finalize` event's `outcome`, `reason` and `manual_steps` for a finalizer that returned manual steps, with `outcome` `error` and no steps for one that raised, and absent for one that published or skipped without steps
+- DUR-AC7 (DUR-B11): A status row of a fixture thread holds every field of DUR-B11 that applies to it, two threads run by two copies of one engine version with different sources showing different `engine_digest` values: `finalizer` equal to the `finalize` event's `outcome`, `reason` and `manual_steps` for a finalizer that returned manual steps, with `outcome` `error` and no steps for one that raised, and absent for one that published or skipped without steps
 - DUR-AC8 (DUR-B7): A setting changed at a resume applies to the next attempt and to every later resume
 - DUR-AC9 (DUR-B8): An alias held by a live thread is refused to a second start and freed when the thread finishes
 - DUR-AC10 (DUR-B12): A fixture thread paused by a step session that the usage limit ended and resumed with no decision runs that session under the same attempt number with every counter equal to its value before the session, and a fixture thread paused by a judge session that the usage limit ended and resumed with no decision starts the judge and not the step
 - DUR-AC11 (DUR-B13): The `status` row of a fixture thread paused for a usage limit holds `usage_limit_resets_at` equal to the reset its stand-in executor reported (the latest of them when several gates of a parallel block are paused for it), null when it reported none, and the row of that thread while it runs after a `resume` holds no such key
 - DUR-AC12 (DUR-B14): A fixture thread a person stopped and a fixture thread stopped with its budget spent are each refused on `resume` with exit 2 and a message naming the unit and the reason `person` or `budget`, writing nothing, and a `retry` resume of each is accepted
 - DUR-AC13 (DUR-B15): The `status --json` row of a fixture thread stopped by request holds a `resume` command that a plain `resume` accepts, and the rows of a fixture paused thread and a fixture running thread hold none
+- DUR-AC14 (DUR-B16): `wait --any` over a fixture finished thread and a fixture paused thread exits with the code and row of the first named thread that is not running, a running fixture thread whose verdict changes does not end it before the timeout, which exits 5 with state `running`, and `wait` naming two threads without `--any` exits 2

@@ -4,6 +4,24 @@
 
 Every way a person can make a run do work again, and every way their words reach the work. The engine already retries by budget, re-runs infra failures, re-opens stopped runs and takes a person's `retry` or `back` with feedback at a pause ([BUD](budgets-and-failures.spec.md), [HUM](gate-and-human.spec.md), [DUR](durability-and-resume.spec.md)). This spec adds feedback everywhere a person resumes, given once or as a lasting ruling that every later attempt of the units it names, and their judges, are shown until it is revoked ([ADR `feedback-can-be-a-lasting-ruling`](../adr/feedback-can-be-a-lasting-ruling.adr.md)); rewind, a person's decision that sends a live thread back to any unit it has completed; and rerun, a new thread forked from any earlier thread at the checkpoint before a chosen unit, keeping every earlier verdict and linked to its source ([ADR `rewind-on-the-thread-rerun-as-a-linked-fork`](../adr/rewind-on-the-thread-rerun-as-a-linked-fork.adr.md), [research `config-overrides-and-reruns-gaps`](../research/config-overrides-and-reruns-gaps.rsrch.md)). Settings may change at every one of these points ([RST-B26](run-settings-and-overrides.spec.md)). Every retry, rewind and rerun starts a fresh session, spends nothing before the restarted unit's first session, and refuses before it writes ([CLI-B17](engine-cli.spec.md)). People answering runs, orchestration and the improvement loop depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: trip back clears (BUD-B4); automatic re-open (BUD-B6)
+- `contracts.spec.md`: thread states and decisions (CON-B12)
+- `durability-and-resume.spec.md`: resume by thread state (DUR-B9)
+- `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
+- `flow-extensions.spec.md`: operator breakpoints (FLX-B10)
+- `gate-and-human.spec.md`: several pending gates (HUM-B3); decisions (HUM-B12)
+- `judge-and-verdict.spec.md`: judge and verdict
+- `local-observability-store.spec.md`: state root top level (LOS-B7)
+- `orchestration.spec.md`: orchestration of runs
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+- `prompt-rendering.spec.md`: sections and their order (PRM-B6)
+- `run-settings-and-overrides.spec.md`: one resolver (RST-B16)
+- `security.spec.md`: canary (SEC-B2); scrubbing (SEC-B8)
+- `state-and-run-migration.spec.md`: a workflow changed under a thread (MIG-B15)
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### RRN-B12 Every way to run again
@@ -77,6 +95,7 @@ WHEN a person rewinds to a unit the gate does not list as a back target THE engi
 WHEN `rerun <workflow> <thread> --from <unit>[.<item>] | --from start [options]` runs from a source in any state but `none` and `running` (else exit 2) THE engine SHALL name the new thread `<workflow>/<task_id>~r<n>` (`n` one above the source's highest rerun) or `--task-id <id>`, refused if it exists; fork at the source's checkpoint just before the step node of `<unit>` on its last visit (`start` the checkpoint before the first unit), writing the new thread from its values and leaving the source's history unchanged; keep the resolved input (never resolved again), the verdicts, judgements, artifacts, answers and event values of every unit before the fork point, the source's settings snapshot then the rerun's own `--set`, `--unset` and `--profile`, and rulings unless `--drop-rulings`; clear `<unit>` and everything after it as a trip back; check the current content against the source's by the tests of [MIG-B15](state-and-run-migration.spec.md) with `<unit>` pending, refusing a failed test with exit 2; require `--accept-external` as for rewind; give fresh retry, loop, human-cap and attempt budgets, the run cost cap counting the new thread only; record `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`, add `lineage.json` listing reruns to the source's run folder ([LOS-B7](local-observability-store.spec.md)) and show `rerun_of`, `reruns` and `superseded_by` on status rows; and with `rerun --check` print the fork point, workspace plan, settings and external-effects list and create nothing (OVR-B15).
 
 - GIVEN `rerun` from a `running` thread WHEN run THEN it exits 2
+- GIVEN a source whose `review` sent the run back to `draft` and which paused on that visit of `draft` WHEN `rerun --from draft` runs THEN the new thread starts at `draft` and goes on to `review`
 
 ### RRN-B18 Rerun workspace
 

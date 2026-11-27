@@ -4,6 +4,10 @@
 
 What chooses, once the plan has passed its gate, between building the plan at once in the one code session (`single`) and having the expand step write its task rows first and then building the plan one phase at a time (`phases`). The choice is the engine's complexity switch `code_mode` ([CXR](../../../tempergraph/docs/specs/complexity-routing.spec.md)): it measures facts that the plan check records, reads its limits from `routing/code_mode.json` in the package, takes `phases` whenever it cannot decide, and lets the operator name the arm when a run starts. The switch is a unit of its own with no session, no gate, no approval and no file. The limits are the plan rule's limits for a simple plan ([plan rule](../../rules/plan.rule.md), and `ts-plan-size` of the [plan spec](plan.spec.md)), so a plan the check passes as `simple` takes `single`, one it passes as `complex` takes `phases`, and no step's own word for its complexity decides the arm. Both arms end in the same code step with the same gate: on `single` its one session builds the whole plan, and on `phases` it follows the phase items, which have built and committed the plan one phase at a time ([phase coding](phase-coding.spec.md)), and its gate checks the whole change. The operator who starts a run, the owner who reads the report by arm and the maintainers of the plan check depend on it. Part of the [overview](overview.spec.md).
 
+## Depends on
+
+- `phase-coding.spec.md`: phase coding
+
 ## Behaviours
 
 ### CDM-B1 The route after the plan is the switch `code_mode`

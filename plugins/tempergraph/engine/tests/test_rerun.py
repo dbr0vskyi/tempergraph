@@ -140,3 +140,19 @@ def test_same_branch_supersedes_a_finished_source(repo: Path) -> None:  # RRN-B1
         code, _, err = cli(repo, happy(), "rerun", "demo", "R-6", "--from", "review", "--same-branch", *extra)
         assert code == 2
     assert not (repo / ".tempergraph" / "runs" / "demo" / "R-6~r1").exists()
+
+
+def test_a_rerun_from_a_unit_a_trip_back_entered_starts_there(repo: Path) -> None:  # RRN-AC4 (RRN-B17), issue 163
+    from .test_run import CLAIM, DRAFT, verdict_block
+
+    # review sends the run back to draft, and the thread pauses on draft's second visit before review runs again
+    ex = standin("claude", steps=[DRAFT, CLAIM, DRAFT], judges=[judge(), judge(), judge(verdict_block("UNVERIFIABLE"))])
+    code, _, _ = cli(repo, ex, "run", "demo", "notes", "--task-id", "R-1")
+    assert code == 3
+    code, doc, err = cli(repo, ex, "rerun", "demo", "R-1", "--from", "draft", "--check", "--json")
+    assert code == 0 and doc["status"] == "ok", (doc, err)
+    seen = Seen()
+    ex2 = standin("claude", steps=[seen(DRAFT), seen(REVIEW)], judges=[judge(), judge()])
+    code, doc, err = cli(repo, ex2, "rerun", "demo", "R-1", "--from", "draft", "--json")
+    assert code == 0 and doc["thread_id"] == "demo/R-1~r1", err
+    assert [k.split(".")[0].split("-")[0] for k, _ in seen.prompts][:2] == ["draft", "review"]

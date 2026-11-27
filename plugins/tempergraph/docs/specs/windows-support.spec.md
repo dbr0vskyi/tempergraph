@@ -4,6 +4,23 @@
 
 The engine is to run natively on Windows 10 1809 or later and Windows Server 2019 or later, where Claude Code itself runs ([research `running-on-windows`](../research/running-on-windows.rsrch.md) F2). In WSL the engine is a Linux program and nothing here applies. This spec lists each place where Windows needs its own rule; every other spec's behaviour is unchanged ([ADR `windows-is-supported-natively-with-job-objects`](../adr/windows-is-supported-natively-with-job-objects.adr.md)). Judges run on Windows only after three probes pass: judge isolation rests on CLI facts nobody has checked there yet, so until then preflight refuses a judge session on Windows (OVR-B17). Operators on Windows and the executor, durability, store and install specs depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `audit-rule-catalog.spec.md`: audit rule catalog
+- `check-contract-and-command-runs.spec.md`: command resolution (CHK-B11)
+- `durability-and-resume.spec.md`: durability and resume
+- `engine-update.spec.md`: engine environments and the switch (UPD-B11); first-install launcher (UPD-B18)
+- `executor-claude-code.spec.md`: claude code executor
+- `executor-interface.spec.md`: lifetime (EXI-B5)
+- `lifecycle-and-evals.spec.md`: lifecycle and evals
+- `local-observability-store.spec.md`: state root top level (LOS-B7)
+- `observability-and-cost.spec.md`: observability and cost
+- `run-control.spec.md`: run control
+- `schedule-ticks-and-unattended-fires.spec.md`: schedule ticks and unattended fires
+- `version-metadata.spec.md`: version metadata of the engine and of workflows
+- `workspace-and-concurrency.spec.md`: interpreter in a worktree (WSP-B3)
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### WIN-B1 Sessions end with the engine

@@ -4,6 +4,22 @@
 
 The model-free tooling around the runtime: how the engine and its workflows are installed, upgraded, checked against each other and against the executors' CLIs and libraries, drawn and tested. Decisions are made by content and data, never by a version string or prose. Every executor changes between releases, so their versions are part of compatibility ([ADR `two-first-class-executors`](../adr/two-first-class-executors.adr.md), [ADR `add-messages-api-and-agent-sdk-executors`](../adr/add-messages-api-and-agent-sdk-executors.adr.md)). Operators, workflow authors and the `update`, `upgrade`, `validate` and `evals` verbs depend on these rules; install and update in full are [UPD](engine-update.spec.md), the changelog and stamp [VER](version-metadata.spec.md), suites [EVS](eval-suites.spec.md) and judge scores [JCL](judge-calibration.spec.md).
 
+## Depends on
+
+- `blueprint-and-scaffold.spec.md`: blueprint check (SCF-B11); literal check (SCF-B13); checks and fixtures written (SCF-B15); generated tests (SCF-B16); scaffold update (SCF-B17); verify ladder, model-free rungs (SCF-B18); rung 8, judge seeds (SCF-B19); rung 9, first trial (SCF-B20); trial report and grades (SCF-B22)
+- `engine-update.spec.md`: engine install and update
+- `executor-antigravity.spec.md`: version drift (EAG-B7)
+- `executor-claude-code.spec.md`: probe and preflight (ECC-B13); a step calls only the skills it declares (ECC-B25)
+- `judge-calibration.spec.md`: acceptance state (JCL-B17)
+- `prompt-audit.spec.md`: prompt audit
+- `run-outcome.spec.md`: the scoring scale (OUT-B11); what counts as an escape (OUT-B26)
+- `state-and-run-migration.spec.md`: state and run migration across releases
+- `tool-surface-audit.spec.md`: tool surface audit
+- `version-metadata.spec.md`: compatibility changelog entries (VER-B9)
+- `workflow-audit.spec.md`: workflow audit
+- `workflow-authoring.spec.md`: criteria lint (AUT-B19); sufficiency of the outcome (AUT-B20); guidance ladder (AUT-B21)
+- `workflow-upgrade.spec.md`: verification (WUP-B19)
+
 ## Behaviours
 
 ### LIF-B7 Install
@@ -121,6 +137,13 @@ WHEN `evals harvest <workflow> outcome` runs THE engine SHALL write one candidat
 - GIVEN a `met` run that is no escape WHEN harvest runs THEN it has no candidate
 - GIVEN a canary in a review comment of an escaped run WHEN harvest runs THEN the candidate holds no review text
 
+### LIF-B19 A step prompt names only skills its step declares
+
+WHEN `validate` lints a step template that names a skill the package ships and the step does not declare as `skill:` THE engine SHALL report `lint-skill-undeclared` as an error with file and line, the one prompt lint finding that is not a warning, since an undeclared skill is denied to the session ([ECC-B25](executor-claude-code.spec.md)).
+
+- GIVEN a template saying "open skill `style`" on a step that declares `read` only WHEN `validate` runs THEN it fails with `lint-skill-undeclared`
+- GIVEN the same template on a step that declares `skill:<plugin>:style` WHEN `validate` runs THEN no such finding is reported
+
 ## Acceptance criteria
 
 - LIF-AC1 (LIF-B1): `update` decides currency by content hash, by a test with equal versions and different files
@@ -136,3 +159,4 @@ WHEN `evals harvest <workflow> outcome` runs THE engine SHALL write one candidat
 - LIF-AC11 (LIF-B15, LIF-B16): A score is recorded per judge binding, and a replay reports agreement and each changed status
 - LIF-AC12 (LIF-B17): A harvest of a fixture workflow with a `met` run whose pull request had a review in state `changes_requested` and a `met` run that is no escape writes one candidate, for the first run, under the state root and none in the package, holding the pull request's code host, repository and number, the counts and kinds of its entries and no request or review text
 - LIF-AC13 (LIF-B18): For each executor of the compatibility table, a version its facts name as confirmed is in its `recorded` versions and inside its `range`, and preflight on that version raises no `executor-version-untested` warning
+- LIF-AC14 (LIF-B19): A step template naming a shipped skill its step does not declare fails `validate` with `lint-skill-undeclared` at error severity, and passes once the step declares it

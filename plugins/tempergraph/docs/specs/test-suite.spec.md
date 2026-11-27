@@ -4,6 +4,10 @@
 
 The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; it hides the sign-in of whoever started it from every test; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. Where the engine is installed, the tests of any package that imports the engine, and the code that runs outside the tests, start with a home folder of their own and the self-improvement loop off, wherever pytest starts; `-p no:tempergraph.pytest_plugin` switches that off. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](workspace-and-concurrency.spec.md)).
 
+## Depends on
+
+- `self-improvement.spec.md`: detached and best effort (SIL-B1)
+
 ## Behaviours
 
 ### TST-B1 Parallel by default

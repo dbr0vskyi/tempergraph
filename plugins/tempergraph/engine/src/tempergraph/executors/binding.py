@@ -1,4 +1,4 @@
-"""The per-machine binding table (EXI-B18, SEC-B1).
+"""The per-machine binding table (EXI-B18, EXI-B28, EXI-B29, SEC-B1).
 
 The table lives at ``<home>/config/bindings.json``. A typed alias only selects an entry; the entry's
 value, never the typed text, reaches argv. With no file, each executor's built-in tiers apply.

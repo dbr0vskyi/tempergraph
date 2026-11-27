@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-tri-uncertain",
+  "gate": "triage",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "tune",
+  "seed": {
+    "criterion_id": "ts-tri-uncertain",
+    "expected": "MET",
+    "reason": "The task does not say what the tool does today on a missing file nor how the file is named in the message; both are rows, the first shaping the change, the second a detail."
+  }
+}

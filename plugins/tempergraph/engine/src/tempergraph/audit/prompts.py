@@ -9,44 +9,9 @@ from typing import Any
 
 from tempergraph.audit.history import HistoryFacts
 from tempergraph.audit.report import AuditReport
-from tempergraph.contracts import TextRef, WorkflowSpec
+from tempergraph.audit.text_health import measure, model_facing, named_files, rendered_size, repeated
+from tempergraph.contracts import WorkflowSpec
 from tempergraph.model.prompt_lint import names as read_names
-from tempergraph.model.text import TextUnreadable, load_text
-
-
-def _files(spec: WorkflowSpec) -> dict[str, dict[str, Any]]:
-    rows: dict[str, dict[str, Any]] = {}
-
-    def add(file: str, unit: str | None, role: str, text: str) -> None:
-        row = rows.setdefault(file, {"file": file, "used_by": [], "text": text})
-        if unit is not None:
-            row["used_by"].append(f"{unit}:{role}")
-
-    for unit in spec.order:
-        u = spec.units.get(unit)
-        if u is None:
-            continue
-        st = u.step
-        if st is not None and st.prompt != "default":
-            file = st.prompt.path if isinstance(st.prompt, TextRef) else f"inline:{unit}"
-            try:
-                add(file, unit, "step", load_text(spec, st.prompt))
-            except TextUnreadable:
-                add(file, unit, "step", "")
-        j = u.gate.judge
-        if j is not None:
-            if j.file and spec.package_root is not None:
-                try:
-                    add(j.file, unit, "judge", load_text(spec, TextRef(path=j.file)))
-                except TextUnreadable:
-                    add(j.file, unit, "judge", "")
-            else:
-                add(f"inline:{unit}:judge", unit, "judge", f"{j.stance}\n{j.brief}")
-    root = spec.package_root
-    if root is not None:
-        for p in sorted([*root.glob("skills/*/SKILL.md"), *root.glob("agents/*.md")]):
-            add(p.relative_to(root).as_posix(), None, "", p.read_text(encoding="utf-8"))
-    return rows
 
 
 def _yield(facts: HistoryFacts, unit: str, runs: set[str]) -> float | None:
@@ -83,10 +48,23 @@ def changed_cell(facts: HistoryFacts | None, used_by: list[str]) -> dict[str, An
             "first_pass_before": last[2] if last else None, "first_pass_after": last[3] if last else None}
 
 
-def prompt_rows(spec: WorkflowSpec, report: AuditReport, facts: HistoryFacts | None = None) -> list[dict[str, Any]]:
+def _criteria_chars(spec: WorkflowSpec, unit: str) -> int:
+    u = spec.units.get(unit)
+    return sum(len(c.text) for c in u.gate.criteria) if u is not None else 0
+
+
+def prompt_rows(spec: WorkflowSpec, report: AuditReport, facts: HistoryFacts | None = None,
+                repeat_files: int = 3) -> list[dict[str, Any]]:
+    """PRA-B11, PRA-B12: one row per model-facing file, its names, findings, history and how its text is built."""
     out = []
-    for file, row in _files(spec).items():
-        text = row.pop("text")
+    files = model_facing(spec)
+    shared: dict[str, int] = {}
+    for _, where in repeated(files, repeat_files):
+        for f in where:
+            shared[f] = shared.get(f, 0) + 1
+    for file, tf in files.items():
+        text, used_by = tf.text, tf.used_by
+        row = {"used_by": used_by}
         n = read_names(text)
         found = [f for f in report.findings if f.location.get("file") == file or
                  (file.startswith("inline:") and f.location.get("file") is None and f.unit in
@@ -95,8 +73,17 @@ def prompt_rows(spec: WorkflowSpec, report: AuditReport, facts: HistoryFacts | N
         stale = sum(1 for f in found if f.rule == "tool-name-stale")
         counts = {s: sum(1 for f in found if f.severity == s and f.ignored is None)
                   for s in ("error", "warning", "info")}
-        out.append({"file": file, "used_by": row["used_by"], "chars": len(text),
+        size: dict[str, Any] = {"chars": len(text), "rendered": None, "must_read": None}
+        step_unit = next((u.split(":")[0] for u in used_by if u.endswith(":step")), None)
+        if step_unit is not None:
+            size["rendered"] = rendered_size(spec, step_unit, text)
+            named = named_files(text, files)
+            size["must_read"] = ((size["rendered"] or len(text) + _criteria_chars(spec, step_unit))
+                                 + sum(len(files[f].text) for f in named if f != file))
+            size["must_read_files"] = named
+        out.append({"file": file, "role": tf.role, "used_by": used_by, "chars": len(text), "size": size,
+                    "structure": measure(text).as_json() | {"repeated_sentences": shared.get(file, 0)},
                     "names": {"found": len(n.skills) + len(n.agents) + len(n.files) + len(n.tools),
                               "unresolved": unresolved, "stale": stale},
-                    "findings": counts, "changed": changed_cell(facts, row["used_by"])})
+                    "findings": counts, "changed": changed_cell(facts, used_by)})
     return out

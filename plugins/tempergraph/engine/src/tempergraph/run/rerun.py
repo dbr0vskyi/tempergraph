@@ -290,7 +290,11 @@ def _writes(spec: WorkflowSpec, fork: Fork, start_at: str, cleared: list[str], f
                                                          "from": None, "entered_from": "rerun"}}
         w["pause"] = {u: None for u in (v.get("pause") or {})}
         w["feedback"] = {u: None for u in (v.get("feedback") or {})}
-        w["route"] = {u: None for u in cleared if u != start_at}
+        # The edits are applied as the node that wrote the fork checkpoint, and its router runs again: a unit
+        # whose route sent the run to `start_at` (a trip back) keeps that route, else it reads None (RRN-B17).
+        into = flow.step_node(start_at)
+        keep = {u for u, r in (v.get("route") or {}).items() if isinstance(r, Mapping) and r.get("node") == into}
+        w["route"] = {u: None for u in cleared if u != start_at and u not in keep}
     w["counters"] = {u: None for u in spec.units}  # fresh retry, loop and human budgets (RRN-B17, RRN-B18)
     if drop_rulings:
         w["rulings"] = {rid: None for rid in (v.get("rulings") or {})}

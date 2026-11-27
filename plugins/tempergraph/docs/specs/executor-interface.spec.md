@@ -4,6 +4,19 @@
 
 The executor layer is the only part of the engine that knows how a model session is started. The engine hands an executor a session request as data ([SSN](session-contract.spec.md)); the executor starts one headless session (a CLI, or a library inside an engine worker process, [ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md)), translates its stream into normalized events and returns a result with typed usage. Executors declare what they can enforce, and preflight refuses before any spend what a workflow needs and its executor cannot do. Four executors are designed: [Claude Code](executor-claude-code.spec.md) (`claude`), the [Agent SDK](executor-agent-sdk.spec.md) (`agent-sdk`), the [Messages API](executor-messages-api.spec.md) (`messages-api`, whose loop the engine owns, [ADR `engine-owned-tool-loop-for-the-messages-api`](../adr/engine-owned-tool-loop-for-the-messages-api.adr.md)) and [Antigravity](executor-antigravity.spec.md) (`antigravity`); release 1 registers `claude` only ([ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md)). All share one session launcher that owns what the engine must not delegate: argv from constants, prompt delivery, the timeout, the idle watchdog, process-tree lifetime and the start record, because executors offer unequal limits ([research `executor-capability-matrix`](../research/executor-capability-matrix.rsrch.md), [ADR `executors-as-capability-adapters`](../adr/executors-as-capability-adapters.adr.md)). Workflow authors, operators and every executor spec depend on these rules.
 
+## Depends on
+
+- `budgets-and-failures.spec.md`: budgets, failures and timeouts
+- `caller-provenance.spec.md`: a declaration cannot raise trust (PRV-B5); classification (PRV-B13); decider (PRV-B14); person turns (PRV-B15); where the block is written (PRV-B17); options (PRV-B18); engine sessions never drive the engine (PRV-B19)
+- `executor-messages-api.spec.md`: worker request document (EMA-B8)
+- `independence-guard.spec.md`: independence guard and judge views
+- `observability-and-cost.spec.md`: observability and cost
+- `run-events.spec.md`: common record envelope (EVT-B8); segment and sequence from the log (EVT-B9)
+- `schedule-ticks-and-unattended-fires.spec.md`: unattended credential kinds (TCK-B18); credential check per executor (TCK-B19)
+- `security.spec.md`: sanctioned launch sites (SEC-B7)
+- `session-contract.spec.md`: session result (SSN-B5)
+- `supervision-cost.spec.md`: supervising session (SCO-B9)
+
 ## Behaviours
 
 ### EXI-B16 Registry
@@ -21,17 +34,41 @@ WHEN an executor is probed THE executor SHALL report `ok`, a reason word (`missi
 
 ### EXI-B18 Binding table
 
-WHEN an alias is bound THE executor SHALL read the operator file `<home>/config/bindings.json` (`schema_version`, `bindings[]`, one row per executor with `executor`, `provider` for library executors (`anthropic`, `bedrock`, `vertex` or `foundry`), `tiers`, `aliases`, `prices`, `model_params` for `messages-api` and `cli_path` for `agent-sdk`), let a typed alias only select an entry and never copy it into argv, refuse a bound value that is not a plain model name, and with no file or row bind `claude`'s `small`, `medium` and `large` to `haiku`, `sonnet` and `opus` and pass no model for `inherit`.
+WHEN an alias is bound THE executor SHALL read the operator file `<home>/config/bindings.json`, let a typed alias only select an entry and never copy it into argv, and refuse a bound value that is not a plain model name.
+
+- GIVEN a row binding `large` to `opus; rm -rf /` WHEN it is read THEN it is refused
+
+### EXI-B28 Binding file rows
+
+WHEN the bindings file is read THE executor SHALL take `schema_version` and `bindings[]`, one row per executor with `executor`, `provider` for library executors (`anthropic`, `bedrock`, `vertex` or `foundry`), `tiers`, `aliases`, `prices`, `model_params` for `messages-api` and `cli_path` for `agent-sdk`.
+
+- GIVEN a row for `messages-api` with `provider` `bedrock` WHEN an alias of it is bound THEN its sessions go to that provider
+
+### EXI-B29 Default bindings
+
+WHEN no bindings file or row binds an alias of `claude` THE executor SHALL bind `small`, `medium` and `large` to `haiku`, `sonnet` and `opus` and pass no model for `inherit`.
 
 - GIVEN no bindings file WHEN `medium` is bound on `claude` THEN the session runs on `sonnet`
-- GIVEN a row binding `large` to `opus; rm -rf /` WHEN it is read THEN it is refused
+- GIVEN `inherit` WHEN it is bound THEN no model is passed
 
 ### EXI-B1 Refuse before spend
 
-WHEN a start, resume, batch or check is preflighted THE engine SHALL check, with no model call, that every step's executor is registered and probes ok, that every alias is in its executor's `binds_aliases`, every tool capability in its `tool_map`, every gated step's judge executor declares `restricts_judge_tools` and `prompt_off_argv`, `cost_cap_usd`, `fallback_alias` and `turn_cap` are in `session_options`, enforced step tools have `enforces_step_tools`, `subagent`, `web_fetch` and `web_search` on `messages-api` are in its `tool_map` for the bound provider, `--strict-permissions` finds no undeclared-tool finding, and a scheduled start's every binding accepts the credential kind the profile provides unattended ([TCK-B18, TCK-B19](schedule-ticks-and-unattended-fires.spec.md)), and exit 2 at the first miss naming the step, the executor and the missing capability.
+WHEN a start, resume, batch or check is preflighted and a rule of EXI-B26 or EXI-B27 is not met THE engine SHALL exit 2 at the first miss, with no model call, naming the step, the executor and the missing capability.
+
+- GIVEN `turn_cap` on an executor without it WHEN preflighted THEN it exits 2 and the state root is unchanged
+
+### EXI-B26 Executors hold what each step needs
+
+WHEN a run is preflighted THE engine SHALL require that every step's executor is registered and probes ok, every alias is in its executor's `binds_aliases` and every tool capability in its `tool_map`, every gated step's judge executor declares `restricts_judge_tools` and `prompt_off_argv`, `cost_cap_usd`, `fallback_alias` and `turn_cap` are in `session_options`, and enforced step tools have `enforces_step_tools`.
+
+- GIVEN a step whose alias is not in its executor's `binds_aliases` WHEN preflighted THEN it exits 2 naming the alias
+- GIVEN every step on a registered executor that holds its aliases and tools WHEN preflighted THEN the start goes on
+
+### EXI-B27 Provider tools, permissions and unattended credentials
+
+WHEN a run is preflighted THE engine SHALL require that `subagent`, `web_fetch` and `web_search` on `messages-api` are in its `tool_map` for the bound provider, that `--strict-permissions` finds no undeclared-tool finding, and that every binding of a scheduled start accepts the credential kind the profile provides unattended ([TCK-B18, TCK-B19](schedule-ticks-and-unattended-fires.spec.md)).
 
 - GIVEN a scheduled start whose judge binding needs an interactive sign-in WHEN preflighted THEN it exits 2 with `judge_credential`
-- GIVEN `turn_cap` on an executor without it WHEN preflighted THEN it exits 2 and the state root is unchanged
 
 ### EXI-B19 Preflight warnings and deferrals
 
@@ -167,7 +204,7 @@ WHEN a start is preflighted THE engine SHALL time one interpreter spawn and a wa
 ## Acceptance criteria
 
 - EXI-AC1 (EXI-B16): No module outside the executor package imports a concrete executor, by a source scan
-- EXI-AC2 (EXI-B1, EXI-B17): Every preflight rule of EXI-B1 refuses with exit 2 and leaves the state root unchanged
+- EXI-AC2 (EXI-B1, EXI-B17, EXI-B26, EXI-B27): Every preflight rule of EXI-B1 refuses with exit 2 and leaves the state root unchanged
 - EXI-AC3 (EXI-B2, EXI-B20): The prompt never appears in argv or the environment of any launch, by a planted-canary test against every executor, worker request documents included
 - EXI-AC4 (EXI-B5): A timeout and each signal kill the whole tree, a grandchild included, on POSIX and Windows stand-ins
 - EXI-AC5 (EXI-B4): The idle watchdog follows the scenarios of EXI-B4 with a replaced clock
@@ -176,11 +213,12 @@ WHEN a start is preflighted THE engine SHALL time one interpreter spawn and a wa
 - EXI-AC8 (EXI-B10, EXI-B24): A step on an executor without `restricts_judge_tools` gets its judge on a capable executor, or the start is refused
 - EXI-AC9 (EXI-B11): Every registered executor passes the conformance suite
 - EXI-AC10 (EXI-B13, EXI-B14, EXI-B15): The stop contract, the prompt-gap warning and the host-speed warning follow their scenarios with a replaced clock
-- EXI-AC11 (EXI-B18): With no bindings file the default tiers bind, and a bound value that is not a plain model name is refused
+- EXI-AC11 (EXI-B18, EXI-B29): With no bindings file the default tiers bind, and a bound value that is not a plain model name is refused
 - EXI-AC12 (EXI-B19): Each warning or deferral of EXI-B19 is recorded and the run starts
 - EXI-AC13 (EXI-B22, EXI-B23): Every launch sets the session key and strips the three caller variables, and a source scan finds no executor process started outside the launcher
 - EXI-AC14 (EXI-B3, EXI-B8): A timed-out record names its limit and layer, and every session record carries its CLI version
 - EXI-AC15 (EXI-B12, EXI-B25): No executor is started in an automatic-approval mode, and no capability resting on an unrun probe is declared true
+- EXI-AC16 (EXI-B28): A bindings file with one row per executor in the stated fields binds each alias of that executor to its row's entry
 
 ## Open questions
 

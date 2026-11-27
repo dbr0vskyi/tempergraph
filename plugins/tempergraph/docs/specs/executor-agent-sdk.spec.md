@@ -4,6 +4,14 @@
 
 The `agent-sdk` executor runs each step attempt and each judge run as one `query` session of the Claude Agent SDK, inside an engine worker process ([ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md)). The SDK drives a bundled Claude Code CLI, so tool names, permission rules and the authoring surface are Claude Code's; what changes is that options are typed, messages are typed, and the engine can install an in-process `PreToolUse` gatekeeper. It implements the [executor interface](executor-interface.spec.md); facts come from [research `claude-agent-sdk-executor`](../research/claude-agent-sdk-executor.rsrch.md), and its probes and design notes are kept in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md). It is the planned CI executor. Operators running unattended and workflow authors who move a step here depend on what it declares and does.
 
+## Depends on
+
+- `executor-claude-code.spec.md`: claude code executor
+- `executor-messages-api.spec.md`: worker request document (EMA-B8)
+- `independence-guard.spec.md`: independence guard and judge views
+- `tool-host.spec.md`: tool host
+- `worktree-mode.spec.md`: worktree mode
+
 ## Behaviours
 
 ### EAS-B5 Declared capabilities

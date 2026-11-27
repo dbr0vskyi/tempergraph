@@ -8,12 +8,13 @@ import { describe, expect, test } from 'bun:test'
 import type { DetailDoc, RunRecord, StatusDoc, StatusRow } from '../hooks/lib/engine'
 import { isReadable } from '../hooks/lib/engine'
 import {
-  alertsFrom, attemptRows, bandRow, healthAlerts, levelText, listRow, money, narrator, runLabel, runList, sessionNow,
+  alertsFrom, attemptRows, bandRow, healthAlerts, askText, levelText, lifeText, listRow, money, narrator, runLabel, runList, sessionNow,
   statusLine, summarise, touchStrip, unitRowText, unitRows,
 } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
 import {
-  detailArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, READ_ONLY_VERBS, statusArgv, statusEvery, WRITING_VERBS,
+  detailArgv, evalsBarArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, READ_ONLY_VERBS, scheduleListArgv,
+  scheduleShowArgv, statusArgv, statusEvery, WRITING_VERBS,
 } from '../hooks/lib/sources'
 
 const dir = new URL('./fixtures/', import.meta.url).pathname
@@ -64,6 +65,29 @@ describe('labels and money (MBA §2.1, contract M4)', () => {
     expect(runLabel({ ...row, alias: 'auth-fix' })).toBe('auth-fix')
     expect(runLabel({ ...row, label: 'docs' })).toBe('docs')
     expect(runLabel(row, 'tempergraph')).toMatch(/^tempergraph\/tg\/demo\/T-1·[0-9a-f]{4}$/)
+  })
+  test('one thread id in two other roots gets two labels, each with its repository (issue 145)', () => {
+    const row = status.threads[0]!
+    const a = runLabel(row, 'alpha', '/w/alpha/.tempergraph')
+    const b = runLabel(row, 'beta', '/w/beta/.tempergraph')
+    expect(a.startsWith('alpha/')).toBe(true)
+    expect(b.startsWith('beta/')).toBe(true)
+    expect(a.slice(-4)).not.toBe(b.slice(-4))
+  })
+  test('a sign of life: the open tool, else how long the session is quiet, led by a suspected stall (MRV-B6)', () => {
+    const att = { attempt: 1, step: { sessions: [{ session_key: 'a.1.step', live: { open_tool: { name: 'Grep', elapsed: 12 } } }] } }
+    expect(lifeText(att, {})).toBe('Grep 12s')
+    const quiet = { attempt: 1, step: { sessions: [{ session_key: 'a.1.step', live: { last_event_age_s: 95 } }] } }
+    expect(lifeText(quiet, { suspect_stall: true })).toBe('stall? quiet 1m')
+    expect(lifeText(undefined, { silent_s: 40 })).toBe('quiet 40s')
+    expect(lifeText(undefined, {})).toBeNull()
+  })
+  test('ASK-AC4: an ask waiting on a person shows its open and total question counts', () => {
+    expect(askText([{ unit: 'clarify', kind: 'input', resume: 'r', questions: 3, unanswered: 2 }])).toBe('2 of 3 questions open')
+    expect(askText([{ unit: 'clarify', kind: 'input', resume: 'r', questions: 1, unanswered: 0 }])).toBe('0 of 1 question open')
+    expect(askText([{ unit: 'review', kind: 'review', resume: 'r' }])).toBeNull()
+    const row = { ...status.threads[0]!, pending_gates: [{ unit: 'clarify', kind: 'input', resume: 'r', questions: 3, unanswered: 2 }] }
+    expect(listRow(summarise(row, undefined, 0))).toContain('2 of 3 questions open')
   })
   test('estimates and gaps are never shown as reported', () => {
     expect(money({ reported: 0.1, completeness: 'complete' })).toBe('$0.10')
@@ -234,3 +258,17 @@ describe('supervision level (SUP-B11, MRV §2.4)', () => {
   })
 })
 
+
+describe('read-only subcommands (MDS-B8, issue 248)', () => {
+  test('MDS-AC-7: exactly the listed shapes of schedule and evals are read-only, every other subcommand is refused', () => {
+    for (const argv of [scheduleListArgv(), scheduleShowArgv('nightly-notes-3f2a'), evalsBarArgv(), evalsBarArgv('demo')])
+      expect(isReadOnly(argv)).toBe(true)
+    for (const w of [['tempergraph', 'schedule', 'add', 'demo', 'every day'], ['tempergraph', 'schedule', 'list'],
+      ['tempergraph', 'schedule', 'show', 'nightly-notes-3f2a'], ['tempergraph', 'schedule', 'remove', 'nightly-notes-3f2a'],
+      ['tempergraph', 'schedule', 'show', 'x; rm', '--json'], ['tempergraph', 'evals', 'score', 'demo', '--json'],
+      ['tempergraph', 'evals', 'bar', 'demo', '--json', '--extra'], ['tempergraph', 'evals', 'label', '--json']])
+      expect(isReadOnly(w)).toBe(false)
+    expect(() => scheduleShowArgv('../x')).toThrow()
+    expect(() => evalsBarArgv('demo --now')).toThrow()
+  })
+})

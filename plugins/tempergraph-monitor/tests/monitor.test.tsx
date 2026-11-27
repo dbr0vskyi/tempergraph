@@ -3,7 +3,7 @@
 // Every hook here stands for Claude Code; `process.run` stands for the tempergraph CLI.
 
 import type { On } from 'claude-code'
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 import { detailPaused, status, statsProjection } from './fixtures/documents'
 
 const BAND = {
@@ -340,3 +340,91 @@ for (const setting of ['bin/tempergraph', '/usr/local/bin/other']) {
     for (const argv of verbs()) expect(argv[0]).toBe('tempergraph')
   })
 }
+
+// -- scope = machine: other state roots (MDS-B4, MRV §2.3, issue 145) ------------------------------------------------
+
+/** A machine-scope status document: this root, two other roots holding the same ended thread id, one live run in
+ * another root, and five indexed roots that are gone. */
+function machineReply(argv: readonly string[]): Reply {
+  if (!argv.includes('--all-roots')) return fixtureReply(argv)
+  const here = '/work/repo/.tempergraph'
+  const row = status.threads[0]!
+  const other = (root: string, extra: object) => ({ ...row, state_root: root, alias: undefined, label: undefined, ...extra })
+  const threads = [
+    { ...row, state_root: here },
+    other('/w/alpha/.tempergraph', { state: 'finished', alive: false, exit_code: 0, pending_gates: [] }),
+    other('/w/beta/.tempergraph', { state: 'finished', alive: false, exit_code: 0, pending_gates: [] }),
+    other('/w/gamma/.tempergraph', { state: 'running', alive: true, pending_gates: [] }),
+  ]
+  const roots = [{ path: here, missing: false }, ...['a', 'b', 'c', 'd', 'e'].map(n => ({ path: `/w/${n}/.tempergraph`, missing: true }))]
+  return { exitCode: 0, stdout: JSON.stringify({ ...status, threads, roots }) }
+}
+
+test('rows of other roots name their repository, ended ones fold and missing roots are one line', { options: { scope: 'machine' } },
+  async ($, on) => {
+    engine(on, () => {}, machineReply)
+    await $.session.start({ cwd: '/work/repo', surface: 'desktop', isInteractive: true })
+    await settle()
+    await $.command.run({ command: 'tg', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+    await settle()
+    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+    expect((await ui.find({ type: 'Text', text: '5 state roots missing: a, b, c, +2 more' })) ?? null).not.toBeNull()
+    expect((await ui.find({ key: 'others-fold' }))?.text ?? '').toContain('2 ended runs in other repositories')
+    expect((await ui.find({ key: 'other:/w/gamma/.tempergraph|demo/T-1' }))?.text ?? '').toContain('gamma  ▶ gamma/')
+    expect((await ui.find({ key: 'other:/w/alpha/.tempergraph|demo/T-1' })) ?? null).toBeNull()
+    await ui.press({ key: 'others-fold' })
+    const a = (await ui.find({ key: 'other:/w/alpha/.tempergraph|demo/T-1' }))?.text ?? ''
+    const b = (await ui.find({ key: 'other:/w/beta/.tempergraph|demo/T-1' }))?.text ?? ''
+    expect(a).toContain('alpha/')
+    expect(b).toContain('beta/')
+    const hash = (t: string) => /·([0-9a-f]{4})/.exec(t)?.[1]
+    expect(hash(a)).toBeDefined()
+    expect(hash(a)).not.toBe(hash(b))
+    await ui.unmount()
+  })
+
+// -- a sign of life during a long session (MRV §2.3, MDS §2.1, issue 142) ------------------------------------------
+
+test('MRV-AC-4: a long session with no new run-log record still moves its row, and a stall is marked', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.parse('2026-11-20T09:22:00Z') })
+  let reads = 0
+  const row = { ...status.threads[0]!, state: 'running', alive: true as boolean, pending_gates: [] }
+  const detail = (): unknown => {
+    reads += 1
+    type Loose = { health: Record<string, unknown>; units: { name: string; state: string;
+      visits: { attempts: { step: { sessions: Record<string, unknown>[] } }[] }[] }[] }
+    const d = structuredClone(detailPaused) as unknown as Loose
+    const unit = d.units.find(u => u.name === 'review')!
+    unit.state = 'running'
+    const session = unit.visits.at(-1)!.attempts.at(-1)!.step.sessions[0]!
+    session.live = { open_tool: null, recent: [], last_event_age_s: reads * 10 }
+    d.health = { ...d.health, alive: true, suspect_stall: reads >= 3 }
+    return d
+  }
+  on('command.register', () => ({ value: { command: 'tg' } }))
+  on('ui.status', () => ({ value: undefined }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('ui.notify', () => ({ value: { isSent: false, reason: 'no-channel' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.stat', () => ({ value: { kind: 'file', size: 0, mtimeMs: 0, isLink: false } }))
+  on('process.run', (_, e) => {
+    const doc = e.argv.includes('--detail') ? detail() : e.argv.includes('--projection') ? statsProjection
+      : { ...status, threads: [row] }
+    return { value: { exitCode: 0, stdout: JSON.stringify(doc), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  await $.session.start({ cwd: '/work/repo', surface: 'desktop', isInteractive: true })
+  await clock.settle()
+  await $.command.run({ command: 'tg', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await clock.advance(1_000)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  const first = (await ui.find({ key: 'run:demo/T-1' }))?.text ?? ''
+  expect(first).toContain('quiet 10s')
+  await clock.advance(10_000)
+  const second = (await ui.find({ key: 'run:demo/T-1' }))?.text ?? ''
+  expect(second).not.toBe(first)
+  expect(second).toContain('quiet 20s')
+  await clock.advance(10_000)
+  expect((await ui.find({ key: 'run:demo/T-1' }))?.text ?? '').toContain('stall? quiet 30s')
+  await ui.unmount()
+})

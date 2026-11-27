@@ -2,7 +2,24 @@
 
 ## Purpose
 
-`tempergraph update` moves a machine from one engine release to another: the CLI on `PATH`, the managed Python environment and its optional executor packages, the home folder's layout, and every registered workflow, which is reinstalled into the new environment so it keeps working. `tempergraph install` is the same machinery on a machine with no engine yet. Both are deterministic code that calls no model. Neither stops, waits for or rewrites a run: a running process keeps the engine it started on, and paused threads and each repository's store are owned by [MIG](state-and-run-migration.spec.md). Claude Code updates the `tempergraph` plugin ([research `updating-a-tool-with-long-lived-runs`](../research/updating-a-tool-with-long-lived-runs.rsrch.md) U1); the plugin carries a staged copy of the engine of the same version, and only this verb installs it. The new release is installed beside the current one and made current by one atomic switch ([ADR `side-by-side-engine-environments-switched-atomically`](../adr/side-by-side-engine-environments-switched-atomically.adr.md)), so a failed install changes nothing, a rollback is a switch back, and Windows file locks on a running engine's libraries never meet the installer; registered workflows are reinstalled and pinned, never lost ([ADR `registered-workflows-are-reinstalled-and-pinned-never-lost`](../adr/registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md)). Operators, the install and update skills and CI images depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
+`tempergraph update` moves a machine from one engine release to another: the CLI on `PATH`, the managed Python environment and its optional executor packages, the home folder's layout, and every registered workflow, which is reinstalled into the new environment so it keeps working. `tempergraph install` is the same machinery on a machine with no engine yet. Both are deterministic code that calls no model. Neither stops, waits for or rewrites a run: a running process keeps the engine it started on. Claude Code updates the `tempergraph` plugin ([research `updating-a-tool-with-long-lived-runs`](../research/updating-a-tool-with-long-lived-runs.rsrch.md) U1); the plugin carries a staged copy of the engine of the same version, and only this verb installs it. The new release is installed beside the current one and made current by one atomic switch ([ADR `side-by-side-engine-environments-switched-atomically`](../adr/side-by-side-engine-environments-switched-atomically.adr.md)), so a failed install changes nothing, a rollback is a switch back, and Windows file locks on a running engine's libraries never meet the installer; registered workflows are reinstalled and pinned, never lost ([ADR `registered-workflows-are-reinstalled-and-pinned-never-lost`](../adr/registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md)). Operators, the install and update skills and CI images depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
+
+## Depends on
+
+- `central-run-stats.spec.md`: machine index (CST-B8)
+- `lifecycle-and-evals.spec.md`: same version, different code (LIF-B1); update output (LIF-B8); manifest reconcile (LIF-B9)
+- `local-observability-store.spec.md`: home layout (LOS-B10)
+- `overview.spec.md`: read-only verbs call no model (OVR-B15)
+- `plugin-shell.spec.md`: plugin shell
+- `security.spec.md`: security posture
+- `state-and-run-migration.spec.md`: supervisor keeps its engine (MIG-B6)
+- `version-metadata.spec.md`: version metadata of the engine and of workflows
+- `workflow-package.spec.md`: workflow package
+- `workflow-upgrade.spec.md`: workflow upgrade
+
+## Does not own
+
+- What happens to paused threads and each repository's store when the engine changes: `state-and-run-migration.spec.md`
 
 ## Behaviours
 

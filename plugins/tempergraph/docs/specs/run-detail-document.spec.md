@@ -2,7 +2,23 @@
 
 ## Purpose
 
-One versioned JSON document that describes a single thread in full: the declared plan, every visit and attempt of every unit, each attempt's step session, check, judge and gate, the sessions with their transcript and activity locations, the pause in front of a person, cost, and derived health. It is what a monitor draws when a person "enters" a run. It is built on demand by `status --detail <selector> --json` from the diagram model, the run log and the checkpoint opened read-only; it is never stored, calls no model and creates nothing (OVR-B15), so it never disagrees with the run log ([ADR `observers-read-files-not-sockets`](../adr/observers-read-files-not-sockets.adr.md)). The one-row-per-thread status document stays owned by [DUR](durability-and-resume.spec.md); this spec owns its detail form. The newer unit kinds add no section: scripts are attempts with no session, council members and chairs are sessions of the step with their round, contest slots are items, and an ask's questions are the pause's payload. The monitor and anyone drilling into a run depend on it; `health` fields are hints for a person, and nothing in the engine acts on them.
+One versioned JSON document that describes a single thread in full: the declared plan, every visit and attempt of every unit, each attempt's step session, check, judge and gate, the sessions with their transcript and activity locations, the pause in front of a person, cost, and derived health. It is what a monitor draws when a person "enters" a run. It is built on demand by `status --detail <selector> --json` from the diagram model, the run log and the checkpoint opened read-only; it is never stored, calls no model and creates nothing (OVR-B15), so it never disagrees with the run log ([ADR `observers-read-files-not-sockets`](../adr/observers-read-files-not-sockets.adr.md)). The newer unit kinds add no section: scripts are attempts with no session, council members and chairs are sessions of the step with their round, contest slots are items, and an ask's questions are the pause's payload. The monitor and anyone drilling into a run depend on it; `health` fields are hints for a person, and nothing in the engine acts on them.
+
+## Depends on
+
+- `contest-unit.spec.md`: pick by rule (CTS-B1)
+- `durability-and-resume.spec.md`: cut-off attempt (DUR-B2)
+- `gate-and-human.spec.md`: what pauses for a usage limit (HUM-B14)
+- `local-observability-store.spec.md`: local observability store
+- `loop-summary-and-review-retries.spec.md`: the loop's summary (SIL-B22)
+- `run-events.spec.md`: units, sessions, checks and judgements (EVT-B12); ladders, risk, budgets, pauses and scripts (EVT-B13); councils, contests, workspaces, grants, rulings, stops and exits (EVT-B15); live progress file (EVT-B19); reset instant on the `pause` record (EVT-B27)
+- `security.spec.md`: the publish boundary is a file boundary (SEC-B9)
+- `supervision-cost.spec.md`: supervision cost
+- `supervision-metrics.spec.md`: supervision metrics
+
+## Does not own
+
+- The one-row-per-thread status document: `durability-and-resume.spec.md`
 
 ## Behaviours
 

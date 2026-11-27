@@ -1,5 +1,5 @@
 """The exact formats: `--at`, `--rrule`, `--every`, `--cron`, with `--tz`, `--starts`, `--until` and `--count`
-(SCH-B15, SCH-B29, SCH-B30, SCH-B31, SCH-B32; ADR `exact-formats-first-and-an-optional-word-grammar-echoed-back`).
+(SCH-B15, SCH-B29 to SCH-B32, SCH-B34 to SCH-B36; ADR `exact-formats-first-and-an-optional-word-grammar-echoed-back`).
 
 No model and no guess: a value is the canonical form or a refusal, and so never a `needs`. The word grammar
 (`words.py`) ends in the same builders, so a phrase and its exact twin store one form.

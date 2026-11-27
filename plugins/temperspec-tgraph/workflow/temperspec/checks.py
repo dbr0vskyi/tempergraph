@@ -5,6 +5,7 @@ A check reads the workspace and the engine's git facts; it writes nothing and tr
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import os
 import re
@@ -157,18 +158,73 @@ def _opened(calls: list[dict[str, Any]], name: str) -> bool:
     return any(c.get("capability") == "read" and c.get("ok") is True and _target_is(c, name) for c in calls)
 
 
+def rule_paths(text: str) -> list[str] | None:
+    """The `paths` globs of a rule file's front matter; None for a rule with no `paths`, which the CLI attaches to
+    every session (SRC-B13)."""
+    if not text.startswith("---") or (end := text.find("\n---", 3)) < 0:
+        return None
+    head = text[3:end]
+    if not re.search(r"^paths\s*:", head, re.M):
+        return None
+    return [ln.strip()[2:].strip().strip("\"'") for ln in head.splitlines() if ln.strip().startswith("- ")]
+
+
+def _matches(target: str, globs: list[str]) -> bool:
+    path = _norm(target)
+    return any(fnmatch.fnmatch(path, g) or fnmatch.fnmatch(path.rsplit("/", 1)[-1], g.rsplit("/", 1)[-1])
+               for g in globs)
+
+
+def _arrived(calls: list[dict[str, Any]], globs: list[str] | None) -> tuple[bool, str | None]:
+    """SRC-B13: (the CLI attached the rule before the session wrote a file it governs, the first such file written
+    before the rule arrived). A rule with no `paths` is attached from the start; a path-scoped one arrives with the
+    first read of an existing file it governs, and only after the first write of a new one."""
+    if globs is None:
+        return True, None
+    for c in calls:
+        if not _matches(str(c.get("target") or ""), globs) or c.get("ok") is not True:
+            continue
+        if c.get("capability") == "read":
+            return True, None
+        if c.get("capability") in WRITES:
+            return False, _norm(str(c.get("target") or ""))
+    return False, None
+
+
 def _ruleread(ctx: Any, unit: str, criterion: str) -> list[CheckFinding]:
-    """The rule files the unit's prompt names and the repository holds are each opened with the read tool (SRC-B1)."""
+    """The rule files the unit's prompt names and the repository holds are each opened with the read tool, or
+    attached by the CLI through their `paths` before the session writes a file they govern (SRC-B1, SRC-B13)."""
     held = [n for n in _rule_names(unit) if (Path(ctx.workdir) / RULE_FOLDER / n).is_file()]
     if not held:
         return [_find("n_a", criterion, message=f"the rule files are not in the repository (`{RULE_FOLDER}/`)")]
     calls = _record(ctx)
     if calls is None:
         return [_find("n_a", criterion, message=NO_RECORD)]
-    found = [_find("fail", criterion, f"{RULE_FOLDER}/{n}", f"the session never opened `{n}` with the read tool",
-                   f"open `{RULE_FOLDER}/{n}` with the read tool, then follow it") for n in held
-             if not _opened(calls, n)]
-    return found or [_ok(criterion, ", ".join(held))]
+    found: list[CheckFinding] = []
+    attached: list[str] = []
+    for n in held:
+        if _opened(calls, n):
+            continue
+        try:
+            globs = rule_paths((Path(ctx.workdir) / RULE_FOLDER / n).read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            globs = []
+        came, early = _arrived(calls, globs)
+        if came:
+            attached.append(n)
+            continue
+        if early:
+            found.append(_find("fail", criterion, f"{RULE_FOLDER}/{n}",
+                               f"the session wrote `{early}` before `{n}` had arrived, and never opened the rule",
+                               f"open `{RULE_FOLDER}/{n}` with the read tool before writing a new document it "
+                               "governs, so the file is written once"))
+            continue
+        found.append(_find("fail", criterion, f"{RULE_FOLDER}/{n}", f"the session never opened `{n}` with the read tool",
+                           f"open `{RULE_FOLDER}/{n}` with the read tool, then follow it"))
+    if found:
+        return found
+    note = f"; attached by path: {', '.join(attached)}" if attached else ""
+    return [_ok(criterion, ", ".join(held) + note)]
 
 
 def _norm(path: str) -> str:
@@ -726,10 +782,14 @@ def triage_check(ctx: Any) -> Any:
     if note.deliver not in fmt.DELIVER:
         found.append(_find("fail", "ts-tri-form", path, "the Route section has no `Deliver: code` or `Deliver: docs`",
                            "state what the run delivers"))
+    found += [_find("fail", "ts-tri-form", place, message, fix) for place, message, fix in fmt.intent_problems(note)]
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-tri-form", path))
 
-    want = "plan" if note.gaps == "none" else ("discovery-only" if note.deliver == "docs" else "discovery")
+    # An open question that blocks or shapes the change is answered before the plan, so it keeps the run out of
+    # `plan` as a gap does.
+    settled = note.gaps == "none" and not note.working
+    want = "plan" if settled else ("discovery-only" if note.deliver == "docs" else "discovery")
     route, gaps = _value(ctx, "route"), _value(ctx, "gaps")
     bad = []
     if note.route not in fmt.ROUTES:
@@ -741,14 +801,15 @@ def triage_check(ctx: Any) -> Any:
         bad += [f.message for f in _commands(ctx, fmt.Plan(commands=note.change_commands), "ts-tri-route")
                 if note.change_commands]
     elif note.gaps and note.route != want:
-        bad.append(f"the note's route is `{note.route}` but its gaps and delivery give `{want}`")
-    if note.gaps == "none" and note.deliver == "docs":
+        bad.append(f"the note's route is `{note.route}` but its gaps, open questions and delivery give `{want}`")
+    if settled and note.deliver == "docs":
         bad.append("a docs delivery with no gap has nothing to write")
     if route is not None and route != note.route:
         bad.append(f"the route value `{route}` differs from the note's `{note.route}`")
     if gaps is not None and note.gaps and gaps != note.gaps:
         bad.append(f"the gaps value `{gaps}` differs from the note's gap list (`{note.gaps}`)")
-    found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gap list") for b in bad] or [
+    found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gaps and the open questions")
+              for b in bad] or [
         _ok("ts-tri-route", path)]
     found += _covered(ctx, note, path)
     found += _ruleread(ctx, "triage", "ts-tri-ruleread")
@@ -776,16 +837,16 @@ def _owner(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
         entered = {e.gap for e in note.owners}
         for gap, sort in note.sorts.items():
             if sort == "owner decision" and gap not in entered:
-                bad.append((gap, f"gap row {gap} says `Owner decision` but `{fmt.OWNER_HEADING}` has no entry for it",
+                bad.append((gap, f"row {gap} goes to the owner but `{fmt.OWNER_HEADING}` has no entry for it",
                             f"add `- {gap}: <question>` with its options, default and cost"))
         low, high = fmt.OWNER_OPTIONS
         for e in note.owners:
             gap, fix = e.gap, f"complete the entry for {e.gap}"
             if e.gap not in note.sorts:
-                bad.append((gap, f"entry {gap} answers no gap row", f"drop the entry or add the row {gap}"))
+                bad.append((gap, f"entry {gap} answers no row", f"drop the entry or add the row {gap}"))
                 continue
             if note.sorts[e.gap] == "findable":
-                bad.append((gap, f"entry {gap} is for a gap row that says `Findable`", "drop the entry"))
+                bad.append((gap, f"entry {gap} is for a row that does not go to the owner", "drop the entry"))
                 continue
             n = len(e.options)
             if not e.question:
@@ -828,10 +889,11 @@ def _covered(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
             bad.append((place, wrong))
     value = _value(ctx, "covered")
     if value is not None:
-        every = note.gap_rows > 0 and note.covered_rows == note.gap_rows
+        every = note.gap_rows > 0 and note.covered_rows == note.gap_rows and not note.working
         if value != ("yes" if every else "no"):
-            bad.append((path, f"the covered value `{value}` differs from the gap rows "
-                              f"({note.covered_rows} of {note.gap_rows} say `Covered by`)"))
+            bad.append((path, f"the covered value `{value}` differs from the note ({note.covered_rows} of "
+                              f"{note.gap_rows} gap rows say `Covered by`, {len(note.working)} open question(s) "
+                              "block or shape the change)"))
     if bad:
         return [_find("fail", crit, place, message, fix) for place, message in bad]
     if note.covered or value is not None:
@@ -860,8 +922,8 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def discovery_check(ctx: Any) -> Any:
     """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-named, ts-dis-literal,
-    ts-dis-wording, ts-dis-specname, ts-dis-depends, ts-dis-adrform, ts-dis-adrlead, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread,
-    ts-dis-commit."""
+    ts-dis-wording, ts-dis-specname, ts-dis-depends, ts-dis-adrform, ts-dis-adrlead, ts-dis-reading, ts-dis-uncertain,
+    ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -877,6 +939,7 @@ def discovery_check(ctx: Any) -> Any:
     found += _spec_names(ctx, specs, "ts-dis-specname")
     found += _decisions(ctx, "ts-dis-adrform", "ts-dis-adrlead")
     found += _reading(ctx, text, path)
+    found += _uncertain(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
     found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
     found.append(_committed(ctx, "ts-dis-commit"))
@@ -902,6 +965,41 @@ def _decisions(ctx: Any, form_id: str, lead_id: str) -> list[CheckFinding]:
         form += [_find("fail", form_id, f"{path}:{n}", msg, fix) for n, msg, fix in fails[:LITERAL_MAX]]
         leads += [_find("maybe", lead_id, f"{path}:{n}", msg, fix) for n, msg, fix in said[:LITERAL_MAX]]
     return (form or [_ok(form_id)]) + (leads or [_ok(lead_id)])
+
+
+CLOSED_HEADING = "Uncertainties closed"
+# How a row of `Uncertainties closed` ends its question: what was found, the owner's answer, or an assumption taken.
+CLOSED_ROW = re.compile(r"\b(Answered|Owner|Assumed)\b\s*:", re.I)
+
+
+def _uncertain(ctx: Any, text: str, path: str) -> list[CheckFinding]:
+    """ts-dis-uncertain: every open question of the triage note that blocks or shapes the change has one line under
+    the hand-off's `Uncertainties closed` that names its id and says how it ended: `Answered:` with where it was
+    read, `Owner:` with the answer, or `Assumed:` with the assumption taken and `If wrong:`."""
+    crit = "ts-dis-uncertain"
+    note_text, note_path = _read(ctx, "triage_note")
+    working = fmt.parse_triage(note_text or "").working
+    if not working:
+        return [_find("n_a", crit, path, "the triage note has no open question that blocks or shapes the change")]
+    lines = {k.lower(): v for k, v in fmt.sections(text).items()}.get(CLOSED_HEADING.lower())
+    if lines is None:
+        return [_find("fail", crit, path, f"hand-off section `## {CLOSED_HEADING}` is missing",
+                      f"add `## {CLOSED_HEADING}` with one line for each of {', '.join(u.id for u in working)}")]
+    found: list[CheckFinding] = []
+    for u in working:
+        mine = [ln for ln in lines if re.search(rf"(?<![\w-]){u.id}(?![\w-])", ln)]
+        if not mine:
+            found.append(_find("fail", crit, u.id, f"`## {CLOSED_HEADING}` has no line for {u.id}",
+                               f"add `- {u.id}: Answered: …`, `Owner: …` or `Assumed: …`"))
+            continue
+        end = CLOSED_ROW.search(mine[0])
+        if end is None:
+            found.append(_find("fail", crit, u.id, f"the line for {u.id} says neither `Answered:`, `Owner:` nor "
+                               "`Assumed:`", "say how the question ended"))
+        elif end.group(1).lower() == "assumed" and not fmt.IF_WRONG.search(mine[0]):
+            found.append(_find("fail", crit, u.id, f"the assumption taken for {u.id} does not say what it costs if it "
+                               "is wrong", "end the line with `If wrong: <what it costs>`"))
+    return found or [_ok(crit, path)]
 
 
 # The spec rule's `General rules, not cases`: words that narrate a change, and an issue reference. Leads for the

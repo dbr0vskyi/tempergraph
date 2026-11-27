@@ -2,7 +2,28 @@
 
 ## Purpose
 
-A schedule starts a registered workflow, or a saved orchestration, once or on a recurrence, given in an exact format (ISO 8601, an RFC 5545 rule, cron) or, optionally, in words ("tomorrow at 9", "every weekday at 8:00", "every month on the last day at 17:00"). Both paths are deterministic and model-free; the words are a convenience on top of the exact formats, never a requirement ([ADR `exact-formats-first-and-an-optional-word-grammar-echoed-back`](../adr/exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md)). This spec owns the `schedule` verbs, the word grammar (the exact formats and their refusals are [STM](schedule-timing-formats.spec.md)), how either becomes one canonical form that is echoed back before anything is saved, time zones and daylight saving ([ADR `schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules`](../adr/schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md)), the schedule entry and its fire log, and the policies for missed fires, overlapping runs, failures and spend ([ADR `missed-slots-catch-up-latest-and-a-live-run-skips-the-next`](../adr/missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md)). What fires a schedule is the tick, an OS-agnostic, model-free engine routine that reads the schedules, decides what is due and starts each due run through the engine's own `run` verb; the engine's portable loop calls it, and an OS scheduler or a pipeline may too ([TCK](schedule-ticks-and-unattended-fires.spec.md), [ADR `a-model-free-tick-behind-os-agnostic-triggers`](../adr/a-model-free-tick-behind-os-agnostic-triggers.adr.md)). The tick calls no model and answers no gate (OVR-B20). A scheduled run is an ordinary run, preflighted, capped, logged and costed, every pause staying with a person; a schedule adds who started it (caller kind `scheduler`, [PRV](caller-provenance.spec.md)), which slot it served, and the rules that keep it from piling up paused runs or spend ([ADR `a-scheduled-fire-is-an-attested-caller-with-capped-spend`](../adr/a-scheduled-fire-is-an-attested-caller-with-capped-spend.adr.md)). Operators, the schedule skill and pipelines depend on it; design notes and assumptions are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
+A schedule starts a registered workflow, or a saved orchestration, once or on a recurrence, given in an exact format (ISO 8601, an RFC 5545 rule, cron) or, optionally, in words ("tomorrow at 9", "every weekday at 8:00", "every month on the last day at 17:00"). Both paths are deterministic and model-free; the words are a convenience on top of the exact formats, never a requirement ([ADR `exact-formats-first-and-an-optional-word-grammar-echoed-back`](../adr/exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md)). This spec owns the `schedule` verbs, the word grammar, how either becomes one canonical form that is echoed back before anything is saved, time zones and daylight saving ([ADR `schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules`](../adr/schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md)), the schedule entry and its fire log, and the policies for missed fires, overlapping runs, failures and spend ([ADR `missed-slots-catch-up-latest-and-a-live-run-skips-the-next`](../adr/missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md)). What fires a schedule is the tick, an OS-agnostic, model-free engine routine that reads the schedules, decides what is due and starts each due run through the engine's own `run` verb; the engine's portable loop calls it, and an OS scheduler or a pipeline may too ([TCK](schedule-ticks-and-unattended-fires.spec.md), [ADR `a-model-free-tick-behind-os-agnostic-triggers`](../adr/a-model-free-tick-behind-os-agnostic-triggers.adr.md)). The tick calls no model and answers no gate (OVR-B20). A scheduled run is an ordinary run, preflighted, capped, logged and costed, every pause staying with a person; a schedule adds who started it (caller kind `scheduler`, [PRV](caller-provenance.spec.md)), which slot it served, and the rules that keep it from piling up paused runs or spend ([ADR `a-scheduled-fire-is-an-attested-caller-with-capped-spend`](../adr/a-scheduled-fire-is-an-attested-caller-with-capped-spend.adr.md)). Operators, the schedule skill and pipelines depend on it; design notes and assumptions are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
+
+## Depends on
+
+- `caller-provenance.spec.md`: caller provenance
+- `contracts.spec.md`: template grammar (CON-B8); exit codes (CON-B13)
+- `durability-and-resume.spec.md`: fresh run never merges (DUR-B1)
+- `engine-cli.spec.md`: check before spend (CLI-B1); reserved verbs (CLI-B2)
+- `lifecycle-hooks.spec.md`: lifecycle hooks
+- `local-observability-store.spec.md`: home layout (LOS-B10)
+- `observability-and-cost.spec.md`: observability and cost
+- `run-settings-and-overrides.spec.md`: layers (RST-B22); tool grants (RST-B28); refusals before spend (RST-B32)
+- `schedule-ticks-and-unattended-fires.spec.md`: one tick at a time (TCK-B2); missed while asleep (TCK-B3)
+- `security.spec.md`: launch rules (SEC-B5)
+- `workflow-model.spec.md`: workflow model and validation
+- `workspace-and-concurrency.spec.md`: workspace and concurrency
+- `worktree-mode.spec.md`: resolving auto (WTR-B18)
+
+## Does not own
+
+- The exact formats and their refusals: `schedule-timing-formats.spec.md`
+- The tick that fires a schedule, its triggers and what a fire leaves in the records: `schedule-ticks-and-unattended-fires.spec.md`
 
 ## Behaviours
 

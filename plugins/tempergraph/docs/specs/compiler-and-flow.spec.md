@@ -4,6 +4,22 @@
 
 The compiler turns a validated workflow into a durable state graph with four nodes per unit (step, judge, gate, human), one finalizer node and static edges for every target the workflow names, so validation can check reachability and the diagram is drawn from the same model. Every unit kind keeps those four nodes; for a council or a contest the step node is a subgraph of sessions with an engine-owned barrier ([ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)). Four nodes and not one, because the graph runtime restarts a paused node from its top on resume ([ADR `four-nodes-per-unit`](../adr/four-nodes-per-unit.adr.md)). Workflow authors, the diagram, the run log and resume depend on what the graph does. Gates, routes and joins are pure and safe to re-run, and the judge and the gate run once. Graph features left out on purpose (a node routing itself, retry policies on model nodes, deferred nodes, the functional API) are compared in [research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md).
 
+## Depends on
+
+- `ask-unit.spec.md`: ask unit
+- `contest-unit.spec.md`: contest unit
+- `contracts.spec.md`: unit fields (CON-B5)
+- `council-unit.spec.md`: council unit
+- `flow-extensions.spec.md`: deadlines (FLX-B8)
+- `gate-and-human.spec.md`: gate and human nodes
+- `map-unit.spec.md`: map unit
+- `measured-switches.spec.md`: measured switches
+- `observability-and-cost.spec.md`: observability and cost
+- `reruns-and-feedback.spec.md`: rewind (RRN-B16)
+- `run-outcome.spec.md`: the outcome gate (OUT-B15); outcome gate failure (OUT-B16); outcome judge mode (OUT-B17)
+- `script-units-and-hybrid-steps.spec.md`: script units and hybrid steps
+- `workspace-and-concurrency.spec.md`: shapes of parallel work (WSP-B11)
+
 ## Behaviours
 
 ### CMP-B8 Node names and routing tokens

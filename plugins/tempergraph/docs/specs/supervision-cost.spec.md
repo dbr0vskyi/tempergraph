@@ -4,6 +4,20 @@
 
 What the sessions that babysit runs spend: the Claude session that starts a run and waits on it, reads its status and logs, diagnoses a failure, shows a pause to a person and resumes; the orchestrator skill's session; their helper subagents; an application that drives the engine. This spend happens in a host the engine does not run, so the engine cannot meter it the way it meters its own sessions ([OBS](observability-and-cost.spec.md)); it adds to run cost, most of it context re-read after a wake, and is lost unless it is recorded per run ([research `callers-supervision-and-babysitting-cost`](../research/callers-supervision-and-babysitting-cost.rsrch.md) B1, B2, B4). This spec owns the supervision journal that hosts and callers write, the sources of usage per host, the attribution of a supervising session's spend to threads and orchestrations, the closing of a thread's supervision cost, and the `supervision` verbs. Read-only verbs still write nothing (OVR-B15): the journal is written by the host's hooks and by one writing verb ([ADR `a-supervision-journal-written-by-the-host-not-by-read-only-verbs`](../adr/a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md)). Unmeasured is never zero. Supervision metrics ([SUP](supervision-metrics.spec.md)), reports, sinks ([CST](central-run-stats.spec.md)) and the orchestrator skill's share ([OSK](orchestrator-skill.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
+## Depends on
+
+- `caller-provenance.spec.md`: classification (PRV-B13); person turns (PRV-B15); the caller block (PRV-B16)
+- `central-run-stats.spec.md`: central run stats
+- `engine-cli.spec.md`: engine cli
+- `executor-interface.spec.md`: executor interface
+- `local-observability-store.spec.md`: home layout (LOS-B10)
+- `observability-and-cost.spec.md`: observability and cost
+- `orchestrator-skill.spec.md`: orchestrator skill
+- `overview.spec.md`: the supervisor calls no model (OVR-B18); the schedule tick calls no model (OVR-B20)
+- `plugin-shell.spec.md`: plugin shell
+- `self-improvement.spec.md`: self-improvement loop
+- `supervision-metrics.spec.md`: supervision record of a run (SUP-B10); workflow aggregates (SUP-B12)
+
 ## Behaviours
 
 ### SCO-B1 A run driver session
@@ -104,9 +118,10 @@ WHEN a `supervision` verb runs THE engine CLI SHALL offer `supervision hook <eve
 
 ### SCO-B17 Privacy and retention
 
-WHEN supervision data is kept or sent THE engine SHALL keep no prompt, command line, tool output or transcript text in the journal, only a verb word, resolved ids, counts, sizes and times; send host sessions and thread ids hashed in anything that leaves the machine ([CST](central-run-stats.spec.md)); keep journals 90 days like evidence ([LOS](local-observability-store.spec.md)); and keep closed figures with the ledger.
+WHEN supervision data is kept or sent THE engine SHALL keep no prompt, command line, tool output or transcript text in the journal, only a verb word, resolved ids, counts, sizes and times; send host sessions and thread ids hashed in anything that leaves the machine ([CST](central-run-stats.spec.md)); keep journals 90 days like evidence ([LOS](local-observability-store.spec.md)), `store prune` removing a journal and its `.offsets.json` once its last entry is 90 days old and `--dry-run` listing them; and keep closed figures with the ledger.
 
 - GIVEN a canary prompt and command WHEN the journal, ledger and sink rows are scanned THEN neither appears
+- GIVEN a journal whose last entry is 91 days old and one with an entry from yesterday WHEN `store prune` runs THEN the first and its offsets file are removed and the second is kept
 
 ## Acceptance criteria
 
@@ -116,9 +131,10 @@ WHEN supervision data is kept or sent THE engine SHALL keep no prompt, command l
 - SCO-AC4 (SCO-B11): A hook failure injected at each entry kind leaves the host call's result and duration (within 2 s) unchanged
 - SCO-AC5 (SCO-B5, SCO-B6, SCO-B12): Sessions with `TEMPERGRAPH_SESSION_KEY` write no journal entry, and `unknown` and unprobed hosts close `incomplete` with null cost
 - SCO-AC6 (SCO-B3, SCO-B12): P-SUP-3 (`PostToolUse` input for `Bash` carries the command and the response size, and `Stop` and `SubagentStop` give a transcript path whose assistant lines carry usage) has a recorded result with date, machine and Claude Code version before the Claude Code row leaves `projected`, and on a live orchestration of three or more runs the share of [OSK](orchestrator-skill.spec.md) is computed by this spec
+- SCO-AC7 (SCO-B17): `store prune` removes a journal and its offsets file whose last entry is 90 or more days old, keeps one with a newer entry, and with `--dry-run` lists them and removes nothing
 
 ## Open questions
 
 - Should the `rewake` idle threshold follow the host's actual cache lifetime when the host reports it (the status line's `prompt_cache.ttl`)? Until answered: a fixed 300 s default. Owner: implementer.
 - Should a team sink receive the session-level reported figure? Until answered: yes, hashed. Owner: owner.
-- Not built yet: `measured_zero`, orchestration splits and the status line's `reported` entry wait for orchestrations and a status line; journals are not yet pruned at 90 days; P-SUP-3 has not run. Owner: engine owner.
+- Not built yet: `measured_zero`, orchestration splits and the status line's `reported` entry wait for orchestrations and a status line; P-SUP-3 has not run. Owner: engine owner.
