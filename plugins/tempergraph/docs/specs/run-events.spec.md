@@ -15,6 +15,7 @@ What the engine writes and emits while a run is live, so an observer (the `tempe
 - `effort-ladder-and-model-escalation.spec.md`: effort ladder and one-step model escalation
 - `feedback-and-judge-reliability.spec.md`: feedback labels and judge reliability
 - `gate-and-human.spec.md`: what pauses for a usage limit (HUM-B14)
+- `judge-and-verdict.spec.md`: the judgement record says that a re-read ran (JDG-B23)
 - `judge-calibration.spec.md`: judge calibration and acceptance
 - `judge-model-by-risk.spec.md`: judge model by risk
 - `lifecycle-hooks.spec.md`: lifecycle hooks
@@ -75,9 +76,10 @@ WHEN `run_started` has been written on start, each resume and a rerun THE engine
 
 ### EVT-B12 Units, sessions, checks and judgements
 
-WHEN a unit's step node is entered (each visit, a trip back included), an executor's `session_started` event arrives, a deterministic check finishes, or a judgement block is parsed before the gate derives the verdict THE engine SHALL write `unit_entered` (`visit`, `entered_from` one of `start`, `proceed`, `retry`, `back:<unit>`, `rewind:<unit>`, `rerun`, `resume`, and `head_commit` and `dirty` for a git workspace); `session_opened` (session kind one of step, retry, judge, judge_reask, grouping, member, member_reask, chair, executor, alias, bound model, `session_id`, `transcript`, `pgid` on POSIX else null); `check` (`result` `PASS`, `MAYBE` or `FAIL`, `environmental`, `untracked_only`, `duration_s`, local `output_path`, `evidence` clipped to 200 characters and scrubbed); and `judgement` (per criterion `{n, id?, status}` with no evidence text, `met`, `total`, `blockers`, `confidence` and its source, `gap`, and the binding's `brief_digest` and `criteria_digest`, [FBK](feedback-and-judge-reliability.spec.md), [JCL](judge-calibration.spec.md)).
+WHEN a unit's step node is entered (each visit, a trip back included), an executor's `session_started` event arrives, a deterministic check finishes, or a judgement block is parsed before the gate derives the verdict THE engine SHALL write `unit_entered` (`visit`, `entered_from` one of `start`, `proceed`, `retry`, `back:<unit>`, `rewind:<unit>`, `rerun`, `resume`, and `head_commit` and `dirty` for a git workspace); `session_opened` (session kind one of step, retry, judge, judge_reask, judge_reread, grouping, member, member_reask, chair, executor, alias, bound model, `session_id`, `transcript`, `pgid` on POSIX else null); `check` (`result` `PASS`, `MAYBE` or `FAIL`, `environmental`, `untracked_only`, `duration_s`, local `output_path`, `evidence` clipped to 200 characters and scrubbed); and `judgement` (per criterion `{n, id?, status}` with no evidence text, `met`, `total`, `blockers`, `confidence` and its source, `gap`, `reread` when a re-read ran ([JDG-B23](judge-and-verdict.spec.md)), and the binding's `brief_digest` and `criteria_digest`, [FBK](feedback-and-judge-reliability.spec.md), [JCL](judge-calibration.spec.md)).
 
 - GIVEN a judgement with evidence text WHEN its record is written THEN it holds statuses and ids and no evidence
+- GIVEN an attempt whose judge ran a re-read for two criteria WHEN its `judgement` record is read THEN `reread` names those two criteria
 
 ### EVT-B13 Ladders, risk, budgets, pauses and scripts
 

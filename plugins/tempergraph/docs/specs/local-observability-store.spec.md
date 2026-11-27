@@ -52,9 +52,10 @@ WHEN a session opens THE engine SHALL keep in `sessions/<session_key>/` `meta.js
 
 ### LOS-B1 One folder per session
 
-WHEN a session of a unit ends THE engine SHALL have written it a folder of its own, `<unit>.<attempt>.<kind>` with the kind `step`, `retry`, `judge` or `judge_reask.<n>`, holding `meta.json` and `raw.jsonl`.
+WHEN a session of a unit ends THE engine SHALL have written it a folder of its own, `<unit>.<attempt>.<kind>` with the kind `step`, `retry`, `judge`, `judge_reask.<n>` or `judge_reread`, holding `meta.json` and `raw.jsonl`.
 
 - GIVEN a unit `a` whose step was retried once and whose judge re-asked once WHEN the run ends THEN `sessions/` holds `a.1.step`, `a.1.judge`, `a.2.retry`, `a.2.judge` and `a.2.judge_reask.1`
+- GIVEN a unit `a` whose judge was re-read in its first attempt WHEN the run ends THEN `sessions/` holds `a.1.judge` and `a.1.judge_reread`
 
 ### LOS-B2 Full session log on every executor
 

@@ -6,7 +6,7 @@ The discovery and setup steps read before they write. When a step has two or mor
 
 ## Depends on
 
-- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1); one re-ask (JDG-B2)
+- `../../../tempergraph/docs/specs/judge-and-verdict.spec.md`: check first (JDG-B1); one re-ask (JDG-B2); one re-read (JDG-B17)
 
 ## Behaviours
 
@@ -99,14 +99,14 @@ WHEN the writing session is briefed with findings THE workflow SHALL tell it tha
 
 ### PRL-B13 A reading session is judged on its own
 
-WHEN a reading session ends with findings THE workflow SHALL grade them with one judge session of their own, on whether they answer their subject or say what was searched, unless the check of the gate fails them first ([JDG-B1](../../../tempergraph/docs/specs/judge-and-verdict.spec.md)).
+WHEN a reading session ends with findings THE workflow SHALL grade them with a judge session of their own, counted as PRL-B14 counts it, on whether they answer their subject or say what was searched, unless the check of the gate fails them first ([JDG-B1](../../../tempergraph/docs/specs/judge-and-verdict.spec.md)).
 
 - GIVEN a visit with three reading sessions WHEN the three have ended with findings that pass the check THEN the run holds one judge session for each of them, three in all, apart from the judge session of the writing session
 - GIVEN a reading session whose findings the judge does not accept WHEN the other reading sessions have ended THEN only that reading session runs again
 
 ### PRL-B14 One judge session for each attempt of a gate
 
-WHEN a gate of the workflow judges an attempt THE workflow SHALL start one judge session for it, however many reading sessions the step had, apart from the re-ask that [JDG-B2](../../../tempergraph/docs/specs/judge-and-verdict.spec.md) states.
+WHEN a gate of the workflow judges an attempt THE workflow SHALL start one judge session for it, however many reading sessions the step had, apart from the re-ask that [JDG-B2](../../../tempergraph/docs/specs/judge-and-verdict.spec.md) states and the re-read that [JDG-B17](../../../tempergraph/docs/specs/judge-and-verdict.spec.md) states.
 
 - GIVEN a discovery visit with three reading sessions WHEN the attempt of its writing session is judged THEN one judge session runs for the attempt
 - GIVEN a setup with three reading sessions WHEN the attempt of its writing session is judged THEN one judge session runs for the attempt
