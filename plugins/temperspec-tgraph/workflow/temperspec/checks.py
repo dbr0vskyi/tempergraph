@@ -2151,6 +2151,32 @@ def review_check(ctx: Any) -> Any:
     return checks.result(found, evidence="\n".join(evidence))
 
 
+# ---------------------------------------------------------------------------------------------
+# read_component
+
+
+_PATH_IN_FINDING = re.compile(r"`([^`]+/[^`]+\.[a-z]{1,6})`|(?<!\w)([\w./][\w./-]{2,}/\S+\.[a-z]{1,6})(?!\w)")
+
+
+def read_component_check(ctx: Any) -> Any:
+    """ts-rdc-paths, ts-rdc-ruleread."""
+    text, path = _read(ctx, "component_finding")
+    if text is None:
+        return checks.result([_find("fail", "ts-rdc-paths", path, "the component finding cannot be read",
+                                    "write the component_finding artifact")])
+    root = Path(ctx.workdir)
+    named = [m.group(1) or m.group(2) for m in _PATH_IN_FINDING.finditer(text)]
+    missing = [p for p in named if not (root / p).exists()]
+    found: list[CheckFinding] = []
+    if missing:
+        found += [_find("fail", "ts-rdc-paths", p, "the finding names this path but it does not exist in the workspace",
+                        "name only paths that exist in the folder you were given") for p in missing[:6]]
+    else:
+        found.append(_ok("ts-rdc-paths", path))
+    found += _ruleread(ctx, "read_component", "ts-rdc-ruleread")
+    return checks.result(found)
+
+
 def owner_answers_check(answers: dict[str, Any]) -> list[str]:
     """The answers check of the pause `ask_owner` (OWQ-B5, ASK-B11): a pure function of the answers. One problem for
     each reading of a gap answered `wrong`, naming the gap and saying that the run can be stopped to correct the task
