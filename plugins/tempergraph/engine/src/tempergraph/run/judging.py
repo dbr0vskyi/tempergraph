@@ -285,6 +285,35 @@ def marked_reading(judgement: Judgement, gate: GateSpec, check: CheckResult | No
     return out
 
 
+def reread_needed(judgement: Judgement, gate: GateSpec, check: CheckResult | None) -> bool:
+    """JDG-B17: a failing blocker or a `gap`, no failing blocker unmarked, and the `gap`, if set, marked."""
+    m = marked_reading(judgement, gate, check)
+    if m.unmarked or (judgement.gap and not m.gap_marked):
+        return False
+    return bool(m.marked) or judgement.gap
+
+
+def reread_prompt(first_prompt: str, judgement: Judgement, marked: Sequence[int], gate: GateSpec) -> str:
+    """JDG-B18: the first prompt with one added section before the answer format: the first `summary`, the `fix` of
+    each marked criterion, and the instruction to open those places and grade every criterion of the gate."""
+    by_n = {f.n: f for f in judgement.criteria}
+    lines = []
+    for i, c in enumerate(gate.criteria, 1):
+        if i in marked:
+            f = by_n.get(i)
+            lines.append(f"- {i}. [{c.id or '-'}]: {(f.fix if f else '').strip() or 'open the place it names'}")
+    if judgement.gap and judgement.gap_unread:
+        lines.append(f"- gap: {judgement.summary}")
+    section = ("## Your first review marked places you did not open\n"
+               f"Your summary: {judgement.summary}\n" + "\n".join(lines)
+               + "\nOpen each of these places with the read tool now, then grade every criterion of the gate again "
+               "from what you read. This is the last review: it alone gives the verdict.")
+    head, sep, tail = first_prompt.rpartition(ANSWER_FORMAT)
+    if not sep:
+        return first_prompt + "\n\n" + section + "\n"
+    return head + section + "\n\n" + ANSWER_FORMAT + tail
+
+
 def derive(judgement: Judgement | None, gate: GateSpec, check: CheckResult | None,
            back_units: Mapping[str, str] | None = None) -> Outcome:
     """JDG-B13. ``back_units``: artifact key -> producing unit, for the allowed back targets on this path."""

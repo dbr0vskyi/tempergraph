@@ -66,9 +66,12 @@ from tempergraph.run.judging import (
     criteria_digest,
     derive,
     judged,
+    marked_reading,
     parse_judgement,
     reask_prompt,
     render_judge,
+    reread_needed,
+    reread_prompt,
 )
 from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
 from tempergraph.run.session_record import read_session
@@ -1855,6 +1858,23 @@ class EngineNodes:
             reports_actions=caps.reports_actions)
         if gr.status == "discarded":
             judgement = None
+        if judgement is not None and reread_needed(judgement, g, cres):  # JDG-B17: one re-read, never a third session
+            mk = marked_reading(judgement, g, cres)
+            ckey = self._skey(unit, attempt, "judge_reread", item=iid)
+            creq = SessionRequest(kind="judge_reread", prompt=reread_prompt(prompt, judgement, mk.marked, g),
+                                  workdir=workdir, alias=alias, session_key=ckey, timeout_s=req.timeout_s,
+                                  idle_s=req.idle_s, options=req.options,
+                                  session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, ckey))
+            res3, r3 = self._session(ex, creq, views, hold=hold)
+            all_results += r3
+            if not res3.ok and res3.usage_limit:
+                return self._judge_limited(out, res3, state, all_results)
+            judgement = None  # JDG-B19: the verdict comes from the re-read's judgement alone
+            if not res3.timed_out:
+                try:
+                    judgement = parse_judgement(res3.text, g)
+                except Unparsed:
+                    judgement = None
         back_units: dict[str, str] = {}
         for target in flow.effective_order(spec):
             if target in g.back_targets:

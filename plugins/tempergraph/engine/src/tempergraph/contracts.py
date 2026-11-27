@@ -593,7 +593,7 @@ class InfraCause(StrEnum):
 
 
 ErrorKind = Literal["model", "refused", "cap_reached", "turn_cap", "denied", "auth", "unknown"]
-SessionKind = Literal["step", "retry", "judge", "judge_reask", "grouping", "member", "member_reask", "chair"]
+SessionKind = Literal["step", "retry", "judge", "judge_reask", "judge_reread", "grouping", "member", "member_reask", "chair"]
 
 
 @dataclass(kw_only=True)
