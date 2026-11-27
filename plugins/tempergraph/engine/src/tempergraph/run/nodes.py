@@ -1865,16 +1865,39 @@ class EngineNodes:
                                   workdir=workdir, alias=alias, session_key=ckey, timeout_s=req.timeout_s,
                                   idle_s=req.idle_s, options=req.options,
                                   session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, ckey))
+            before3 = gitmod.fingerprint(workdir)  # JDG-B21: the re-read has a guard window of its own
             res3, r3 = self._session(ex, creq, views, hold=hold)
             all_results += r3
             if not res3.ok and res3.usage_limit:
                 return self._judge_limited(out, res3, state, all_results)
+            if res3.infra_cause is not None:  # JDG-B5: the attempt ends as for any judge session
+                out.update(verdict=str(Verdict.ESCALATE), infra_spent=True, reason="judge_infra")
+                out["_cost"] = self._cost(state, all_results)
+                return out
             judgement = None  # JDG-B19: the verdict comes from the re-read's judgement alone
             if not res3.timed_out:
                 try:
                     judgement = parse_judgement(res3.text, g)
                 except Unparsed:
-                    judgement = None
+                    r3key = self.ctx.key_prefix + session_key(unit, attempt, "judge_reask", item=iid, n=2)
+                    r3req = SessionRequest(kind="judge_reask", prompt=reask_prompt(res3.text, g), workdir=workdir,
+                                           alias=alias, session_key=r3key, timeout_s=req.timeout_s,
+                                           idle_s=req.idle_s, options=req.options,
+                                           session_dir=session_dir(self.ctx.state_root, spec.name,
+                                                                   self.ctx.task_id, r3key))
+                    res4, r4 = self._session(ex, r3req, views, hold=hold)
+                    all_results += r4
+                    if not res4.ok and res4.usage_limit:
+                        return self._judge_limited(out, res4, state, all_results)
+                    try:
+                        judgement = parse_judgement(res4.text, g)
+                    except Unparsed:
+                        judgement = None
+            gr = guard(views, res3.tool_calls, before3, gitmod.fingerprint(workdir), workspace_mode=(
+                state.get("workspace") or {}).get("mode", "in_place"), step_session_id=att.get("session_id"),
+                judge_session_id=res3.session_id, reports_actions=caps.reports_actions)
+            if gr.status == "discarded":
+                judgement = None
         back_units: dict[str, str] = {}
         for target in flow.effective_order(spec):
             if target in g.back_targets:

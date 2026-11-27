@@ -42,7 +42,7 @@ def request_kinds(ex: ScriptedExecutor) -> list[str]:
 def drive(repo: Path, judges: list[str], steps: int = 4) -> tuple[Any, ScriptedExecutor]:
     """The scripted judges first, then spare answers so a run that goes on never meets an empty queue."""
     ex = standin("claude", steps=[DRAFT] * steps + [REVIEW] * 2,
-                 judges=[judge(t) for t in judges] + [judge(CLEAN)] * 4)
+                 judges=[judge(t) if isinstance(t, str) else t for t in judges] + [judge(CLEAN)] * 4)
     return go(repo, ex, two_blockers()), ex
 
 
@@ -123,3 +123,83 @@ def test_jdg_ac13_a_reread_that_marks_a_partial_blocker_again_retries(repo: Path
     _, ex = drive(repo, [first, first, CLEAN], steps=2)
     assert request_kinds(ex)[:4] == ["step", "judge", "judge_reread", "retry"]
     assert request_kinds(ex).count("judge_reread") == 1
+
+
+PARTIAL_FIRST = block([("MET", False, ""), ("PARTIAL", True, "open notes.md lines 1-9")])
+
+
+def placeholder_checks(out: Any, ex: ScriptedExecutor, repo: Path) -> None:
+    """The re-read's judgement is unparsed: ESCALATE, confidence 0.0, never derived from the first (JDG-B21)."""
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    (rec,) = [r for r in records(repo) if r["kind"] == "judgement"]
+    assert rec["confidence"] == 0.0 and rec["confidence_source"] == "engine_placeholder"
+    assert rec["blockers"] == [] and "retry" not in request_kinds(ex)
+
+
+def test_jdg_ac14_a_reread_that_times_out_is_an_unparsed_judgement(repo: Path) -> None:  # AC 3
+    timed_out = dataclasses.replace(judge(CLEAN), timed_out=True, ok=False)
+    out, ex = drive(repo, [PARTIAL_FIRST, timed_out], steps=1)
+    assert request_kinds(ex)[:3] == ["step", "judge", "judge_reread"]
+    placeholder_checks(out, ex, repo)
+
+
+def test_jdg_ac14_a_reread_the_guard_discards_is_an_unparsed_judgement(repo: Path) -> None:  # AC 3, AC 6
+    outside = judge(CLEAN, tools=("Read", "Write"))
+    out, ex = drive(repo, [PARTIAL_FIRST, outside], steps=1)
+    assert request_kinds(ex)[:3] == ["step", "judge", "judge_reread"]
+    placeholder_checks(out, ex, repo)
+    (rec,) = [r for r in records(repo) if r["kind"] == "judgement"]
+    assert rec["guard"] == "discarded"
+
+
+def test_jdg_ac14_a_reread_with_no_block_after_its_reask_is_an_unparsed_judgement(repo: Path) -> None:  # AC 3
+    out, ex = drive(repo, [PARTIAL_FIRST, judge("no block"), judge("still none")], steps=1)
+    assert request_kinds(ex)[:4] == ["step", "judge", "judge_reread", "judge_reask"]
+    assert request_kinds(ex).count("judge_reread") == 1 and request_kinds(ex).count("judge") == 1
+    placeholder_checks(out, ex, repo)
+
+
+def test_jdg_ac14_a_reread_with_no_block_is_derived_from_its_reask(repo: Path) -> None:  # AC 3
+    out, ex = drive(repo, [PARTIAL_FIRST, judge("no block"), judge(CLEAN)], steps=2)
+    assert request_kinds(ex)[:4] == ["step", "judge", "judge_reread", "judge_reask"]
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert request_kinds(ex)[4] == "step"  # the next unit's step, no retry of this one
+
+
+def test_jdg_ac14_a_first_session_the_guard_discards_starts_no_reread(repo: Path) -> None:  # AC 3
+    out, ex = drive(repo, [judge(PARTIAL_FIRST, tools=("Read", "Write"))], steps=1)
+    assert "judge_reread" not in request_kinds(ex)
+    assert out.exit_code is ExitCode.PAUSED
+
+
+def test_jdg_ac14_an_infra_failure_of_the_reread_ends_the_attempt_as_judge_infra(repo: Path) -> None:  # AC 3
+    from tempergraph.contracts import InfraCause, SessionResult, Usage
+
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    ex = standin("claude", steps=[DRAFT] * 4, judges=[judge(PARTIAL_FIRST), broken, broken, broken] * 4)
+    out = go(repo, ex, two_blockers())
+    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "infra"
+    assert not [r for r in records(repo) if r["kind"] == "judgement"]
+    assert "retry" not in request_kinds(ex)
+    assert set(request_kinds(ex)) <= {"step", "judge", "judge_reread"}
+
+
+def test_jdg_ac9_a_reread_runs_on_the_risk_rules_model_with_one_risk_record(repo: Path) -> None:  # AC 6
+    from tempergraph.api import Risk
+    from tempergraph.executors.standins import standin as make
+    from tempergraph.run.runner import RunSettings, start
+
+    from .test_judge_risk import LEVELS, always_code, recs, wf, writes
+    from .test_run import registry
+
+    first = block([("MET", False, "")], gap=True, gap_unread=True, summary="open notes.md")
+    clean = block([("MET", False, "")])
+    ex = make("claude", steps=[writes("src/x.py")], judges=[judge(first), judge(clean)])
+    out = start(wf(Risk(levels=LEVELS, rule=always_code)), "R-1", {"request": "x"}, repo, registry(ex),
+                RunSettings(sleep=lambda s: None))
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    one, two = [c for c in ex.calls if c.kind in ("judge", "judge_reread")]
+    assert two.request.kind == "judge_reread"
+    assert (one.request.alias, two.request.alias) == ("large", "large")
+    assert one.views is not None and two.views is not None and one.views.tools == two.views.tools
+    assert len(recs(repo, "judge_risk")) == 1
