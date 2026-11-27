@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 28,
+  "revision": 29,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -27,7 +27,7 @@
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself. For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and the fix, in one line."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself. For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and the fix, in one line. Open with the read tool the file a row or a criterion names before you grade it. Lines a search printed are not a reading of that file. When a grade fails only because you did not open a place you could open, set unread true and give the path and lines to open as its fix."
   },
   "final": [
     {
@@ -2176,6 +2176,12 @@
       "origin": "authored",
       "at": "2026-11-26T23:00:00.000Z",
       "note": "issue 203: the unit regeneration after code, a script unit with no session that runs the regenerations the repository declares when an input changed and sends a failure back once to the code step as numbered findings (ts-rgn-declaration, ts-rgn-ran, ts-rgn-passed; specs regeneration, regeneration-failures)"
+    },
+    {
+      "revision": 29,
+      "origin": "authored",
+      "at": "2026-11-27T12:00:00.000Z",
+      "note": "issue 204: the judge briefs and the outcome stance tell the judge to open with the read tool the file a row or a criterion names before grading it, that lines a search printed are not a reading of that file, and to mark a grade that fails for want of a reading with the path and lines to open as its fix (specs judge-reading, judge-and-verdict)"
     }
   ]
 }
