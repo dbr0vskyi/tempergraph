@@ -545,6 +545,7 @@ class WorkflowSpec:
     routing: RoutingMetadata = field(default_factory=RoutingMetadata)
     improvement_mode: Literal["dev", "stable"] = "dev"
     session_review: Literal["auto", "full", "signals", "off"] = "auto"  # improvement.session_review (SRV-B13, SRV-B14, SRV-B15)
+    loop_dry_run: bool | None = None  # the loop's dry run, declared on `workflow:default` (LFS-B1)
     verified_engine: str | None = None
     command_resolver: CallableRef | None = None
     run_cost_cap_usd: float | None = None

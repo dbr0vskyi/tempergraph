@@ -367,6 +367,28 @@ def _observer_warnings(root: Path, settings: RunSettings) -> list[Finding]:
     return observer_warnings(sorted(set(cap.observers) - installed))
 
 
+def _dry_segment(settings: RunSettings, meta: Mapping[str, Any], settled: Settled, log_path: Path) -> bool:
+    """LFS-B1, LFS-B3, EVT-B10: is the value in force for this segment a dry run, from any source?
+
+    The engine's own flag or a resolved `run.loop_dry_run` of `true` is one. A thread whose meta holds `dry_run` and
+    that has never had a value of the setting (no row now, none in its log) stays dry: that is a thread the engine
+    started dry or one written before the setting."""
+    if settings.dry_run or settled.run.get("loop_dry_run") is True:
+        return True
+    if not meta.get("dry_run"):
+        return False
+    if any(r.key == "run.loop_dry_run" for r in settled.resolved.rows):
+        return False
+    try:
+        with open(log_path, encoding="utf-8") as fh:
+            for line in fh:
+                if '"settings_resolved"' in line and '"run.loop_dry_run"' in line:
+                    return False
+    except OSError:
+        pass
+    return True
+
+
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
            before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
@@ -413,7 +435,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
                   **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
-                  **({"dry_run": True} if settings.dry_run or meta.get("dry_run") else {}),
+                  **({"dry_run": True} if _dry_segment(settings, meta, settled, log.path) else {}),
                   overridden_keys=rst.overridden_keys(settled.resolved),
                   **({"capture_lowered": cap.lowered()} if cap.lowered() else {}),
                   **({"observers": list(cap.observers), "observers_missing": missing} if cap.observers else {}))

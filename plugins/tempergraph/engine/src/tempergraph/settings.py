@@ -121,6 +121,15 @@ def _bool(v: Any) -> bool:
     raise SettingError("setting_value", f"{v!r} is not true or false")
 
 
+def _dry_run_value(v: Any) -> bool:
+    """LFS-B1: `loop_dry_run` takes `true` or `false` only; `1` and `0` are refused."""
+    if v is True or v == "true":
+        return True
+    if v is False or v == "false":
+        return False
+    raise SettingError("setting_value", f"{v!r} is not true or false")
+
+
 def _alias(v: Any) -> str:
     if not isinstance(v, str) or not ALIAS.match(v):
         raise SettingError("setting_value", f"{v!r} is not a model alias (inherit, small, medium, large or "
@@ -205,6 +214,7 @@ CATALOG: dict[str, Entry] = {
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV-B13, SRV-B14, SRV-B15)
+    "loop_dry_run": Entry(RUN, _dry_run_value, False),  # the loop files nothing and writes `would_file` (LFS-B1)
     "worktree.root": Entry(RUN, str, "sibling", _root),
     "worktree.base": Entry(RUN, str, "head", _base),
     "worktree.branch_prefix": Entry(RUN, _prefix, "tg"),
@@ -703,6 +713,7 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
                 f"model_profile.judge:{name}")
     put(dflt, "run.run_cost_cap_usd", spec.run_cost_cap_usd, "run_cost_cap_usd")
     put(dflt, "run.daily_cap_usd", spec.daily_cap_usd, "daily_cap_usd")
+    put(dflt, "run.loop_dry_run", spec.loop_dry_run, "loop_dry_run")  # LFS-B1: `None` declares nothing
     if spec.workspace != "auto":
         put(dflt, "run.workspace", spec.workspace, "workspace")
     if spec.worktree is not None:
