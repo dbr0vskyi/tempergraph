@@ -35,8 +35,9 @@ verbs, never with scripts of your own.
    - decide from the repository's documents (the task's acceptance criteria, then specs and decision
      records, then the plan). A question only the person can answer, or a step that cannot be undone, goes to
      the person with your recommended answer; the run keeps waiting.
-   - answer with `tempergraph resume <workflow> <thread> --decision <word> --as-agent`, with
-     `--feedback '…'` saying what to change on `retry`. A usage-limit pause takes no decision.
+   - answer with `tempergraph resume <workflow> <thread> --decision <word> --reason <engine_defect|judge_error|environment|plan|request|other> --as-agent`,
+     with `--feedback '…'` saying what to change on `retry`. The engine refuses an agent's decision at a
+     pause without `--reason` (exit 2, before any change). A usage-limit pause takes no decision.
 3. **On exit 5**, read `tempergraph status <thread> --detail` and `tempergraph logs <thread>`, then hand the
    cause to the troubleshoot skill or to the person. Do not retry an infrastructure failure more than once.
 4. **On exit 0**, report the outcome, cost and branch, then `tempergraph improve review show <thread>` for
