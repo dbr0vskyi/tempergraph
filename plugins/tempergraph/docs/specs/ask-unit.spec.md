@@ -111,4 +111,4 @@ WHEN an ask with `from` and `on_deadline: defaults` is entered and its list hold
 
 ## Open questions
 
-- Not met yet: ASK-AC3 holds for the placements built so far (a parallel branch and a map item); ASK-AC4 holds in the status document (`input` with answered and open counts) and waits on the monitor's own documents. Owner: engine owner.
+- Not met yet: ASK-AC3 holds for the placements built so far (a parallel branch and a map item). Owner: engine owner.

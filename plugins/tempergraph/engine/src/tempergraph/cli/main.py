@@ -51,8 +51,42 @@ class _Parser(argparse.ArgumentParser):
         raise UsageError(message)
 
 
+# CLI-B28: the top-level help lists the verbs in these groups, operating runs first; a verb in no group is listed last.
+HELP_GROUPS = (
+    ("Operate runs", ("run", "resume", "attention", "status", "wait", "events", "logs", "facts", "stop", "rerun",
+                      "report", "config")),
+    ("Inspect and improve workflows", ("list", "graph", "validate", "audit", "outcome", "executors", "self-check",
+                                       "improve", "label", "labels", "evals", "promote-check", "supervision", "stats",
+                                       "store")),
+    ("Author and upgrade workflows", ("author", "blueprint", "scaffold", "literals", "upgrade", "upgrade-check",
+                                      "hooks")),
+    ("Install, register and place runs", ("install", "update", "workflows", "worktree", "carry", "schedule", "help")),
+)
+
+
+class _TopParser(_Parser):
+    def format_help(self) -> str:
+        """CLI-B28: the verbs grouped, each with its one-line help, then the global options."""
+        sub = next(a for a in self._actions if isinstance(a, argparse._SubParsersAction))
+        helps = {c.dest: c.help or "" for c in sub._choices_actions}
+        rest = [v for v in helps if not any(v in g for _, g in HELP_GROUPS)]
+        lines = ["usage: tempergraph [--state-root DIR] <verb> ...", "", str(self.description), ""]
+        for title, verbs in (*HELP_GROUPS, ("Other", tuple(rest))):
+            shown = [v for v in verbs if v in helps]
+            if not shown:
+                continue
+            lines.append(f"{title}:")
+            lines += [f"  {v:<15} {helps[v]}" for v in shown]
+            lines.append("")
+        lines += ["options:", "  -h, --help       show this help and exit",
+                  "  --state-root DIR outside a git repository: the state root to use (WSP-B15 to WSP-B18)", "",
+                  "`tempergraph <verb> --help` shows one verb's options. A thread is named <workflow>/<task id> or by "
+                  "its alias.", ""]
+        return "\n".join(lines)
+
+
 # The positionals that take any number of words (`nargs="*"`), by their destination.
-STAR_POSITIONALS = ("request", "paths")
+STAR_POSITIONALS = ("request", "paths", "selectors")
 
 
 def _parse(given: list[str]) -> argparse.Namespace:
@@ -69,7 +103,7 @@ def _parse(given: list[str]) -> argparse.Namespace:
 
 
 def _parser() -> _Parser:
-    p = _Parser(prog="tempergraph", description="Tempered rails for AI workflows")
+    p = _TopParser(prog="tempergraph", description="Tempered rails for AI workflows")
     p.add_argument("--state-root", metavar="DIR", help="outside a git repository: the state root to use (WSP-B15 to WSP-B18)")
     sub = p.add_subparsers(dest="verb", parser_class=_Parser)
 
@@ -159,11 +193,14 @@ def _parser() -> _Parser:
     fa.add_argument("selector")
     gr = sub.add_parser("graph", help="the workflow diagram")
     gr.add_argument("workflow")
-    gr.add_argument("--format", choices=("mermaid", "md", "json"), default="mermaid")
+    gr.add_argument("--format", choices=("mermaid", "md", "json", "svg"), default="mermaid")
     gr.add_argument("--overlay", metavar="THREAD", help="a thread's counts on the diagram (OBS-B15); read-only")
     wa = sub.add_parser("wait", help="block until a thread's outcome")
-    wa.add_argument("selector")
+    wa.add_argument("selectors", nargs="+", metavar="selector")
+    wa.add_argument("--any", action="store_true",
+                    help="watch every named thread and return when the first one stops running (DUR-B16)")
     wa.add_argument("--timeout", type=float, default=3600.0)
+    sub.add_parser("help", help="this list of verbs, grouped (CLI-B28)")
     so = sub.add_parser("stop", help="ask a live run to stop")
     so.add_argument("selector")
     so.add_argument("--now", action="store_true", help="stop the open session now instead of draining")
@@ -423,15 +460,30 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
     return RunSettings(**fields)
 
 
+def next_commands(out: Any) -> list[str]:
+    """CLI-B27: the reads that explain a pause (exit 3) or a stop for budget or infrastructure (exit 5)."""
+    tid = out.thread_id
+    if not tid or out.exit_code not in (ExitCode.PAUSED, ExitCode.BUDGET_OR_INFRA):
+        return []
+    if out.exit_code == ExitCode.PAUSED:
+        unit = (out.payload or {}).get("unit")
+        return [f"tempergraph status {tid} --detail" + (f" --unit {unit}" if unit else ""), "tempergraph attention"]
+    return [f"tempergraph status {tid} --detail", f"tempergraph logs {tid}"]
+
+
 def _report(env: Env, out: Any, as_json: bool) -> int:
+    after = next_commands(out)
     doc = {"schema_version": 1, "exit_code": int(out.exit_code), "reason": out.reason, "thread_id": out.thread_id,
-           "message": out.message, "payload": out.payload, "refusals": out.refusals, "warnings": out.warnings}
+           "message": out.message, "payload": out.payload, "refusals": out.refusals, "warnings": out.warnings,
+           "next": after}
     if as_json:
         _emit(env, doc)
     line = out.message or out.reason or ExitCode(out.exit_code).name.lower()
     env.err.write(f"{out.thread_id or 'tempergraph'}: {line}\n")
     if out.payload and out.payload.get("resume"):
         env.err.write(f"  {out.payload['resume']}\n")
+    for i, cmd in enumerate(after):  # CLI-B27
+        env.err.write(f"  {'next: ' if i == 0 else '      '}{cmd}\n")
     return int(out.exit_code)
 
 
@@ -646,9 +698,21 @@ def _one(env: Env, selector: str) -> tuple[WorkflowSpec, str]:
     from tempergraph.durability.status import Selector, select
 
     found = select(_root(env), env.catalog.specs, Selector(value=selector))
+    if not found:
+        raise UsageError(_no_thread(env, selector))
     if len(found) != 1:
-        raise UsageError(f"{selector!r} names {'no' if not found else 'more than one'} thread")
+        raise UsageError(f"{selector!r} names more than one thread")
     return found[0]
+
+
+def _no_thread(env: Env, selector: str) -> str:
+    """CLI-B29: the refusal of a selector that names no thread, with the threads whose task id it is."""
+    from tempergraph.durability.status import Selector, select
+
+    same = [t for _, t in select(_root(env), env.catalog.specs, Selector()) if t.split("/", 1)[-1] == selector]
+    hint = f"; did you mean {', '.join(sorted(same))}" if same else ""
+    return (f"{selector!r} names no thread: name a thread as <workflow>/<task id> or by its alias, or give a "
+            f"workflow name{hint}")
 
 
 def _hand_over_lost(env: Env, roots: list[Path], selector: str | None = None) -> None:
@@ -698,6 +762,7 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
                 continue
             for r in status(Path(entry["path"]), env.catalog.specs, Selector(value=a.selector))["threads"]:
                 doc["threads"].append({**r, "state_root": entry["path"]})
+        _refuse_empty(env, a.selector, doc)
         _emit(env, doc)
         return 0
     doc = status(_root(env), env.catalog.specs, Selector(value=a.selector))
@@ -713,8 +778,15 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
     stale = trigger_stale(home_path(), CLOCK().timestamp())  # TCK-B7: read-only, shown only when a heartbeat is old
     if stale:
         doc["trigger_stale"] = stale
+    _refuse_empty(env, a.selector, doc)
     _emit(env, doc)
     return 0
+
+
+def _refuse_empty(env: Env, selector: str | None, doc: Mapping[str, Any]) -> None:
+    """CLI-B29: a selector that is not a workflow name and selects no thread is refused, as the other readers do."""
+    if selector and selector not in env.catalog.specs and not doc.get("threads"):
+        raise UsageError(_no_thread(env, selector))
 
 
 def cmd_events(env: Env, a: argparse.Namespace) -> int:
@@ -853,6 +925,10 @@ def cmd_graph(env: Env, a: argparse.Namespace) -> int:
         model["overlay"] = overlay(_root(env), spec.name, split_thread(tid)[1])
     if a.format == "json":
         _emit(env, model)
+    elif a.format == "svg":
+        from tempergraph.model.diagram import to_svg
+
+        env.out.write(to_svg(model))
     else:
         text = to_mermaid(model)
         env.out.write(f"```mermaid\n{text}\n```\n" if a.format == "md" else text + "\n")
@@ -864,11 +940,32 @@ def cmd_wait(env: Env, a: argparse.Namespace) -> int:
 
     if a.timeout <= 0:
         raise UsageError("--timeout must be positive")
-    spec, tid = _one(env, a.selector)
+    if a.any:  # DUR-B16: the first named thread that stops running, verdicts not counted
+        from tempergraph.durability.status import wait_any
+
+        pairs: list[tuple[WorkflowSpec, str]] = []
+        for sel in a.selectors:
+            spec, tid = _one(env, sel)
+            if tid not in [t for _, t in pairs]:
+                pairs.append((spec, tid))
+        first = wait_any(_root(env), pairs, a.timeout)
+        _emit(env, {"schema_version": 1, "state": first.state, "exit_code": int(first.exit_code),
+                    "reason": first.reason, "thread_id": first.row.get("thread_id"), "row": first.row,
+                    "threads": first.threads})
+        return int(first.exit_code)
+    if len(a.selectors) > 1:
+        raise UsageError("wait names one thread; several threads need --any (DUR-B16)")
+    spec, tid = _one(env, a.selectors[0])
     w = wait(_root(env), spec, tid, a.timeout)
     _emit(env, {"schema_version": 1, "state": w.state, "exit_code": int(w.exit_code), "reason": w.reason,
                 "row": w.row})
     return int(w.exit_code)
+
+
+def cmd_help(env: Env, a: argparse.Namespace) -> int:
+    """CLI-B28: `tempergraph help` prints what `tempergraph --help` prints."""
+    env.out.write(_parser().format_help())
+    return 0
 
 
 def cmd_stop(env: Env, a: argparse.Namespace) -> int:
@@ -1053,6 +1150,7 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
     "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "self-check": cmd_self_check, "hooks": cmd_hooks, "graph": cmd_graph, "wait": cmd_wait,
     "stop": cmd_stop, "carry": cmd_carry, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
+    "help": cmd_help,
     **observe_cli.COMMANDS,
     **schedule_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,
@@ -1094,7 +1192,7 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
             raise UsageError("a verb is needed; `tempergraph --help` lists them")
         if a.verb not in COMMANDS:
             raise UsageError(f"{a.verb}: not in this release")
-        light = a.verb == "supervision" and getattr(a, "action", None) in ("hook", "log", "close")
+        light = a.verb == "help" or (a.verb == "supervision" and getattr(a, "action", None) in ("hook", "log", "close"))
         env = Env(catalog=catalog if catalog is not None else Catalog() if light else from_registry(),
                   registry=registry if registry is not None else default_registry(),
                   cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings,

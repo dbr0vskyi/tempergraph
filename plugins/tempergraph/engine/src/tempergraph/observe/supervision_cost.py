@@ -192,6 +192,37 @@ def journals(home: Path) -> list[tuple[str, str, Path]]:
     return [(p.parent.name, p.stem, p) for p in sorted(base.glob("*/*.jsonl"))]
 
 
+JOURNAL_DAYS = 90  # journals are kept as long as evidence (LOS)
+
+
+def _last_at(path: Path) -> float | None:
+    """The time of the journal's last entry that carries one; None for a journal with none."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return None
+    for line in reversed(lines):
+        try:
+            at = json.loads(line).get("at")
+            return datetime.fromisoformat(str(at).replace("Z", "+00:00")).timestamp()
+        except (ValueError, AttributeError, TypeError):
+            continue
+    return None
+
+
+def prunable_journals(home: Path, now: float, days: float = JOURNAL_DAYS) -> list[Path]:
+    """SCO-B17: each journal whose last entry is older than `days`, with its `.offsets.json`; a journal whose time
+    cannot be read is kept."""
+    out: list[Path] = []
+    for _host, _session, path in journals(home):
+        last = _last_at(path)
+        if last is not None and (now - last) / 86400 >= days:
+            out.append(path)
+            if (off := path.with_suffix(".offsets.json")).exists():
+                out.append(off)
+    return out
+
+
 # -- the Claude Code hooks (SHL-B14, SHL-B15) --------------------------------------------------------------------------
 
 

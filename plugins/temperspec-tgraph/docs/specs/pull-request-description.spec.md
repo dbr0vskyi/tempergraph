@@ -2,7 +2,14 @@
 
 ## Purpose
 
-What the draft pull request's description holds and how it reaches the pull request. The last stage writes it with no model, from the run's own files, so that the owner reads the task's criteria, the behaviours that changed, the choices the run made and the findings that block nothing, and not the notes that steps handed to each other. [Conversation](conversation.spec.md) owns the sections `Decided` and `Assumptions to confirm` ([CONV-B7](conversation.spec.md), [CONV-B8](conversation.spec.md)); [independent review](independent-review.spec.md) and [review findings](review-findings.spec.md) own the findings the description lists; the engine's [finalizer contract](../../../tempergraph/docs/specs/finalizer-contract.spec.md) owns what a last stage may do and how it ends. This spec does not own the push of the branch, nor the outcome of the last stage except where it concerns the description. The owner who reads a run's pull request depends on it. Part of the [overview](overview.spec.md).
+What the draft pull request's description holds and how it reaches the pull request. The last stage writes it with no model, from the run's own files, so that the owner reads the task's criteria, the behaviours that changed, the choices the run made and the findings that block nothing, and not the notes that steps handed to each other. This spec does not own the push of the branch, nor the outcome of the last stage except where it concerns the description. The owner who reads a run's pull request depends on it. Part of the [overview](overview.spec.md).
+
+## Does not own
+
+- The sections `Decided` and `Assumptions to confirm` (CONV-B7, CONV-B8): `conversation.spec.md`
+- When the review runs and what a blocking finding does: `independent-review.spec.md`
+- The findings the description lists, as the reader writes them: `review-findings.spec.md`
+- What a last stage may do and how it ends: `../../../tempergraph/docs/specs/finalizer-contract.spec.md`
 
 ## Behaviours
 

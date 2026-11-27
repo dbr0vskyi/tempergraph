@@ -12,9 +12,22 @@ The tool host executes the client tools of the [Messages API executor](executor-
 
 ### THS-B5 Tools offered
 
-WHEN the host lists its tools THE host SHALL give each a name, a description stating its size caps so the model can page, and an input schema, in a fixed order: `read_file` (`path`, optional `offset` and `limit` in lines; numbered lines, at most 2000 lines and 256 KB per call), `search_files` (`pattern` as a regex, optional `path` and `glob`; at most 200 matches, each line cut at 300 characters), `list_files` (`glob`, optional `path`; sorted paths, at most 1000), `edit_file` (`path`, `old`, `new`, optional `all`), `write_file` (`path`, `content`; at most 1 MB), `run_command` (`argv`, a list of strings) and `mcp__<s>__<t>` with the server's schema.
+WHEN the host lists its tools THE host SHALL give each a name, a description that states its size caps so the model can page, and an input schema, in the fixed order `read_file`, `search_files`, `list_files`, `edit_file`, `write_file`, `run_command`, then each `mcp__<s>__<t>` with the server's own schema.
 
 - GIVEN the same capabilities twice WHEN the tools are listed THEN both lists are in the same order
+
+### THS-B12 Reading tools' inputs and caps
+
+WHEN the host offers its reading tools THE host SHALL give `read_file` the inputs `path` and optional `offset` and `limit` in lines, answered with numbered lines, at most 2000 lines and 256 KB per call; `search_files` the inputs `pattern` (a regex) and optional `path` and `glob`, at most 200 matches with each line cut at 300 characters; and `list_files` the inputs `glob` and optional `path`, at most 1000 sorted paths.
+
+- GIVEN a file of 3000 lines WHEN `read_file` is called without `limit` THEN 2000 numbered lines are returned
+- GIVEN a search with 250 matches WHEN it returns THEN 200 matches are listed
+
+### THS-B13 Writing tools' inputs and caps
+
+WHEN the host offers its writing tools THE host SHALL give `edit_file` the inputs `path`, `old`, `new` and optional `all`; `write_file` the inputs `path` and `content`, at most 1 MB; and `run_command` the input `argv`, a list of strings.
+
+- GIVEN content of 2 MB WHEN `write_file` is called THEN nothing is written and the outcome names the cap
 
 ### THS-B6 Strict schemas
 
@@ -56,10 +69,21 @@ WHEN the host returns an outcome THE host SHALL return UTF-8 with invalid bytes 
 
 ### THS-B10 Command rules
 
-WHEN `run_command` runs THE host SHALL run `argv` only when its leading items equal a declared prefix split on spaces and no item holds `;`, `&`, `|`, `` ` ``, `$(`, `>`, `<` or a newline, as a list and never through a shell, in the workdir with any path item confined as in THS-B7, with the worker's environment minus the executor's credential variables ([SEC-B13](security.spec.md)), for at most 600 s (operator-configurable) with 64 KB of combined output, killing the process group on expiry with `error_kind = timeout`, and return the exit code then standard output and standard error, a non-zero exit being `ok = false` and not a denial.
+WHEN `run_command` runs THE host SHALL run `argv` only when its leading items equal a declared prefix split on spaces and no item holds `;`, `&`, `|`, `` ` ``, `$(`, `>`, `<` or a newline, as a list and never through a shell, in the workdir with any path item confined as in THS-B7.
+
+- GIVEN a declared prefix and an item that names a path outside the workdir WHEN called THEN nothing runs and the outcome is a denial
+
+### THS-B14 Command environment and limits
+
+WHEN `run_command` runs a command THE host SHALL give it the worker's environment minus the executor's credential variables ([SEC-B13](security.spec.md)), at most 600 s (operator-configurable) and 64 KB of combined output, and kill its process group on expiry with `error_kind = timeout`.
+
+- GIVEN a command running past its limit WHEN the limit passes THEN its process group is killed and the outcome is `timeout`
+
+### THS-B15 Command result
+
+WHEN a command ends THE host SHALL return its exit code, then its standard output and standard error, a non-zero exit being `ok = false` and not a denial.
 
 - GIVEN a command that exits 1 WHEN returned THEN the outcome is `ok = false` and not denied
-- GIVEN a command running past its limit WHEN the limit passes THEN its process group is killed and the outcome is `timeout`
 
 ### THS-B3 Declared prefix only
 
@@ -84,10 +108,11 @@ WHEN a tool is called with any input, including invalid JSON types, an unreadabl
 ## Acceptance criteria
 
 - THS-AC1 (THS-B1, THS-B3, THS-B7, THS-B10): The scenarios of THS-B1 and THS-B3 pass on POSIX and Windows
-- THS-AC2 (THS-B4, THS-B6, THS-B9): Fuzzed inputs never raise from a call, and every outcome is capped
+- THS-AC2 (THS-B4, THS-B6, THS-B9, THS-B12, THS-B13): Fuzzed inputs never raise from a call, and every outcome is capped
 - THS-AC3 (THS-B10): No code path runs a command through a shell, by a source scan
 - THS-AC4 (THS-B8, THS-B5): A judge host offers no write, edit or command tool for any view set, and the order of tools is fixed
 - THS-AC5 (THS-B2, THS-B11): An inexact edit changes nothing, and a server that fails to start offers no tool
+- THS-AC6 (THS-B14, THS-B15): A command past its limit has its process group killed with `timeout`, and a command that exits 1 returns `ok = false`, not a denial
 
 ## Open questions
 

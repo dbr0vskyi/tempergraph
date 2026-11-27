@@ -47,6 +47,8 @@ Useful options on `run`:
 | 5 | Retries spent, timeout, loop budget or infrastructure failure | Not a success. Read the logs, then rerun or fix the workflow |
 | 127 | Engine not installed | See [Getting started](getting-started.guide.md) |
 
+At exit 3 and exit 5 the run also prints the reads that explain it, after the resume command: `tempergraph status <thread> --detail --unit <step>` and `tempergraph attention` for a pause, `tempergraph status <thread> --detail` and `tempergraph logs <thread>` for exit 5 (as `next` with `--json`).
+
 ## Answer a pause
 
 A pause says which step paused, why, the failing criteria, where the output is, and which decisions it accepts:
@@ -90,11 +92,14 @@ A run that took a gate's fallback finishes with `degraded: true` in its status. 
 ```sh
 tempergraph status [<thread>] [--detail]       # one row per run, or one run in detail
 tempergraph wait <thread>                      # block until the run ends or pauses
+tempergraph wait <thread> <thread> --any      # block until the first of them ends or pauses
 tempergraph events <thread> [--follow]         # the run log, record by record
 tempergraph logs <thread> --kind raw|check|stderr|engine   # raw session and check output
 tempergraph facts <thread>                     # read-only facts about a run
 tempergraph stop <thread> [--now]              # drain after the current step, or stop now
 ```
+
+A thread is named `<workflow>/<task id>` or by its alias; a bare task id is refused with the threads it could mean. `wait` also returns when a running thread records a new gate verdict; `wait --any` returns only when a thread pauses or ends.
 
 A thread stopped by `stop` (drain or `--now`) shows in `tempergraph status` as `unfinished` with its `resume` command, and `tempergraph resume <workflow> <thread>` with no `--decision` continues it from the interrupted or next attempt. A thread stopped by a person's decision or a spent budget is refused that plain resume: the message names the unit and the reason, and it re-opens only with `--decision retry`, `back:<unit>` or `rewind:<unit>`.
 

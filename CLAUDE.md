@@ -15,6 +15,17 @@ Run from `plugins/tempergraph/engine/`:
 - Lint: `ruff check src tests`
 - Types: `mypy`
 
+## Operating runs
+
+When you start or answer runs here, use the engine's verbs, not scripts over its files (guide `plugins/tempergraph/docs/guides/running-workflows.guide.md`; `tempergraph --help` lists the verbs, operating runs first).
+
+- A thread is named `<workflow>/<task id>` (for example `temperspec/i204`) or by its alias; a bare task id is refused.
+- Start: `tempergraph run <workflow> --check …`, then the same without `--check`, in the background with `--json`. Exit 3 is a pause (it prints the resume command), 5 a spent budget or an infrastructure failure; both print the `next` reads that explain them.
+- Wait: `tempergraph wait <thread>`, or `tempergraph wait <thread> <thread> --any` for the first of several to pause or end. Never poll exit files or logs.
+- Read: `tempergraph attention` (everything that waits, oldest first), `tempergraph status <thread> --detail --unit <unit>`, `tempergraph logs <thread> --kind check`, `tempergraph events <thread>`, `tempergraph facts <thread>`, `tempergraph report`, `tempergraph improve review show <thread>`.
+- Answer: `tempergraph resume <workflow> <thread> --decision <word>`; add `--as-agent` when the decision is yours and not relayed from a person.
+- Skills: `tempergraph:run` relays every pause to a person; `tempergraph:operate` is for an agent asked to answer pauses itself; `tempergraph:troubleshoot` diagnoses read-only.
+
 ## What the project is
 
 An opinionated, LangGraph-based Python framework ("Tempered rails for AI workflows") that enforces AI engineering best practices so non-experts can still build good workflows. Intended capabilities:

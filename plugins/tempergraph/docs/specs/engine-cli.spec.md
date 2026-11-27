@@ -13,7 +13,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 - `check-contract-and-command-runs.spec.md`: the check preview (CHK-B17)
 - `complexity-routing.spec.md`: records and report (CXR-B13)
 - `contracts.spec.md`: thread states and decisions (CON-B12); exit codes (CON-B13)
-- `durability-and-resume.spec.md`: durability and resume
+- `durability-and-resume.spec.md`: durability and resume; wait (DUR-B5); wait for the first of several threads (DUR-B16)
 - `effort-ladder-and-model-escalation.spec.md`: escalation conditions (LAD-B12)
 - `engine-update.spec.md`: engine install and update
 - `eval-suites.spec.md`: eval suites for checks, steps and workflows
@@ -83,6 +83,14 @@ WHEN a run pauses for a person THE engine CLI SHALL exit 3.
 
 - GIVEN a caller that started `run` in the background WHEN the run pauses at an approval THEN the process exits 3 and the caller learns of the pause with no polling
 
+### CLI-B27 A pause or a stop names the next reads
+
+WHEN `run`, `resume` or `rerun` exits 3 or 5 THE engine CLI SHALL print, on standard error after the outcome line and the resume command, and as `next` in `--json`, the commands that explain the exit: for exit 3 `status <thread> --detail --unit <unit>` for the paused unit and `attention`, and for exit 5 `status <thread> --detail` and `logs <thread>`; any other exit prints none.
+
+- GIVEN a run that pauses at unit `a` WHEN it exits 3 THEN standard error ends with `next: tempergraph status <thread> --detail --unit a` and `tempergraph attention`
+- GIVEN a run whose step fails for an infrastructure cause until its retries are spent WHEN it exits 5 THEN `next` holds `tempergraph status <thread> --detail` and `tempergraph logs <thread>`
+- GIVEN a run that finishes WHEN it exits 0 THEN `next` is empty and standard error holds no `next:` line
+
 ### CLI-B5 Facts are read-only
 
 WHEN `facts <selector> [--json]` is given THE engine CLI SHALL print the run's state, branch, artifacts by key, pending gates, cost figures, alias, label and origin from the status document and the run log only, with `schema_version`, create nothing and call no model.
@@ -102,6 +110,13 @@ WHEN `attention [--all-roots] [--json]` is given THE engine CLI SHALL print ever
 WHEN the engine CLI is called THE engine CLI SHALL accept exactly the verbs `run`, `resume`, `rerun`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `batch`, `orchestrate`, `schedule`, `stop`, `worktree`, `update`, `install`, `workflows`, `upgrade`, `upgrade-check`, `facts`, `stats`, `store`, `hooks`, `improve`, `label`, `labels`, `evals`, `promote-check`, `carry`, `supervision`, `author`, `blueprint`, `literals`, `scaffold`, `outcome`, `self-check` and `help`, and exit 2 on any other first word.
 
 - GIVEN `tempergraph frobnicate` WHEN it runs THEN it exits 2 naming the unknown verb
+
+### CLI-B28 The help groups the verbs, operating runs first
+
+WHEN `tempergraph --help` or `tempergraph help` is given THE engine CLI SHALL list every verb it accepts once, with its one-line help, under the groups `Operate runs`, `Inspect and improve workflows`, `Author and upgrade workflows` and `Install, register and place runs`, in that order, and exit 0.
+
+- GIVEN `tempergraph --help` WHEN it runs THEN `run`, `resume`, `attention`, `status`, `wait`, `events` and `logs` are listed under `Operate runs`, which comes first
+- GIVEN `tempergraph help` WHEN it runs THEN it prints what `tempergraph --help` prints and exits 0
 
 ### CLI-B8 Read-only verbs write nothing
 
@@ -130,10 +145,17 @@ WHEN `rerun <workflow> <thread> --from <unit>[.<item>]|start [--check] [--feedba
 
 ### CLI-B12 Status, events, logs and wait
 
-WHEN `status [selector] [--detail [--unit <name>] [--no-live]] [--all-roots]`, `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]`, `logs <selector> [--session <key>] [--kind …] [--follow] [--json]` or `wait <selector> [--timeout s]` is given THE engine CLI SHALL print the status document or one thread's detail document ([RDD](run-detail-document.spec.md)), the run-log records and activity lines in order ([EVT-B22, EVT-B23, EVT-B24](run-events.spec.md)), one log from the local store ([LOS-B14, LOS-B15](local-observability-store.spec.md)), or block until the thread has an outcome, respectively, and write nothing.
+WHEN `status [selector] [--detail [--unit <name>] [--no-live]] [--all-roots]`, `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]`, `logs <selector> [--session <key>] [--kind …] [--follow] [--json]` or `wait <selector>… [--any] [--timeout s]` is given THE engine CLI SHALL print the status document or one thread's detail document ([RDD](run-detail-document.spec.md)), the run-log records and activity lines in order ([EVT-B22, EVT-B23, EVT-B24](run-events.spec.md)), one log from the local store ([LOS-B14, LOS-B15](local-observability-store.spec.md)), or block until the thread has an outcome or, with `--any`, the first of the named threads does ([DUR-B5, DUR-B16](durability-and-resume.spec.md)), respectively, and write nothing.
 
 - GIVEN `status --all-roots` WHEN it runs THEN it reads every state root in the machine index ([CST-B8](central-run-stats.spec.md))
 - GIVEN a running thread WHEN `wait <thread> --timeout 5` runs and the thread is still running after 5 s THEN `wait` returns with the thread still running and writes nothing
+
+### CLI-B29 A selector that names no thread is refused
+
+WHEN a reader (`status`, `facts`, `events`, `logs`, `wait`) is given a selector that is not a workflow name and selects no thread THE engine CLI SHALL exit 2 before any write, saying that a thread is named `<workflow>/<task id>` or by its alias and naming every thread whose task id equals the selector.
+
+- GIVEN a thread `w/t-1` WHEN `status t-1` runs THEN it exits 2 and the message names `w/t-1`
+- GIVEN a workflow `w` with no thread WHEN `status w` runs THEN it exits 0 with an empty list
 
 ### CLI-B13 Catalog, diagram, validation and reports
 
@@ -242,6 +264,9 @@ WHEN `improve outbox --help` or `resume --help` is given THE engine CLI SHALL sh
 - CLI-AC3 (CLI-B2, CLI-B7): Every verb word is refused as a request's first word, and the verb words in CLI-B7 equal the verbs the built CLI accepts
 - CLI-AC4 (CLI-B4, CLI-B17, CLI-B18, CLI-B19): The exit codes this spec names equal the engine's exit-code constants by a drift test against [CON-B12, CON-B13](contracts.spec.md)
 - CLI-AC5 (CLI-B6): `attention` lists every pause of a fixture state root exactly once, oldest first, each with a resume command that `resume` accepts, and leaves the state root unchanged
+- CLI-AC16 (CLI-B27): A fixture run that pauses at a unit prints `next` with that unit's detail read and `attention`, a fixture run that exits 5 for an infrastructure cause prints its detail read and its log list, each printed command exits 0, and a finished fixture run prints none
+- CLI-AC17 (CLI-B28): `tempergraph --help` lists every verb of the built CLI once under the four groups, `Operate runs` first and holding `run`, `resume`, `attention`, `status`, `wait`, `events` and `logs`, and `tempergraph help` prints the same text with exit 0
+- CLI-AC18 (CLI-B29): On a fixture state root with the thread `w/t-1`, `status t-1` and `facts t-1` exit 2 naming `w/t-1`, a selector that matches no task id exits 2 with no thread named, and `status w` exits 0
 - CLI-AC6 (CLI-B3): `executors --probe` lists every registered executor's capabilities, version and probe facts with their states, and calls no model
 - CLI-AC7 (CLI-B9, CLI-B10, CLI-B11, CLI-B12, CLI-B13, CLI-B14): Every long option the built CLI accepts is named in the engine's specs
 - CLI-AC8 (CLI-B15): The JSON output of every verb that has `--json` carries `schema_version`

@@ -18,6 +18,8 @@ export type MonitorRun = {
   cost: string
   question: string | null
   resume: string | null
+  asks: string | null
+  life: string | null
 }
 
 /** Where the pane is: the run list, a run, a unit, an attempt, or a session (MRV §2.1, MDD §2). */
@@ -40,12 +42,13 @@ export type MonitorPrefs = { filter: 'all' | 'live' | 'waiting' | 'failed' | 'fi
 /** What a session tab read from files or `ps` (MDD §2.4): its session key, tab, lines and a note. */
 export type MonitorExtra = { key: string; tab: string; lines: string[]; note: string | null }
 
-/** Rows of other repositories on this machine (`scope = machine`, MRV §2.3): a read-only card each, no drill-down. */
-export type MonitorOther = { key: string; repo: string; text: string; card: string[] }
+/** Rows of other repositories on this machine (`scope = machine`, MRV §2.3): a read-only card each, no drill-down;
+ * ended ones (`live` false) fold under one line. */
+export type MonitorOther = { key: string; repo: string; text: string; card: string[]; live: boolean }
 
 /** The fleet tab's documents (MCF §2.2) and the projection rows of the cost tab (MCF §2.1), as last read. */
 export type MonitorFleet = { live: unknown; month: unknown; byWorkflow: unknown; projection: unknown;
-  missing: string[]; others: MonitorOther[]; readAt: number | null; error: string | null }
+  missing: string[]; others: MonitorOther[]; othersOpen?: boolean; readAt: number | null; error: string | null }
 
 /** `looked` is what a failed lookup tried, in order (MDS-B7): the setting, PATH, the shim of the engine home. */
 export type MonitorEngine = { installed: boolean; staleSince: number | null; error: string | null; looked: string[] }

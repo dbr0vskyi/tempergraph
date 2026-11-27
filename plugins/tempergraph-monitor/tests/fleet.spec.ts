@@ -5,7 +5,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
-  fleetAlerts, fleetRows, missingRoots, monthRows, projectionText, repoName, syncedText, totalsText,
+  fleetAlerts, fleetRows, missingRoots, monthRows, otherRows, projectionText, repoName, syncedText, totalsText,
 } from '../hooks/lib/fleet'
 import type { LiveDoc, ProjectionDoc, StatsDoc } from '../hooks/lib/fleet'
 import { fleetArgv, isReadOnly, projectionArgv, statusArgv } from '../hooks/lib/sources'
@@ -82,5 +82,15 @@ describe('sources for the fleet and the machine scope (MDS §2.1, M1)', () => {
     expect(missingRoots([{ path: '/w/a/.tempergraph', missing: false }, { path: '/w/gone/.tempergraph', missing: true }]))
       .toEqual(['gone: missing (/w/gone/.tempergraph)'])
     expect(repoName('C:\\w\\proj\\.tempergraph')).toBe('proj')
+  })
+  test('many missing roots are one line with their count (MDS-B4, issue 145)', () => {
+    const gone = ['a', 'b', 'c', 'd', 'e'].map(n => ({ path: `/w/${n}/.tempergraph`, missing: true }))
+    expect(missingRoots(gone)).toEqual(['5 state roots missing: a, b, c, +2 more'])
+  })
+  test('ended runs of other roots fold under one line with their count (MRV §2.3, issue 145)', () => {
+    const rows = [{ live: true, k: 1 }, { live: false, k: 2 }, { live: false, k: 3 }]
+    expect(otherRows(rows, false)).toEqual({ shown: [rows[0]], fold: '▸ 2 ended runs in other repositories' })
+    expect(otherRows(rows, true).shown).toHaveLength(3)
+    expect(otherRows([rows[0]!], false).fold).toBeNull()
   })
 })

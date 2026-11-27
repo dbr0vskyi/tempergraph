@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -288,3 +289,24 @@ def test_graph_overlay_counts_only(repo: Path) -> None:  # OBS-B15 run overlay, 
     assert code == 0 and "visits" in str(text) and "retry ×1" in str(text) and canary not in str(text)
     assert hash_tree(root) == before
     assert cli(repo, None, "graph", "demo", "--overlay", "demo/none")[0] == 2
+
+
+GOLDEN = Path(__file__).parent / "golden" / "graph"
+
+
+def test_graph_svg_matches_its_golden_files(repo: Path) -> None:  # OBS-B15, issue 28: `graph --format svg`
+    import xml.etree.ElementTree as ET
+
+    go(repo, standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[judge(verdict_block("UNMET")), judge(),
+                                                                     judge()]), task="S-1")
+    for name, extra in (("demo.svg", ()), ("demo-overlay.svg", ("--overlay", "demo/S-1"))):
+        code, text, err = cli(repo, None, "graph", "demo", *extra, "--format", "svg")
+        assert code == 0, err
+        ET.fromstring(str(text))  # one well-formed document
+        golden = GOLDEN / name
+        if os.environ.get("TEMPERGRAPH_REGOLD"):
+            golden.parent.mkdir(parents=True, exist_ok=True)
+            golden.write_text(str(text), encoding="utf-8")
+        assert str(text) == golden.read_text(encoding="utf-8"), name
+    assert "visits" not in (GOLDEN / "demo.svg").read_text(encoding="utf-8")
+    assert "visits 1 · sessions 4 · PROCEED 1, RETRY 1" in (GOLDEN / "demo-overlay.svg").read_text(encoding="utf-8")

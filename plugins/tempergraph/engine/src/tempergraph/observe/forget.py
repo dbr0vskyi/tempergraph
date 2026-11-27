@@ -86,7 +86,10 @@ def _rewrite(path: Path, gone: set[str], keep: set[str]) -> None:
     """Replace `path` by its kept lines through a temporary file, holding the lock that the stats writers take
     (:func:`rows.append_stats_row`) from the read to the replace, so a row a writer appends meanwhile waits and is
     kept (CST-B23). Raises :class:`OSError` when the lock is not had or the replace fails. A writer that did not
-    get the lock is not protected."""
+    get the lock is not protected. A file that does not exist has nothing to rewrite and takes no lock, since its
+    folder may be missing too (CST-B17)."""
+    if not path.is_file():
+        return
     with rows._locked(path) as got:
         if not got:
             raise OSError(f"{path} is in use; try again")

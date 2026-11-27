@@ -14,7 +14,7 @@ import { costTab } from './lib/cost'
 import type { DetailDoc, RunRecord, Session, StatusDoc } from './lib/engine'
 import { isReadable } from './lib/engine'
 import {
-  fleetAlerts, fleetRows, missingRoots, monthRows, projectionText, repoName, syncedText,
+  fleetAlerts, fleetRows, missingRoots, monthRows, otherRows, projectionText, repoName, syncedText,
 } from './lib/fleet'
 import type { LiveDoc, ProjectionDoc, StatsDoc } from './lib/fleet'
 import {
@@ -74,6 +74,7 @@ function readSettings(options: PluginOptions): Settings {
 const tails = new Map<string, TailState>()
 const records = new Map<string, RunRecord[]>()
 const details = new Map<string, DetailDoc>()
+const detailAt = new Map<string, number>() // when each run's detail document was last read for its row
 const health = new Map<string, { stall: boolean; cap: boolean }>()
 const logPaths = new Map<string, string>()
 let lastStatus = 0
@@ -270,9 +271,10 @@ async function refreshStatus($: $, now: number): Promise<void> {
   for (const row of doc.threads) {
     if (here && row.state_root && row.state_root !== here) {
       // another repository on this machine: listed with a card, never drilled into or acted on from here
-      const s = summarise(row, undefined, now)
       const repo = repoName(row.state_root)
-      others.push({ key: `other:${row.state_root}|${row.thread_id}`, repo, text: listRow(s), card: [
+      const s = summarise(row, undefined, now, repo, row.state_root)
+      others.push({ key: `other:${row.state_root}|${row.thread_id}`, repo, text: listRow(s),
+        live: Boolean(row.alive) || row.state === 'paused' || row.state === 'running', card: [
         `${row.thread_id} in ${repo}`, `state ${row.state}${s.unit ? ` at ${s.unit}` : ''}`,
         ...(row.pending_gates ?? []).map(g => `waits at ${g.unit}: ${g.resume}`),
         `Open Claude Code in ${row.state_root.replace(/[\\/]\.tempergraph$/, '')} to follow or answer this run.`] })
@@ -281,11 +283,14 @@ async function refreshStatus($: $, now: number): Promise<void> {
     if (row.log_path) logPaths.set(row.thread_id, row.log_path)
     const live = row.alive || row.state === 'paused'
     let d = details.get(row.thread_id)
-    if (live && (!d || d.run.last_seq !== (records.get(row.thread_id)?.at(-1)?.seq ?? d.run.last_seq))) {
+    // read again when the run log grew, and on a clock while the run lives, so the row's sign of life moves (MDS §2.1)
+    const grew = d && d.run.last_seq !== (records.get(row.thread_id)?.at(-1)?.seq ?? d.run.last_seq)
+    if (live && (!d || grew || (row.alive && now - (detailAt.get(row.thread_id) ?? 0) >= RATES.rowDetail))) {
       const fresh = await verb<DetailDoc>($, detailArgv(row.thread_id))
       if (fresh && isReadable(fresh, 'detail')) {
         d = fresh
         details.set(row.thread_id, fresh)
+        detailAt.set(row.thread_id, now)
       }
     }
     if (!live && row.log_path && !tails.has(row.thread_id)) {
@@ -392,7 +397,7 @@ function todaySeconds(now: number): number {
 
 export const register: Register = (on, options) => {
   settings = readSettings(options)
-  for (const m of [tails, records, details, health, logPaths]) m.clear()
+  for (const m of [tails, records, details, detailAt, health, logPaths]) m.clear()
   lastStatus = lastDetail = lastExtra = lastProjection = lastFleet = 0
   busy = false
   notFound = false
@@ -522,6 +527,7 @@ export const register: Register = (on, options) => {
     if (v.level === 'runs' || !v.thread) {
       const now = await $.clock.now()
       const sorted = shownRuns(list, pr.filter as Filter, pr.pinned, await read($, endedAgo), todaySeconds(now))
+      const oth = otherRows(fl.others, fl.othersOpen ?? false)
       return (
         <Box flexDirection="column">
           {header}
@@ -543,9 +549,13 @@ export const register: Register = (on, options) => {
             </Box>
           ))}
           {fl.others.length > 0 && <Text bold>Other repositories on this machine</Text>}
-          {fl.others.map(o => (
+          {oth.shown.map(o => (
             <Button key={o.key} plain label={`${o.repo}  ${o.text}`} onPress={go({ level: 'card', card: o.key })} />
           ))}
+          {oth.fold && (
+            <Button key="others-fold" plain label={oth.fold}
+              onPress={() => update($, fleet, f => ({ ...f, othersOpen: !(f.othersOpen ?? false) }))} />
+          )}
           {fl.missing.map(line => <Text dimColor>{line}</Text>)}
         </Box>
       )
@@ -587,6 +597,7 @@ export const register: Register = (on, options) => {
 
     if (v.level === 'pause') {
       const p = d.pause
+      const asks = list.find(r => r.threadId === v.thread)?.asks
       if (!p) return <Box flexDirection="column">{header}<Text dimColor>The run is not waiting for a person.</Text>{footer}</Box>
       const driver = driverFill(d)
       return (
@@ -594,6 +605,7 @@ export const register: Register = (on, options) => {
           {header}
           <Text>{`${p.unit} · ${p.kind ?? 'pause'} · waiting ${duration(p.waiting_s)}`}</Text>
           {p.question && <Text>{p.question}</Text>}
+          {asks && <Text>{asks}</Text>}
           {(p.artifacts ?? []).map(a => a.path
             ? <Button key={`art:${a.key}`} plain label={`${a.key}: ${a.path}`} onPress={() => copy($, a.path!)} />
             : <Text dimColor>{`${a.key}: a value, no file`}</Text>)}

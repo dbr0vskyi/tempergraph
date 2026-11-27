@@ -126,3 +126,60 @@ def to_mermaid(model: dict[str, Any]) -> str:
             lines.append(f"  {ids[src]} -.->|{token.lower()} ×{n}| {dst}")
     lines.append("  fin --> stop")
     return "\n".join(lines) + "\n"
+
+
+def to_svg(model: dict[str, Any]) -> str:
+    """The same boxes and routing edges as :func:`to_mermaid`, as one standalone SVG: units top to bottom, forward
+    edges on the left, back, fallback and deadline edges dashed on the right; with an overlay, each box carries the
+    counts the overlay holds for its unit and nothing else (OBS-B15)."""
+    from html import escape
+
+    names = [u["name"] for u in model["units"]] + ["finalizer"]
+    w, h, gap, x = 300, 58, 30, 70
+    ys = {n: 20 + i * (h + gap) for i, n in enumerate(names)}
+    height = 20 + len(names) * (h + gap)
+    ov = (model.get("overlay") or {}).get("units") or {}
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{x + w + 140}" height="{height}" '
+             'font-family="sans-serif" font-size="13">',
+             '<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">'
+             '<path d="M0,0 L8,4 L0,8 z" fill="#555"/></marker></defs>']
+    for u in model["units"]:
+        y = ys[u["name"]]
+        parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="4" fill="#fff" stroke="#333"/>')
+        label = u["name"] + (" (approval)" if u["approval"] else "") + (f" · {u['slots']} slots" if u.get("slots")
+                                                                        else "")
+        parts.append(f'<text x="{x + 10}" y="{y + 18}" font-weight="bold">{escape(label)}</text>')
+        if u["summary"]:
+            parts.append(f'<text x="{x + 10}" y="{y + 34}" fill="#555">{escape(u["summary"])}</text>')
+        o = ov.get(u["name"])
+        if o:
+            verdicts = ", ".join(f"{k} {v}" for k, v in o["verdicts"].items())
+            line = f"visits {o['visits']} · sessions {o['sessions']}" + (f" · {verdicts}" if verdicts else "")
+            parts.append(f'<text x="{x + 10}" y="{y + 50}" fill="#264">{escape(line)}</text>')
+    fy = ys["finalizer"]
+    parts.append(f'<rect x="{x}" y="{fy}" width="{w}" height="{h}" rx="22" fill="#fff" stroke="#333"/>')
+    parts.append(f'<text x="{x + 10}" y="{fy + 18}" font-weight="bold">finalizer</text>')
+    seen: set[tuple[str, str, str]] = set()
+    for a, b, token in model["edges"]:
+        if not ((a.endswith(".gate") and token in ("PROCEED", "BACK", "FALLBACK")) or token == "DEADLINE"):
+            continue
+        src, dst = a.split(".")[0], "finalizer" if b == flow.FINALIZER else b.split(".")[0]
+        if src not in ys or dst not in ys or (src, dst, token) in seen:
+            continue
+        seen.add((src, dst, token))
+        y1, y2 = ys[src], ys[dst]
+        if token == "PROCEED" and y2 > y1:
+            if y2 == y1 + h + gap:
+                parts.append(f'<line x1="{x + w / 2}" y1="{y1 + h}" x2="{x + w / 2}" y2="{y2 - 2}" stroke="#555" '
+                             'marker-end="url(#a)"/>')
+            else:
+                parts.append(f'<path d="M{x},{y1 + h / 2} C{x - 60},{y1 + h / 2} {x - 60},{y2 + h / 2} '
+                             f'{x - 2},{y2 + h / 2}" fill="none" stroke="#555" marker-end="url(#a)"/>')
+        else:
+            word = {"BACK": "back", "FALLBACK": "fallback", "DEADLINE": "deadline"}.get(token, token.lower())
+            c = x + w + 90
+            parts.append(f'<path d="M{x + w},{y1 + h / 2} C{c},{y1 + h / 2} {c},{y2 + h / 2} {x + w + 2},{y2 + h / 2}" '
+                         'fill="none" stroke="#555" stroke-dasharray="5,4" marker-end="url(#a)"/>')
+            parts.append(f'<text x="{c - 20}" y="{(y1 + y2 + h) / 2}" fill="#555" font-size="11">{word}</text>')
+    parts.append("</svg>")
+    return "\n".join(parts) + "\n"
