@@ -1057,8 +1057,11 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             gates: dict[str, dict[str, Any]] = {n.rsplit(".", 1)[0]: (p if isinstance(p, dict) else {})
                                                 for n, p in snap.interrupts}
             if len(gates) > 1 and settings.unit is None:  # HUM-B3: each gate is answered by unit
+                from tempergraph.improve.pause_facts import OPERATOR_REASONS
+
                 lines = [f"{u}: tempergraph resume {spec.name} {task_id} --unit {u} --decision "
-                         f"<{'|'.join(p.get('decisions') or [])}>" for u, p in gates.items()]
+                         f"<{'|'.join(p.get('decisions') or [])}> --reason <{'|'.join(OPERATOR_REASONS)}>"
+                         for u, p in gates.items()]
                 return _refuse("unit_missing", f"{tid} has {len(gates)} pending gates; name one with --unit",
                                lines, tid=tid)
             if settings.unit is not None and settings.unit not in gates:
@@ -1079,6 +1082,13 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 (dspec, dunit), dvalues = found, held
             kind = str(pause.get("kind") or "escalation")
             touch = (unit, kind, str(pause.get("reason") or ""))
+            by = str(settings.caller.get("decided_by") or settings.caller.get("kind") or "")
+            if (by == "agent" and not settings.operator_reason and not settings.apply_deadline
+                    and (d is not None or settings.answers)):  # CLI-B30, HUM-B20: an agent says why, before any change
+                from tempergraph.improve.pause_facts import OPERATOR_REASONS
+
+                return _refuse("reason_missing", f"{tid}: an agent's decision at a pause needs --reason "
+                                                 f"<{'|'.join(OPERATOR_REASONS)}>", tid=tid)
             extra: dict[str, Any] = {}
             if settings.apply_deadline:  # FLX-B8
                 if d is not None or settings.answers:
@@ -1302,6 +1312,7 @@ def _answers_step(spec: WorkflowSpec, task_id: str, root: Path, unit: str, value
                   d: Decision | None, settings: RunSettings) -> dict[str, Any] | RunOutcome:
     """ASK-B8: validate and keep this resume's answers. Returns the human node's extra payload when the set
     is complete and the check passes, else the outcome of this call: a refusal, or `still asking` (exit 3)."""
+    from tempergraph.improve.pause_facts import OPERATOR_REASONS
     from tempergraph.run import asking
 
     tid = thread_id(spec.name, task_id)
@@ -1336,7 +1347,8 @@ def _answers_step(spec: WorkflowSpec, task_id: str, root: Path, unit: str, value
         asking.store(path, unit, merged, done=False)
         payload = {"kind": "input", "unit": unit, "questions": asking.shown(qs, merged), "missing": missing,
                    "check_problems": problems,
-                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value>"}
+                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value> "
+                             f"--reason <{'|'.join(OPERATOR_REASONS)}>"}
         why = f"still needs {', '.join(missing)}" if missing else f"the answers check: {'; '.join(problems)}"
         return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
                           message=f"{tid}: answers kept; {unit} {why}")
@@ -1348,6 +1360,7 @@ def _deadline_answers(spec: WorkflowSpec, task_id: str, root: Path, unit: str, v
                       settings: RunSettings) -> dict[str, Any] | RunOutcome:
     """ASK-B10, ASK-B11: complete an overdue ask from its defaults and run the author's check as for a person's
     answers. A pass returns the human node's extra payload; a refusal keeps only the given answers (exit 3)."""
+    from tempergraph.improve.pause_facts import OPERATOR_REASONS
     from tempergraph.run import asking
 
     tid = thread_id(spec.name, task_id)
@@ -1365,7 +1378,8 @@ def _deadline_answers(spec: WorkflowSpec, task_id: str, root: Path, unit: str, v
         asking.store(path, unit, given, done=False)
         payload = {"kind": "input", "unit": unit, "questions": asking.shown(qs, given), "missing": [],
                    "check_problems": problems,
-                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value>"}
+                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value> "
+                             f"--reason <{'|'.join(OPERATOR_REASONS)}>"}
         return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
                           message=f"{tid}: the deadline's defaults were refused; {unit} the answers check: "
                                   f"{'; '.join(problems)}")

@@ -74,8 +74,11 @@ def classify(state_root: Path, spec: WorkflowSpec, task_id: str) -> ThreadState:
 
 
 def resume_command(workflow: str, tid: str, decisions: list[str] | None = None) -> str:
+    from tempergraph.improve.pause_facts import OPERATOR_REASONS
+
     cmd = f"tempergraph resume {workflow} {split_thread(tid)[1]}"
-    return cmd + (f" --decision <{'|'.join(decisions)}>" if decisions else "")
+    return cmd + (f" --decision <{'|'.join(decisions)}> --reason <{'|'.join(OPERATOR_REASONS)}>"
+                  if decisions else "")
 
 
 def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:

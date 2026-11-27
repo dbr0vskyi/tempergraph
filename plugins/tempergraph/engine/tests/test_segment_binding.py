@@ -40,7 +40,8 @@ def test_findings_without_a_segment_start_are_bound_by_their_time(
     again = resume(two_step(), "B-1", repo, registry(ex), decision="retry", feedback=CANARY["feedback"],
                    settings=NO_SLEEP)
     assert again.payload["unit"] == "review", again.message  # segment 2 pauses at `review`
-    finish(repo, "B-1", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})  # segment 3, final
+    finish(repo, "B-1", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"},
+           operator_reason="other")  # segment 3, final
     root = state_root_path(repo)
     log = run_log(repo, "B-1")
     starts = [r for r in log if r["kind"] == "run_started"]

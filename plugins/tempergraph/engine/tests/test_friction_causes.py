@@ -254,7 +254,7 @@ def rescued_by(repo: Path, monkeypatch: pytest.MonkeyPatch, task: str, starter: 
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge(verdict_block("UNVERIFIABLE"))])
     assert go(repo, ex, task=task, caller=starter).exit_code is ExitCode.PAUSED
     done = resume(two_step(), task, repo, registry(ex), decision="proceed",
-                  settings=dataclasses.replace(NO_SLEEP, caller=decider))
+                  settings=dataclasses.replace(NO_SLEEP, caller=decider, operator_reason="other"))
     assert done.exit_code is ExitCode.FINISHED, done.message
     seen, reply = asks()
     child.drain(registry=registry(standin("claude", judges=[reply])), host=lambda: MemoryCodeHost())

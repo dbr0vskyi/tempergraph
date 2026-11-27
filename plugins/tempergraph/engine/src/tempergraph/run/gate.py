@@ -21,6 +21,7 @@ ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", 
                              "workflow_fault", "check_repeat", "merge_conflict", "map_check", "no_decision",
                              "usage_limit"})
 HUMAN_CAP = 100
+REASON_OPTION = "--reason <engine_defect|judge_error|environment|plan|request|other>"  # CLI-B24, CLI-B30, HUM-B20
 
 
 def clear_from(spec: WorkflowSpec, unit: str, state: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -250,7 +251,7 @@ def retry_scope(u: UnitSpec, att: Mapping[str, Any]) -> str | None:
 
 def resume_command(spec: WorkflowSpec, task_id: str, decisions: list[str], unit: str | None = None) -> str:
     named = f" --unit {unit}" if unit else ""  # a pause of one item of a concurrent map is answered by `<unit>.<item>`
-    return f"tempergraph resume {spec.name} {task_id}{named} --decision <{'|'.join(decisions)}>"
+    return f"tempergraph resume {spec.name} {task_id}{named} --decision <{'|'.join(decisions)}> {REASON_OPTION}"
 
 
 def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: Mapping[str, Any],
@@ -279,11 +280,11 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
         out["context"] = list(u.ask.context) if u.ask else []
         out["decisions"] = ["answer:<name>=<value>", "proceed", "stop"]
         out["resume"] = (f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value> "
-                         "[--decision answer:...] [--decision proceed]")
+                         f"[--decision answer:...] [--decision proceed] {REASON_OPTION}")
     elif kind == "event_wait" and u.wait is not None:
         out["event"] = u.wait.event
         out["decisions"] = [f"event:{u.wait.event}=<value>", "stop"]
-        out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision event:{u.wait.event}=<value>"
+        out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision event:{u.wait.event}=<value> {REASON_OPTION}"
     dl = flow.deadline_of(spec, unit)
     if dl is not None and kind in ("input", "event_wait"):  # FLX-B8: overdue once this time has passed
         out["deadline_at"] = (datetime.now(UTC) + timedelta(seconds=dl[0])).isoformat(timespec="seconds")
@@ -294,7 +295,7 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
         out["tally"] = _json_or(held.get("tally"))
         out["decisions"] = ["answer:decision=<option>", "retry", "stop"]
         out["options"] = council_options(state, unit)
-        out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision answer:decision=<option>"
+        out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision answer:decision=<option> --reason <engine_defect|judge_error|environment|plan|request|other>"
     if reason == "tool_access":  # each refused or missing name and what fixes it (RST-B28, RST-B29, RST-B30)
         out["tool_access"] = list((((state.get("attempts") or {}).get(unit) or {}).get("tool_access")) or [])
     if reason == "check_repeat":  # BUD-B16: the failing findings the check returned twice in a row

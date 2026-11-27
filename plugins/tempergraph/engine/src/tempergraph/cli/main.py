@@ -125,7 +125,8 @@ def _parser() -> _Parser:
                      help="apply the overdue deadline of a wait or an ask (FLX-B8)")
     res.add_argument("--unit", help="which pending gate the decision answers, when there are several (HUM-B3)")
     res.add_argument("--reason", dest="operator_reason", choices=OPERATOR_REASONS, metavar="REASON",
-                     help="why the decision is made, one of: " + ", ".join(OPERATOR_REASONS) + " (CLI-B24)")
+                     help="why the decision is made, one of: " + ", ".join(OPERATOR_REASONS)
+                          + "; required when an agent decides at a pause, a person may omit it (CLI-B24, CLI-B30)")
     res.add_argument("--unpin", action="store_true",
                      help="clear the thread's engine pin when this engine can resume it (MIG-B12, MIG-B13, MIG-B14)")
     res.add_argument("--escalate", action="store_true",

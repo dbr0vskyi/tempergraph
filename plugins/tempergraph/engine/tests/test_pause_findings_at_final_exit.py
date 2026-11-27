@@ -176,7 +176,8 @@ def test_the_judge_is_told_the_feedback_was_given_and_never_its_words(
     loop_on(monkeypatch)
     ex = paused_on_retries(repo, "F-9")
     ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge()]
-    finish(repo, "F-9", ex, "retry", feedback=CANARY["feedback"], caller={"kind": "agent"})
+    finish(repo, "F-9", ex, "retry", feedback=CANARY["feedback"], caller={"kind": "agent"},
+           operator_reason="other")
     log = [json.loads(ln) for ln in (state_root_path(repo) / "runs" / "demo" / "F-9" / "run.jsonl").read_text().splitlines()]
     asked = max(i for i, r in enumerate(log) if r["kind"] == "pause" and r["unit"] == "draft")
     verdict = next(r["verdict"] for r in log[asked:] if r["kind"] == "gate" and r["unit"] == "draft")
@@ -344,7 +345,7 @@ def test_the_next_gate_of_the_same_item_is_read(
 def test_the_facts_say_a_ruling_was_given_and_never_its_words(
         repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC52, SIL-AC53, SIL-AC44, AC 4
     ex = paused_on_gap(repo, "F-25", monkeypatch)
-    finish(repo, "F-25", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})
+    finish(repo, "F-25", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"}, operator_reason="other")
     (prompt,) = judged_prompts()
     ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
     (decision,) = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == "demo/F-25"
@@ -463,7 +464,8 @@ def test_each_paused_segment_with_a_listed_finding_has_a_section_of_its_own(
     again = resume(two_step(), "F-31", repo, registry(ex), decision="retry", feedback=CANARY["feedback"],
                    settings=NO_SLEEP)
     assert again.exit_code is ExitCode.PAUSED and again.payload["unit"] == "review", again.message  # segment 2
-    finish(repo, "F-31", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})  # segment 3, final
+    finish(repo, "F-31", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"},
+           operator_reason="other")  # segment 3, final
     (prompt,) = judged_prompts()
     heads = [ln for ln in prompt.splitlines() if ln.startswith("## The segment's records")]
     assert len(heads) == 3, heads
