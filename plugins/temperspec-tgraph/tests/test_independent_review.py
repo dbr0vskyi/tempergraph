@@ -196,10 +196,156 @@ def _run(tmp_path: Path) -> Path:
     return work
 
 
+def _rev(work: Path, ref: str) -> str:
+    return subprocess.run(["git", "rev-parse", ref], cwd=work, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def _base(work: Path) -> str:
+    """The run's base commit as the engine gives it: the commit before the prepare commit of the `_run` fixture."""
+    return _rev(work, ":/init")
+
+
+INPUTS = ".tempergraph/review"
+
+
+def test_a_hand_made_commit_between_run_commits_leaves_the_files_of_every_run_commit(tmp_path: Path) -> None:
+    # AC 2, IRV-AC3 (IRV-B3)
+    work = _run(tmp_path)
+    _commit(work, "fix typo by hand", {"src/hand.py": "h = 1\n"})
+    _commit(work, "feat(temperspec): code for i1", {"src/after.py": "a = 1\n"})
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    diff = (work / INPUTS / "change.diff").read_text()
+    for held in ("src/new.py", "src/hand.py", "src/after.py"):
+        assert held in diff
+    assert "CLAUDE.md" not in diff and "x.rule.md" not in diff
+
+
+def _fake_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: str) -> None:
+    import shutil
+    real = shutil.which("git")
+    folder = tmp_path / "fakebin"
+    folder.mkdir()
+    script = folder / "git"
+    script.write_text(f'#!/bin/sh\nfor a in "$@"; do\n  if [ "$a" = diff ]; then\n    {body}\n  fi\ndone\nexec {real} "$@"\n')
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{folder}:{__import__('os').environ['PATH']}")
+
+
+def _stale(work: Path) -> None:
+    folder = work / INPUTS
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in ("change.diff", "files.txt", "base.txt"):
+        (folder / name).write_text("earlier review\n")
+
+
+def test_a_failing_git_leaves_no_change_and_names_the_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 5, IRV-AC18, IRV-AC19 (IRV-B18, IRV-B19)
+    work = _run(tmp_path)
+    base = _base(work)
+    _stale(work)
+    _fake_git(tmp_path, monkeypatch, "echo broken >&2; exit 3")
+    assert review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base) == []
+    folder = work / INPUTS
+    for gone in ("change.diff", "files.txt", "base.txt"):
+        assert not (folder / gone).exists()
+    failed = (folder / "failed.txt").read_text()
+    assert "git" in failed and "diff" in failed
+
+
+def test_a_git_that_does_not_finish_leaves_no_change_and_names_the_command(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # AC 5, IRV-AC18, IRV-AC19 (IRV-B18, IRV-B19)
+    work = _run(tmp_path)
+    base = _base(work)
+    _stale(work)
+    _fake_git(tmp_path, monkeypatch, "exec sleep 20")
+    monkeypatch.setattr(review, "GIT_TIMEOUT", 0.5)
+    assert review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", base) == []
+    folder = work / INPUTS
+    for gone in ("change.diff", "files.txt", "base.txt"):
+        assert not (folder / gone).exists()
+    failed = (folder / "failed.txt").read_text()
+    assert "diff" in failed and "timed out" in failed
+
+
+def test_a_good_run_after_a_failure_removes_the_record_of_it(tmp_path: Path) -> None:
+    # AC 5, IRV-AC19 (IRV-B19)
+    work = _run(tmp_path)
+    (work / INPUTS).mkdir(parents=True)
+    (work / INPUTS / "failed.txt").write_text("git diff\n")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    assert not (work / INPUTS / "failed.txt").exists()
+    assert (work / INPUTS / "base.txt").read_text().strip() == _base(work)
+
+
+def test_the_file_list_holds_one_row_for_each_file_of_the_change(tmp_path: Path) -> None:
+    # AC 6, IRV-AC20 (IRV-B20)
+    work = _run(tmp_path)
+    (work / "blob.bin").write_bytes(b"\x00\x01\x02\x00")
+    _commit(work, "feat(temperspec): code for i1", {"src/moved.py": "line\n"})
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    rows = (work / INPUTS / "files.txt").read_text().splitlines()
+    assert "+2 -0 src/new.py" in rows
+    assert "+1 -0 src/moved.py" in rows
+    assert "+0 -1 src/gone.py" in rows
+    assert not any("triage.md" in r or "CLAUDE.md" in r for r in rows)
+    assert len(rows) == len(set(rows))
+
+
+def test_a_binary_file_shows_no_counted_lines(tmp_path: Path) -> None:
+    # AC 6, IRV-AC20 (IRV-B20)
+    work = _run(tmp_path)
+    _commit(work, "feat(temperspec): code for i1", {"blob.bin": "x"})
+    (work / "blob.bin").write_bytes(b"\x00\x01\x02\x00")
+    _git(work, "add", "-A")
+    _git(work, "commit", "-q", "-m", "feat(temperspec): code for i1")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    assert "+0 -0 blob.bin" in (work / INPUTS / "files.txt").read_text().splitlines()
+
+
+def test_a_rename_is_a_deletion_and_an_addition(tmp_path: Path) -> None:
+    # AC 6, IRV-AC20 (IRV-B20)
+    work = _run(tmp_path)
+    _git(work, "mv", "src/new.py", "src/renamed.py")
+    _git(work, "commit", "-q", "-m", "feat(temperspec): code for i1")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    rows = (work / INPUTS / "files.txt").read_text().splitlines()
+    assert any(r.endswith(" src/renamed.py") for r in rows)
+    assert not any(r.endswith(" src/new.py") for r in rows)
+
+
+def test_generated_files_are_listed_last_and_marked(tmp_path: Path) -> None:
+    # AC 6, IRV-AC21 (IRV-B21)
+    work = _run(tmp_path)
+    (work / "tempergraph.regenerations.json").write_text(json.dumps({"schema_version": 1, "regenerations": [
+        {"name": "stamps", "command": "true", "inputs": ["src"], "outputs": ["docs/specs/a.spec.md", "gen"]}]}))
+    _commit(work, "feat(temperspec): code for i1", {"gen/x.txt": "x\n", "gen/sub/y.txt": "y\n", "src/zz.py": "z\n"})
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    rows = (work / INPUTS / "files.txt").read_text().splitlines()
+    marked = [r for r in rows if r.endswith(" [generated]")]
+    assert {r.split()[2] for r in marked} == {"docs/specs/a.spec.md", "gen/x.txt", "gen/sub/y.txt"}
+    assert rows[-len(marked):] == marked
+    assert not any(r.endswith(" [generated]") for r in rows[:-len(marked)])
+
+
+def test_a_repository_with_no_declaration_has_no_marked_row(tmp_path: Path) -> None:
+    # AC 6, IRV-AC21 (IRV-B21)
+    work = _run(tmp_path)
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
+    assert "[generated]" not in (work / INPUTS / "files.txt").read_text()
+
+
+def test_no_base_writes_no_change(tmp_path: Path) -> None:
+    # AC 2, IRV-AC3 (IRV-B3)
+    work = _run(tmp_path)
+    assert review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", "") == []
+    assert not (work / INPUTS / "change.diff").exists() and not (work / INPUTS / "base.txt").exists()
+
+
 def test_the_change_holds_the_runs_files_and_no_hand_over_document(tmp_path: Path) -> None:
     # AC 2, IRV-AC3 (IRV-B3)
     work = _run(tmp_path)
-    changed = review.write_inputs(work, "i1", "docs/tasks/i1.triage.md")
+    changed = review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
     diff = (work / ".tempergraph" / "review" / "change.diff").read_text()
     for held in ("src/new.py", "tests/test_new.py", "docs/specs/a.spec.md", "src/gone.py"):
         assert held in diff and held in changed
@@ -214,7 +360,7 @@ def test_a_review_after_a_trip_back_holds_the_commits_of_both_visits(tmp_path: P
     work = _run(tmp_path)
     _commit(work, "docs(temperspec): independent_review for i1", {"docs/tasks/i1.review.md": "# Review\n"})
     _commit(work, "feat(temperspec): code for i1", {"src/new.py": "def f():\n    return 2\n", "src/second.py": "y = 2\n"})
-    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
     diff = (work / ".tempergraph" / "review" / "change.diff").read_text()
     assert "return 2" in diff and "src/second.py" in diff and "tests/test_new.py" in diff
     assert "i1.review.md" not in diff
@@ -223,7 +369,7 @@ def test_a_review_after_a_trip_back_holds_the_commits_of_both_visits(tmp_path: P
 def test_the_criteria_file_holds_the_numbered_criteria_and_nothing_else_of_the_note(tmp_path: Path) -> None:
     # AC 2, IRV-AC4 (IRV-B4)
     work = _run(tmp_path)
-    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md")
+    review.write_inputs(work, "i1", "docs/tasks/i1.triage.md", _base(work))
     text = (work / ".tempergraph" / "review" / "criteria.md").read_text()
     for line in ("1. A request is refused", "2. A retry is served", "3. The list is sorted"):
         assert line in text

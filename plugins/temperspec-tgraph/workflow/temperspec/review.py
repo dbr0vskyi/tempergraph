@@ -18,6 +18,14 @@ REVIEW_DIR = Path(".tempergraph") / "review"
 DRAFT = (REVIEW_DIR / "findings.md").as_posix()
 CHANGE = (REVIEW_DIR / "change.diff").as_posix()
 CRITERIA = (REVIEW_DIR / "criteria.md").as_posix()
+CHANGE_NAME = "change.diff"
+FILES_NAME = "files.txt"
+BASE_NAME = "base.txt"
+FAILED_NAME = "failed.txt"
+FILES = (REVIEW_DIR / FILES_NAME).as_posix()
+BASE = (REVIEW_DIR / BASE_NAME).as_posix()
+FAILED = (REVIEW_DIR / FAILED_NAME).as_posix()
+GIT_TIMEOUT = 120.0
 MARKS = ("blocking", "not blocking")
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbb53904"
 HAND_OVER = re.compile(r"\.(?:triage|setup|handoff|report|review|plan)\.md$")
@@ -192,21 +200,86 @@ def criteria_text(triage: str) -> str:
     return "# Acceptance criteria\n\n" + "\n".join(out) + "\n"
 
 
-def write_inputs(workdir: Path, task: str, triage: str) -> list[str]:
-    """Write `.tempergraph/review/change.diff` and `criteria.md` and return the paths the change touches. The change is
-    the diff since the run's base commit without the hand-over documents and without the files the prepare commit wrote
-    or changed."""
+class GitFailed(Exception):
+    """A git command of the inputs failed or did not finish; the message is the command and the reason."""
+
+
+def _strict_git(workdir: Path, *args: str) -> str:
+    command = "git " + " ".join(args)
+    try:
+        done = subprocess.run(["git", *args], cwd=workdir, capture_output=True, text=True, timeout=GIT_TIMEOUT,
+                              stdin=subprocess.DEVNULL, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise GitFailed(f"{command}: timed out after {GIT_TIMEOUT:g} seconds") from exc
+    except OSError as exc:
+        raise GitFailed(f"{command}: could not be run ({type(exc).__name__})") from exc
+    if done.returncode != 0:
+        raise GitFailed(f"{command}: exit status {done.returncode}")
+    return done.stdout
+
+
+def prepared_files(workdir: Path, base: str, task: str) -> list[str]:
+    """The paths the run's prepare commits between `base` and the head wrote or changed (IRV-B3); strict about git."""
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", task or "task")[:60]
+    out: set[str] = set()
+    for row in _strict_git(workdir, "log", "--format=%H%x09%s", f"{base}..HEAD").splitlines():
+        commit, _, subject = row.partition("\t")
+        m = RUN_COMMIT.match(subject)
+        if m and m.group(1) == "prepare" and m.group(2) == name:
+            out.update(p for p in _strict_git(workdir, "show", "--name-only", "--format=", commit).splitlines()
+                       if p.strip())
+    return sorted(out)
+
+
+def _generated(path: str, outputs: list[str]) -> bool:
+    return any(path == o or path.startswith(o + "/") for o in outputs)
+
+
+def _clear_inputs(folder: Path) -> None:
+    for name in (CHANGE_NAME, FILES_NAME, BASE_NAME, FAILED_NAME):
+        (folder / name).unlink(missing_ok=True)
+
+
+def write_inputs(workdir: Path, task: str, triage: str, base: str) -> list[str]:
+    """Write `.tempergraph/review/` (`change.diff`, `files.txt`, `base.txt`, `criteria.md`) and return the paths the
+    change touches. The change is the diff since the engine's base commit without the hand-over documents and without
+    the files the run's prepare commits wrote or changed. A failing or timed-out git leaves `failed.txt` and no change
+    (IRV-B18, IRV-B19); no base commit leaves no change."""
+    from . import regeneration
+
     folder = workdir / REVIEW_DIR
     folder.mkdir(parents=True, exist_ok=True)
     (folder / ".gitignore").write_text("*\n", encoding="utf-8")
-    base, prepared = run_base(workdir, task)
+    _clear_inputs(folder)
     changed: list[str] = []
     if base:
-        names = _git(workdir, "diff", "--no-renames", "--name-only", base, "HEAD").splitlines()
-        changed = [p for p in names if p and not HAND_OVER.search(p) and p not in prepared
-                   and not p.startswith(".tempergraph/")]
-    diff = _git(workdir, "diff", "--no-color", "--no-renames", base, "HEAD", "--", *changed) if changed else ""
-    (folder / "change.diff").write_text(diff, encoding="utf-8")
+        try:
+            prepared = set(prepared_files(workdir, base, task))
+            names = _strict_git(workdir, "diff", "--no-renames", "--name-only", "-z", base, "HEAD").split("\0")
+            changed = [p for p in names if p and not HAND_OVER.search(p) and p not in prepared
+                       and not p.startswith(".tempergraph/")]
+            counts: dict[str, str] = {}
+            if changed:
+                parts = _strict_git(workdir, "diff", "--numstat", "-z", "--no-renames", base, "HEAD",
+                                    "--", *changed).split("\0")
+                for part in parts:
+                    fields = part.split("\t", 2)
+                    if len(fields) == 3:
+                        added, removed, path = fields
+                        counts[path] = "+0 -0" if added == "-" else f"+{added} -{removed}"
+            diff = (_strict_git(workdir, "diff", "--no-color", "--no-renames", base, "HEAD", "--", *changed)
+                    if changed else "")
+            outputs = regeneration.declared_outputs(workdir)
+            ordered = [p for p in changed if not _generated(p, outputs)] + [p for p in changed if _generated(p, outputs)]
+            rows = [f"{counts.get(p, '+0 -0')} {p}" + (" [generated]" if _generated(p, outputs) else "")
+                    for p in ordered]
+            (folder / CHANGE_NAME).write_text(diff, encoding="utf-8")
+            (folder / FILES_NAME).write_text("".join(r + "\n" for r in rows), encoding="utf-8")
+            (folder / BASE_NAME).write_text(base + "\n", encoding="utf-8")
+        except GitFailed as exc:
+            _clear_inputs(folder)
+            (folder / FAILED_NAME).write_text(str(exc) + "\n", encoding="utf-8")
+            changed = []
     try:
         note = (workdir / triage).read_text(encoding="utf-8")
     except OSError:

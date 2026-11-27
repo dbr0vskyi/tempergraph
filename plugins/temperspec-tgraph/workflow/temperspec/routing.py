@@ -324,7 +324,8 @@ def review_before(ctx: Any) -> dict[str, str]:
     folder `.tempergraph/review/`, which no step commits, and clear the draft of an earlier review. It returns no key, so
     the reader's prompt holds nothing of the run (IRV-B3 to IRV-B5)."""
     workdir = Path(ctx.workdir)
-    review.write_inputs(workdir, _task_slug(ctx), _triage_path(ctx))
+    base = str(getattr(getattr(ctx, "git", None), "base", "") or "")
+    review.write_inputs(workdir, _task_slug(ctx), _triage_path(ctx), base)
     (workdir / review.DRAFT).unlink(missing_ok=True)
     return {}
 
