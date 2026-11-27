@@ -501,6 +501,76 @@ def test_a_recorded_git_failure_is_one_finding_naming_the_command(tmp_path: Path
     assert "no change" not in failing[0].message and "base" not in failing[0].message.replace("git diff", "")
 
 
+FIXTURES = ROOT / "evals" / "checks" / "independent_review"
+
+# what each must-fail fixture is named for: the sentence of its `ts-rev-form` finding
+FIXTURE_FINDING = {"base-differs": "built from",             # IRV-AC15
+                   "empty-change": "no change",                    # IRV-AC16
+                   "no-base": "no base commit"}                    # IRV-AC17
+
+
+def _fixture_run(fixture: Path, work: Path, crlf: bool) -> Any:
+    """The unit's gate check on one check fixture as the engine's fixture runner gives it: the files copied (with LF or
+    CRLF), the git facts read from `git.json`, the findings document as the unit's artifact."""
+    from tempergraph.run.checks import run_check
+
+    for f in sorted(p for p in fixture.rglob("*") if p.is_file() and p != fixture / "git.json"):
+        data = f.read_bytes()
+        if crlf:
+            data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        target = work / f.relative_to(fixture)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    git_file = fixture / "git.json"
+    facts = json.loads(git_file.read_text()) if git_file.is_file() else {}
+    git = GitFacts(**{k: tuple(v) if isinstance(v, list) else v for k, v in facts.items()})
+    ctx = CheckContext(unit="independent_review", workdir=work, request={"task_id": "STANDIN-1"}, values={},
+                       artifacts={"independent_review": {"findings": "findings.md"}}, git=git,
+                       changed_paths=tuple(git.changed_paths), allow=SPEC.allow_commands, out_dir=work / ".out",
+                       deadline_at=time.monotonic() + 60)
+    res, _ = run_check(SPEC.units["independent_review"].gate, ctx)
+    return res
+
+
+@pytest.mark.parametrize("crlf", [False, True], ids=["lf", "crlf"])
+@pytest.mark.parametrize("fixture", sorted(p for p in (FIXTURES / "must-pass").iterdir() if p.is_dir()), ids=lambda p: p.name)
+def test_irv_ac15_ac16_ac17_a_must_pass_fixture_holds_a_base_and_the_change_it_names(
+        fixture: Path, crlf: bool, tmp_path: Path) -> None:
+    # IRV-AC15 (the recorded base is the check's), IRV-AC16 (a changed file has a change), IRV-AC17 (a base exists)
+    res = _fixture_run(fixture, tmp_path, crlf)
+    assert res.result == "PASS", res.evidence
+    assert not [f for f in res.findings if f.criterion == "ts-rev-form" and f.status == "fail"]
+    recorded = json.loads((fixture / "git.json").read_text())["base"]
+    assert (fixture / INPUTS / "base.txt").read_text().strip() == recorded
+
+
+@pytest.mark.parametrize("crlf", [False, True], ids=["lf", "crlf"])
+@pytest.mark.parametrize("name", sorted(FIXTURE_FINDING))
+def test_irv_ac15_ac16_ac17_a_must_fail_fixture_fails_on_the_finding_it_is_named_for(
+        name: str, crlf: bool, tmp_path: Path) -> None:
+    # IRV-AC15 (base-differs), IRV-AC16 (empty-change), IRV-AC17 (no-base)
+    res = _fixture_run(FIXTURES / "must-fail" / name, tmp_path, crlf)
+    assert res.result == "FAIL"
+    failing = [f for f in res.findings if f.criterion == "ts-rev-form" and f.status == "fail"]
+    named = [f for f in failing if FIXTURE_FINDING[name] in f.message]
+    assert len(named) == 1, res.evidence
+    if name == "base-differs":
+        recorded = (FIXTURES / "must-fail" / name / INPUTS / "base.txt").read_text().strip()
+        given = json.loads((FIXTURES / "must-fail" / name / "git.json").read_text())["base"]
+        assert recorded in named[0].message and given in named[0].message and recorded != given
+
+
+@pytest.mark.parametrize("crlf", [False, True], ids=["lf", "crlf"])
+@pytest.mark.parametrize("name", ["no-line", "file-missing"])
+def test_irv_ac15_ac16_ac17_the_older_must_fail_fixtures_fail_on_their_own_finding_only(
+        name: str, crlf: bool, tmp_path: Path) -> None:
+    # IRV-AC15 to IRV-AC17: a base and a change in order, so the form finding is the fixture's own
+    res = _fixture_run(FIXTURES / "must-fail" / name, tmp_path, crlf)
+    assert res.result == "FAIL"
+    messages = [f.message for f in res.findings if f.criterion == "ts-rev-form" and f.status == "fail"]
+    assert messages and not [m for m in messages if "base commit" in m or "no change" in m or "was built from" in m]
+
+
 def test_a_session_that_opened_a_hand_over_document_fails_naming_it(tmp_path: Path) -> None:
     # AC 1, AC 2, IRV-AC6 (IRV-B6)
     opened = [_call("read", "docs/plans/i1.plan.md"), _call("search", "docs/tasks/i1.handoff.md")]

@@ -454,6 +454,22 @@ def test_standin_files_leave_git_json_out_of_the_workspace(tmp_path: Path) -> No
     assert sorted(p.name for p in work.rglob("*") if p.is_file()) == ["notes.md"]
 
 
+def test_standin_files_leave_the_runs_own_record_folder_out_of_the_workspace(tmp_path: Path) -> None:
+    """EVS-AC7 (EVS-B9), SCF-B16: a fixture's `.tempergraph/` folder is the check's input record, never a step's output;
+    the stand-in step does not overwrite what the run wrote there, and the check fixture run still copies it."""
+    root = _git_fixture_root(tmp_path, None)
+    case = root / "evals" / "checks" / "u" / "must-pass" / "case" / ".tempergraph" / "record"
+    case.mkdir(parents=True)
+    (case / "base.txt").write_text("fixture-base\n", encoding="utf-8")
+    work = tmp_path / "ws"
+    work.mkdir()
+    selftest._standin_files(root, "u", {"notes": "file"}, work)
+    assert sorted(p.name for p in work.rglob("*") if p.is_file()) == ["notes.md"]
+    seen: list[dict[str, Any]] = []
+    selftest.fixture_runs(root, tmp_path / "work", _git_fixture_spec(seen))  # type: ignore[arg-type]
+    assert any("base.txt" in s["files"] for s in seen)
+
+
 def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None:
     """SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 rung 1 with AUT-B19, AUT-B20, AUT-B21: a vague final criterion fails the ladder before the comparison."""
     o = json.loads((pkg / "outcome.json").read_text())

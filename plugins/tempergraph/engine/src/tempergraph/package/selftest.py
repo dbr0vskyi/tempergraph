@@ -12,7 +12,6 @@ from typing import Any
 
 from tempergraph.contracts import WorkflowSpec
 
-
 GIT_FILE = "git.json"
 
 
@@ -187,8 +186,9 @@ def _standin_files(root: Path, unit: str, produces: dict[str, Any], workdir: Pat
     """Write the unit's must-pass fixture files into the workspace; each produced key and its path or value."""
     fixtures = _fixture_dirs(root, unit)["must-pass"]
     first = fixtures[0] if fixtures else None
-    files = _files(first) if first is not None else []
     base = first if first is not None and first.is_dir() else (first.parent if first is not None else workdir)
+    # a fixture's `.tempergraph/` folder is the run's own record a check reads, not a step's output: the run wrote it
+    files = [f for f in (_files(first) if first is not None else []) if f.relative_to(base).parts[0] != ".tempergraph"]
     by_stem = {f.stem: f for f in files}
     out: dict[str, str] = {}
     for key, kind in produces.items():
