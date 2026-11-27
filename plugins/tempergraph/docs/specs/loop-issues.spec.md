@@ -109,7 +109,7 @@ WHEN the loop opens an issue or adds a "seen again" comment for a finding that f
 
 ### ISS-B13 An issue gets a bounded number of "seen again" comments a day
 
-WHEN a finding would add a "seen again" comment to an open issue on which the loop has commented at least `seen_again.max_per_issue_per_day` times in the current UTC day (1, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)), as the `issue_commented` records of the workflow's runs show, THE loop SHALL replace the comment by one `loop_result` record with op `comment_capped` that holds the issue's number and no text.
+WHEN a finding would add a "seen again" comment to an open issue on which the loop has commented at least `seen_again.max_per_issue_per_day` times in the current UTC day (1, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)), as the `issue_commented` records of every workflow's runs show, THE loop SHALL replace the comment by one `loop_result` record with op `comment_capped` that holds the issue's number and no text.
 
 - GIVEN one open issue of a cause and three exits of the workflow in one UTC day, each with a finding of that cause WHEN each files THEN the issue gets one comment, its `issue_commented` record holds the issue's number, and each of the other two exits leaves one `comment_capped` record that holds that number and no text
 - GIVEN that issue commented on today WHEN the cause files at an exit on the next UTC day THEN the issue gets a second comment
