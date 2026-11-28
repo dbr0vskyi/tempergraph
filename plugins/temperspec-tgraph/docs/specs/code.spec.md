@@ -6,6 +6,19 @@ The whole plan, or the small change of the quick lane, is built test first, comm
 
 Part of the [overview](overview.spec.md). On the arm `single` and in the quick lane this step builds the whole change in one session. On the arm `phases` the [phase](phase.spec.md) items have built and committed each phase before it, and this step is the join: it builds only a row whose Completed cell is empty, ends the plan and writes the code report, and its gate checks the whole change and holds the lines back to the plan, discovery and triage steps ([phase coding](phase-coding.spec.md)).
 
+## Depends on
+
+- `plan.spec.md`: `chore` row kind (PLN-B1)
+
+## Behaviours
+
+### COD-B1 A file-deletion `chore` row is completed without pausing the run
+
+WHEN the code step runs with a plan that contains a `chore` row ([PLN-B1](plan.spec.md)) whose Change describes deleting a named file THE code step SHALL ensure the named file is absent in the committed result without raising a run pause for the removal.
+
+- GIVEN a plan with a `chore` row whose Change describes deleting "src/old.py" WHEN the code step ends THEN "src/old.py" is not present in the committed tree
+- GIVEN the same plan and step WHEN the code step ends THEN no pause was raised for the row's file removal
+
 ## 6. Acceptance criteria
 
 - [ ] ts-code-rows Every task row of the plan is marked completed with its date in a plan whose status is `completed`, checked before any command runs
@@ -35,3 +48,4 @@ Part of the [overview](overview.spec.md). On the arm `single` and in the quick l
 - [ ] ts-code-session The code gate does not run a verification command again when the session ran it through the check preview on the same tree content, though the session's files were committed after that run (CHK-B13)
 - [ ] ts-code-rerun The code gate runs a verification command again when any file of the tree changed after the session's run of it (CHK-B13)
 - [ ] ts-code-ran The code gate's evidence names each verification command of the plan that the gate ran or reused, with the word `reused` or `run`
+- COD-AC1 (COD-B1): A run whose plan contains a `chore` row describing deleting a named file ends with that file absent in the committed result and no run pause raised for the removal
