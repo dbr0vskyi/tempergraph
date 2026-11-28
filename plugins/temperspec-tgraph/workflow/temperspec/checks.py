@@ -1468,6 +1468,10 @@ def plan_check(ctx: Any) -> Any:
     if plan.complexity == "simple":  # a simple plan carries its task rows; a complex one gets them from expand
         found += _rows(ctx, plan, "ts-plan-form") + _commands(ctx, plan, "ts-plan-form")
     found += _marks(plan, "ts-plan-form", path, done=False, ctx=ctx)
+    found += [_find("fail", "ts-plan-form", "2. Phases", msg,
+                    "mark the row `chore` so the after-script handles the file operation, "
+                    "or describe the change without an explicit file operation")
+              for msg in fmt.forbidden_rows(plan)[:8]]
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-plan-form", path))
     if plan.complexity == "simple":

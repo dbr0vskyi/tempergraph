@@ -41,6 +41,15 @@ REQ_ID = re.compile(r"\bR\d+\b")
 # Words that say a requirement or a row does less than asked; the plan judge then looks at the scope.
 SCOPE_CUT = re.compile(r"\b(stub(?:s|bed)?|for now|placeholder|temporar(?:y|ily)|hard-?coded|v1 only|not yet|"
                        r"later (?:release|version|task)|follow-?up task|skip(?:ped)? for|mock(?:ed)? out|TODO)\b", re.I)
+# Operations a code session cannot perform; a non-`chore` row whose Change matches is refused by the plan check (PLN-B2).
+# Matches explicit file-op commands only: "Remove the duplicate check" does not match because there is no file path.
+FORBIDDEN_OP = re.compile(
+    r"\bDelete\s+\S+"          # Delete <path>
+    r"|\bgit\s+(?:rm|mv)\b"    # git rm / git mv
+    r"|\b(?:Move|Rename)\s+\S+.*\bto\s+\S+"  # Move/Rename <path> to <path>
+    r"|\.claude/",             # any path under .claude/
+    re.IGNORECASE,
+)
 # The signs that make a phase heavy, and so the plan `complex` (the plan rule lists the same four).
 HEAVY_SIGNS = ("refactor", "many-tests", "large-context", "long-running")
 ROUTES = ("discovery", "plan", "discovery-only", "quick")
@@ -792,6 +801,16 @@ def scope_cuts(plan: Plan) -> list[str]:
     out = [f"requirement {q}: \"{m.group(0)}\"" for q, text in plan.requirements.items() if (m := SCOPE_CUT.search(text))]
     out += [f"row `{r.id}`: \"{m.group(0)}\"" for r in plan.rows if (m := SCOPE_CUT.search(r.change))]
     return out
+
+
+def forbidden_rows(plan: Plan) -> list[str]:
+    """Non-`chore` rows whose Change cell describes a forbidden file operation (PLN-B2).
+    Returns one message per matching row; `chore` rows are exempt."""
+    return [
+        f"row `{r.id}` ({r.kind}): Change describes a forbidden file operation: {r.change[:80]!r}"
+        for r in plan.rows
+        if r.kind != "chore" and FORBIDDEN_OP.search(r.change)
+    ]
 
 
 def plan_facts(plan: Plan, reading_bytes: int = 0) -> dict[str, int]:
