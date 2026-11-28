@@ -15,7 +15,7 @@ from typing import Any
 
 from tempergraph.api import CheckFinding, checks
 
-from . import regeneration, review, routing
+from . import regeneration, removal, review, routing
 from . import specfmt as fmt
 
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "__pycache__", "evals", "fixtures", "dist",
@@ -1797,6 +1797,17 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
                  "were taken from a result recorded for the same tree")
 
 
+def _refused_removals(ctx: Any, criterion: str) -> tuple[list[CheckFinding], set[str]]:
+    """One environmental finding for each removal row the script refused (FRM-B6), naming the path and the reason,
+    and the ids of those rows, which the changed-file finding leaves out."""
+    refused = removal.refused(Path(ctx.workdir))
+    found: list[CheckFinding] = [
+        _Environmental(status="fail", criterion=criterion, place=str(r.get("path", "")),
+                       message=f"row `{r.get('row', '')}`: the file `{r.get('path', '')}` cannot be removed: "
+                               f"{r.get('reason', '')}") for r in refused]
+    return found, {str(r.get("row", "")) for r in refused}
+
+
 def code_check(ctx: Any) -> Any:
     """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
     ts-code-commit, ts-code-base, ts-code-touch, ts-code-passes, ts-code-nobase, ts-code-mixed, ts-code-evidence,
@@ -1814,7 +1825,9 @@ def code_check(ctx: Any) -> Any:
     In a preview (the session's own call of the check, before its report is handed over and before the commit
     that follows it) the marks still come first, and the commands run; the report is not read for failures and
     the uncommitted tree is no failure. The gate cannot see that run, so ts-code-previewed, ts-code-session and
-    ts-code-rerun are recorded n_a: the package's tests prove them."""
+    ts-code-rerun are recorded n_a: the package's tests prove them. A marked removal row whose file is still in the
+    workspace is no failure of ts-code-changed in a preview, because the workflow removes the file after the session
+    (FRM-B7); the gate fails it. A removal the script refused is an environmental finding (FRM-B6)."""
     plan, path = _plan(ctx)
     if plan is None:
         return checks.result([_find("fail", "ts-code-rows", path, "the plan cannot be read")])
@@ -1846,9 +1859,15 @@ def code_check(ctx: Any) -> Any:
                            "no base commit to compare with"))
     else:
         changed = set(ctx.git.changed_paths)
-        found += [_find("fail", "ts-code-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
-                        "change in the run", "make the row's change, or clear its mark and say why")
-                  for r in plan.rows if r.file and r.file not in changed][:10] or [_ok("ts-code-changed", path)]
+        env, skip = _refused_removals(ctx, "ts-code-changed")
+
+        def _pending(r: fmt.Row) -> bool:  # FRM-B7: removed after the session, so still there in a preview
+            return ctx.preview and r.kind == "remove" and (Path(ctx.workdir) / r.file.strip("`")).exists()
+
+        found += env + [_find("fail", "ts-code-changed", r.file, f"row `{r.id}` is marked completed but its file did "
+                              "not change in the run", "make the row's change, or clear its mark and say why")
+                        for r in plan.rows if r.file and r.file not in changed and r.id not in skip
+                        and not _pending(r)][:10] or [_ok("ts-code-changed", path)]
     verified, lines = _run_commands(ctx, plan, "ts-code-verify", compare=True)
     found += verified
     reading = _reading_lines(ctx)  # its git run is reused on an unchanged tree, and counted by the line below
@@ -1908,9 +1927,11 @@ def phase_check(ctx: Any) -> Any:
         changed = set(ctx.git.changed_paths)
         marked = [r for r, m in bad if m is not None]
         # KMK-B8: the paths count from the run's base commit, so a mark kept from an earlier visit stands by its file
-        found += [_find("fail", "ts-phs-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
-                        "change in the run", "make the row's change, or clear its mark and say why")
-                  for r in marked if r.file and r.file not in changed] or [_ok("ts-phs-changed", label)]
+        env, skip = _refused_removals(ctx, "ts-phs-changed")
+        found += env + [_find("fail", "ts-phs-changed", r.file, f"row `{r.id}` is marked completed but its file did "
+                              "not change in the run", "make the row's change, or clear its mark and say why")
+                        for r in marked if r.file and r.file not in changed and r.id not in skip
+                        ] or [_ok("ts-phs-changed", label)]
     found += _proof(ctx, phase, "ts-phs-proof")[0]
     found += _test_first(ctx, phase, "ts-phs-order")
     found.append(_committed(ctx, "ts-phs-commit"))

@@ -7,12 +7,13 @@ from __future__ import annotations
 import importlib
 import json
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 from tempergraph.package.loader import load_package
-from tempergraph.run.checks import CheckContext
+from tempergraph.run.checks import CheckContext, GitFacts, run_check
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = load_package(ROOT).spec
@@ -173,3 +174,72 @@ def test_frm_ac7_a_refusal_of_the_file_system_is_recorded_and_raises_nothing(
     got = _report(repo)
     assert [(r["row"], r["path"]) for r in got] == [("1.1", "src/old.py")]
     assert "Operation not permitted" in got[0]["reason"]
+
+
+# -- FRM-B6, FRM-B7: the gates read a removal -----------------------------------------------------------------
+
+DONE = ROOT / "evals" / "checks" / "code" / "must-pass" / "1-done"
+CHANGED = ("tests/test_config.py", "src/tool/config.py", "README.md")
+
+
+def _gate_ctx(tmp_path: Path, unit: str, rows: list[tuple[str, str, str]], changed: tuple[str, ...] = CHANGED,
+              refused: list[dict[str, str]] | None = None, preview: bool = False) -> Any:
+    """The fixture of a finished code step, with a phase 5 of removal rows added."""
+    for f in sorted(p for p in DONE.rglob("*") if p.is_file()):
+        (tmp_path / f.relative_to(DONE)).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / f.relative_to(DONE)).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+    text = (tmp_path / "phases.md").read_text(encoding="utf-8")
+    block = ("### Phase 5: Removal\n\nGoal: removal is in place.\nWeight: light\n\n"
+             "| Row | Kind | Req | File | Proves | Change | Completed |\n|---|---|---|---|---|---|---|\n"
+             + "".join(f"| {i} | remove | R1 | `{f}` | | Remove it | {m} |\n" for i, f, m in rows) + "\n")
+    (tmp_path / "phases.md").write_text(text.replace("## 3. Verification", block + "## 3. Verification"),
+                                        encoding="utf-8")
+    if refused is not None:
+        (tmp_path / ".tempergraph/removal").mkdir(parents=True)
+        (tmp_path / ".tempergraph/removal/report.json").write_text(json.dumps({"refused": refused}), encoding="utf-8")
+    artifacts = {"code": {"code_report": "code_report.md"}, "expand": {"phases": "phases.md"}}
+    return CheckContext(unit=unit, workdir=tmp_path, request={}, artifacts=artifacts, item=None,
+                        git=GitFacts(base="abc123", changed_paths=changed), values={"triage": {"route": "plan"}},
+                        allow=SPEC.allow_commands, preview=preview,
+                        out_dir=tmp_path.parent / f"{tmp_path.name}.out", deadline_at=time.monotonic() + 60)
+
+
+def _findings(ctx: Any, criterion: str) -> list[Any]:
+    res, _ = run_check(SPEC.units[ctx.unit].gate, ctx)
+    return [f for f in res.findings if f.criterion == criterion]
+
+
+@pytest.mark.parametrize(("unit", "criterion"), [("code", "ts-code-changed"), ("phase", "ts-phs-changed")])
+def test_frm_ac7_a_refused_removal_is_an_environmental_finding_naming_the_path(
+        tmp_path: Path, unit: str, criterion: str) -> None:
+    # FRM-AC7 (the check side), AC 2, AC 3
+    refused = [{"row": "5.1", "path": "src/pkg", "reason": "the path is a folder"}]
+    ctx = _gate_ctx(tmp_path, unit, [("5.1", "src/pkg", MARK)], refused=refused)
+    res, _ = run_check(SPEC.units[unit].gate, ctx)
+    failing = [f for f in res.findings if f.criterion == criterion and f.status == "fail"]
+    assert len(failing) == 1 and "src/pkg" in failing[0].message and "the path is a folder" in failing[0].message
+    assert "row `5.1`" in failing[0].message and res.environmental is True
+
+
+def test_frm_ac8_the_preview_fails_no_marked_removal_row_whose_file_is_still_there(tmp_path: Path) -> None:
+    # FRM-AC8, AC 3
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/old.py").write_text("x\n", encoding="utf-8")
+    rows = [("5.1", "src/old.py", MARK)]
+    preview = _findings(_gate_ctx(tmp_path, "code", rows, preview=True), "ts-code-changed")
+    assert [f for f in preview if f.status == "fail"] == []
+
+
+def test_frm_ac8_the_gate_fails_a_marked_removal_row_whose_file_is_still_there(tmp_path: Path) -> None:
+    # FRM-AC8, AC 3
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/old.py").write_text("x\n", encoding="utf-8")
+    gate = _findings(_gate_ctx(tmp_path, "code", [("5.1", "src/old.py", MARK)]), "ts-code-changed")
+    assert any(f.status == "fail" and "5.1" in f.message for f in gate)
+
+
+def test_frm_ac8_the_gate_passes_a_removal_row_whose_file_is_gone_and_listed_as_changed(tmp_path: Path) -> None:
+    # FRM-AC8, AC 3
+    ctx = _gate_ctx(tmp_path, "code", [("5.1", "src/old.py", MARK)], changed=(*CHANGED, "src/old.py"))
+    gate = _findings(ctx, "ts-code-changed")
+    assert [f.status for f in gate] == ["pass"]
