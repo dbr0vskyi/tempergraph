@@ -104,8 +104,9 @@ Weight: light
 - None
 """
 
-# The units needed for a plan-route single-arm run, following test_code_mode.py's pattern.
-_UNITS = ("triage", "plan", "code_mode", "code", "regeneration", "code_join", "independent_review")
+# The units needed for a plan-route run, following test_code_mode.py's pattern; expand and phase are
+# included so code_mode's arms are valid, though single arm is forced so they are never entered.
+_UNITS = ("triage", "plan", "code_mode", "expand", "phase", "code", "regeneration", "code_join", "independent_review")
 
 MET = ("Reviewed.\n```json\n"
        + json.dumps({"criteria": [{"n": 1, "status": "MET", "evidence": "stand-in",
