@@ -1271,6 +1271,34 @@ def _rows(ctx: Any, plan: fmt.Plan, criterion: str, rows_criterion: str | None =
     found = [_find("fail", rows_criterion or criterion, f"phase {p}", "the phase has no task row",
                    f"add a table `{ROW_TABLE}`") for p in empty]
     found += [_find("fail", criterion, "2. Phases", b, "put the test row first and name its criterion") for b in bad[:8]]
+    return found + _removal_refusals(ctx, plan, criterion)
+
+
+def _removal_refusals(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+    """PRW-B3 to PRW-B5: rows for a file under `.claude/`, and removal rows whose path is unusable, is no file of the
+    run's base commit (the files of the workspace when the run has no base commit) or is shared with another row.
+    Every refusal is its own finding, so the limit of eight shown order problems does not cut them."""
+    found = [_find("fail", criterion, "2. Phases", msg, fix) for msg, fix in fmt.removal_problems(plan)]
+    base = ctx.git.base if getattr(ctx, "git", None) is not None else ""
+    for r in plan.rows:
+        path = r.file.replace("\\", "/")
+        if r.kind != "remove" or not r.file or path.startswith("/") or ".." in path.split("/"):
+            continue
+        if base:
+            lines = _git_lines(ctx, f"git show {base}:{path}")
+            if lines is None:
+                state = "file"  # a failing show means no file of the base commit
+                held = False
+            else:
+                held = not (lines and lines[0].startswith("tree "))
+                state = "folder" if not held else "file"
+        else:
+            target = Path(ctx.workdir) / path
+            held, state = target.is_file(), ("folder" if target.is_dir() else "file")
+        if not held:
+            what = "a folder" if state == "folder" else "no file of the run's base commit"
+            found.append(_find("fail", criterion, "2. Phases", f"removal row `{r.id}` names `{r.file}`, which is {what}",
+                               "name a file that the base commit holds; a folder is removed by one row for each file"))
     return found
 
 
@@ -1538,6 +1566,7 @@ def expand_check(ctx: Any) -> Any:
     found += rows or [_ok("ts-exp-rows", path)]
     note_text, note_path = _read(ctx, "triage_note")
     tests = [_find("fail", "ts-exp-tests", path, b, "put the test row first and name its criterion") for b in bad[:8]]
+    tests += _removal_refusals(ctx, plan, "ts-exp-tests")
     if note_text is None:
         tests.append(_find("fail", "ts-exp-tests", note_path, "the triage note cannot be read"))
     else:

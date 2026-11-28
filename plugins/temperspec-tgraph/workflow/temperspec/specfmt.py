@@ -33,7 +33,7 @@ CONTEXT_START = "<!-- temperspec:start -->"
 CONTEXT_END = "<!-- temperspec:end -->"
 DELIVER = ("code", "docs")
 COMPLEXITY = ("simple", "complex")
-ROW_KINDS = ("test", "code", "docs", "chore")
+ROW_KINDS = ("test", "code", "docs", "chore", "remove")
 PLAN_STATUS = ("planned", "in-progress", "completed")
 ROW_COLUMNS = ("row", "kind", "req", "file", "proves", "change", "completed")
 DONE_MARK = re.compile(r"^[✓✔]\s*(\d{4}-\d{2}-\d{2})$")
@@ -822,6 +822,8 @@ def row_problems(plan: Plan) -> tuple[list[str], list[str]]:
     for r in plan.rows:
         if not r.id or r.kind not in ROW_KINDS or not r.file:
             bad.append(f"row `{r.id or '?'}` of `{r.phase}` needs an id, a kind of {'/'.join(ROW_KINDS)} and a file")
+        elif r.kind == "remove":
+            continue  # PRW-B2: a removal row asks for no proof and no test row before it
         elif r.kind == "test":
             if ROW_PROVES.search(r.proves):
                 tested.add(r.phase)
@@ -830,6 +832,30 @@ def row_problems(plan: Plan) -> tuple[list[str], list[str]]:
         elif r.kind == "code" and r.phase not in tested:
             bad.append(f"code row `{r.id}` has no test row before it in `{r.phase}`")
     return empty, bad
+
+
+def removal_problems(plan: Plan) -> list[tuple[str, str]]:
+    """(message, fix) pairs, each naming its row: a row of any kind for a file under `.claude/` (PRW-B3), a removal
+    row whose path is absolute or has a parent element (PRW-B4), and a removal row whose file another row names
+    (PRW-B5)."""
+    out: list[tuple[str, str]] = []
+    for r in plan.rows:
+        path = r.file.replace("\\", "/")
+        if path.startswith(".claude/"):
+            out.append((f"row `{r.id}` names `{r.file}`, a file under `.claude/`, which no row may name",
+                        "remove the row and name the change a person makes there in the hand-off section"))
+        if r.kind == "remove" and r.file and (path.startswith("/") or ".." in path.split("/")):
+            out.append((f"removal row `{r.id}` names `{r.file}`, an absolute path or one with a parent element",
+                        "name the file by its path from the repository root"))
+    removals = [r for r in plan.rows if r.kind == "remove" and r.file]
+    for r in removals:
+        for other in plan.rows:
+            if other is r or other.file != r.file or (other.kind == "remove" and other.id < r.id):
+                continue
+            out.append((f"removal row `{r.id}` and row `{other.id}` both name `{r.file}`",
+                        "give a removed file no other row; a file that moves is a removal row for the old path "
+                        "and a row of another kind for the new path"))
+    return out
 
 
 def task_criteria(cell: str) -> set[int]:
