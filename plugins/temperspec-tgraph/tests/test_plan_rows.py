@@ -168,3 +168,24 @@ def test_ten_refused_rows_are_all_named_with_a_fix_text_each(tmp_path: Path) -> 
             hit = _names(failing, f"1.{n}")
             assert hit and all(f.fix for f in hit), n
     assert len({f.fix for f in _names(failing, "1.2")}) >= 1
+
+
+def _said(*parts: str) -> str:
+    return " ".join(ROOT.joinpath(*parts).read_text(encoding="utf-8").split()).lower()
+
+
+def test_prw_ac6_plan_expand_and_rule_name_the_remove_kind_and_the_moved_file() -> None:
+    # PRW-AC6, AC 1
+    for parts in (("prompts", "plan.md"), ("prompts", "expand.md"), ("rules", "plan.rule.md")):
+        text = _said(*parts)
+        assert "a file that goes away is a row of kind `remove`" in text, parts
+        assert ("a moved file is a `remove` row for its old path and a row of another kind for its new path"
+                in text), parts
+
+
+def test_prw_ac7_plan_and_expand_say_a_file_under_claude_gets_no_row() -> None:
+    # PRW-AC7, AC 1
+    for parts in (("prompts", "plan.md"), ("prompts", "expand.md")):
+        text = _said(*parts)
+        assert "no row names a file whose path starts with `.claude/`" in text, parts
+        assert "the plan's hand-off section names the change a person makes" in text, parts

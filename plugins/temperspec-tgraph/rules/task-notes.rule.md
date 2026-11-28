@@ -75,6 +75,7 @@ A small fix goes from triage straight to code, with no discovery and no plan. A 
 | Behaviours and acceptance criteria of specs that must change | none. A bug where the code disagrees with a spec qualifies: the spec is already right |
 | Acceptance criteria of the task | at most 3 |
 | Code files to change, beside their tests | at most 2 |
+| Files removed or moved | none: a task whose change removes or moves a file takes the route `plan` |
 
 A quick note ends with a Change section, which is the plan of the code step:
 

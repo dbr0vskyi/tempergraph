@@ -24,6 +24,8 @@ Plan: `{plan}`
 - Edit only the task tables under the phases (the marks of the rows you keep stay as they are) and the Verification section. Sections 0, 1 and 4, the phase names, goals and weights stay as they are, and the status stays `planned`.
 - If the design cannot be expanded as written (a phase cannot be done, a requirement has no place, a spec it rests on is wrong), do not repair it: say which earlier output is at fault and why.
 - Do not edit a spec or code.
+- A file that goes away is a row of kind `remove`. A moved file is a `remove` row for its old path and a row of another kind for its new path.
+- No row names a file whose path starts with `.claude/`: a session cannot write there. The plan's hand-off section names the change a person makes in such a file. When the plan asks a row for such a file, say that the plan is the earlier output at fault instead of writing the row.
 - The outcome revision, the digests of a stamp and a diagram are written by the regeneration and never edited by hand: no row edits them.
 - Do not run git. The engine commits your file when you finish.
 - Report what you did. Do not say the rows are correct: the gate decides.

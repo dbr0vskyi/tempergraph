@@ -243,3 +243,32 @@ def test_frm_ac8_the_gate_passes_a_removal_row_whose_file_is_gone_and_listed_as_
     ctx = _gate_ctx(tmp_path, "code", [("5.1", "src/old.py", MARK)], changed=(*CHANGED, "src/old.py"))
     gate = _findings(ctx, "ts-code-changed")
     assert [f.status for f in gate] == ["pass"]
+
+
+def _said(*parts: str) -> str:
+    return " ".join(ROOT.joinpath(*parts).read_text(encoding="utf-8").split()).lower()
+
+
+def test_frm_ac9_prompts_and_rule_say_when_to_mark_a_removal_row() -> None:
+    # FRM-AC9, AC 2
+    for parts in (("prompts", "code.md"), ("prompts", "phase.md"), ("rules", "plan.rule.md")):
+        assert "mark a removal row once no other row of the plan needs its file" in _said(*parts), parts
+    for parts in (("prompts", "code.md"), ("prompts", "phase.md")):
+        text = _said(*parts)
+        assert "the session deletes and moves no file" in text, parts
+        assert "the workflow removes the file of a marked removal row after the session ends" in text, parts
+
+
+def test_frm_ac10_triage_rule_and_code_prompt_keep_a_removal_out_of_the_quick_lane() -> None:
+    # FRM-AC10, AC 2
+    for parts in (("prompts", "triage.md"), ("rules", "task-notes.rule.md")):
+        assert ("a task whose change removes or moves a file takes the route `plan`" in _said(*parts)), parts
+    code = _said("prompts", "code.md")
+    assert ("a quick-lane change that needs a file removed or moved ends with "
+            "`upstream triage: the task is larger than the quick lane`") in code
+
+
+def test_frm_ac2_the_judges_say_the_change_of_a_removal_row_is_the_files_absence() -> None:
+    # AC 2
+    for name in ("code.md", "phase.md"):
+        assert "the change of a removal row is the file's absence" in _said("judges", name), name
