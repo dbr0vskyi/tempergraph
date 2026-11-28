@@ -272,3 +272,21 @@ def test_frm_ac2_the_judges_say_the_change_of_a_removal_row_is_the_files_absence
     # AC 2
     for name in ("code.md", "phase.md"):
         assert "the change of a removal row is the file's absence" in _said("judges", name), name
+
+
+def test_outcome_json_mirrors_the_three_edited_criteria_with_a_new_revision() -> None:
+    # AC 1, AC 2, AC 3
+    import re
+
+    outcome = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
+    rows = {c["id"]: c for io in outcome["intermediate"].values() for c in io["criteria"]}
+    for cid, spec in (("ts-plan-form", "plan.spec.md"), ("ts-exp-tests", "expand.spec.md"),
+                      ("ts-code-previewed", "code.spec.md")):
+        text = (ROOT / "docs" / "specs" / spec).read_text(encoding="utf-8")
+        found = re.search(rf"^- \[ \] {cid} (.+)$", text, re.MULTILINE)
+        assert found is not None and rows[cid]["text"] == found.group(1), cid
+    assert ("a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4)"
+            in rows["ts-plan-form"]["text"])
+    last = outcome["revisions"][-1]
+    assert last["revision"] == outcome["revision"]
+    assert all(cid in last["note"] for cid in ("ts-plan-form", "ts-exp-tests", "ts-code-previewed"))
