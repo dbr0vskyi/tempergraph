@@ -8,7 +8,7 @@ Part of the [overview](overview.spec.md).
 
 ## 6. Acceptance criteria
 
-- [ ] ts-plan-form The plan has each section the plan rule requires, with the status `planned` and a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4)
+- [ ] ts-plan-form The plan has each section the plan rule requires, with the status `planned` and a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4), and every task row of a simple plan passes the row rules of PRW-B1 to PRW-B5
 - [ ] ts-plan-trace Every acceptance criterion in the triage note is named by at least one plan requirement, and in a simple plan by a proof row with its test file and command
 - [ ] ts-plan-links In a simple plan every task row names a requirement of the plan, every requirement is named by a row, and every document under Docs to update is the file of a docs row
 - [ ] ts-plan-size The complexity value matches the plan's measured signs
