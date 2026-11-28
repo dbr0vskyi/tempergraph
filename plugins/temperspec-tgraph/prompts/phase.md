@@ -13,7 +13,7 @@ Your phase, `{item_id}`:
 ## Procedure
 
 1. Read the rows of your phase in the plan, then the triage note. Read the files the rows name before you change them. Do not read or build the rows of another phase. Set the plan's `status` to `in-progress` when it is `planned`.
-2. Build only the rows of the phase whose Completed cell is empty. Leave the mark of every other row as it is: a row with a mark was built by an earlier visit.
+2. Build only the rows of the phase whose Completed cell is empty. Leave the mark of every other row as it is: a row with a mark was built by an earlier visit. Mark a removal row once no other row of the plan needs its file. The session deletes and moves no file: the workflow removes the file of a marked removal row after the session ends.
 3. For a test row, write the phase's tests first and see them fail for the right reason. The test carries the id its row names under Proves, in its name or in a comment on it: the spec's id (`SES-AC1`), or `AC <n>` of the task. A test that carries a criterion is never skipped.
 4. For a code row, make the smallest change in the named file that makes the phase's tests pass.
 5. For a docs row, edit the named document. A spec is edited only where the plan says a behaviour or a criterion changes.

@@ -31,6 +31,8 @@ The task:
 - This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write the plan and no other file. Do not edit a spec, a decision record or code.
 - A plan adds no behaviour that no spec states.
+- A file that goes away is a row of kind `remove`. A moved file is a `remove` row for its old path and a row of another kind for its new path.
+- No row names a file whose path starts with `.claude/`: a session cannot write there. The plan's hand-off section names the change a person makes in such a file.
 - The outcome revision, the digests of a stamp and a diagram are written by the regeneration and never edited by hand: no row edits them.
 - Do not run git. The engine commits your file when you finish.
 - Read inside this working directory only.

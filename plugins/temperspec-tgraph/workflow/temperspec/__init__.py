@@ -19,6 +19,8 @@ parallel-reading). Then come `owner_questions` and `ask_route`: a run whose list
 `ask_owner`, the one pause (a 24 hour deadline that takes the defaults of the open questions), and any other run
 straight on (spec owner-questions; decision record `the-owner-is-asked-once-after-the-reading-sessions`). The one
 writing session `discovery` follows, briefed with the findings and the owner's answers.
+The `after` list of `code` and of each `phase` item starts with the script `removal`, which removes the file of each
+marked removal row before the commit and the gate, with no session (spec file-removal).
 After `code`, and before `code_join`, the script unit `regeneration` starts no session: it runs the commands the repository
 declares in `tempergraph.regenerations.json` for the generated files whose inputs the run changed and commits what they
 wrote (spec regeneration).
@@ -79,6 +81,7 @@ from .checks import (
     triage_check,
 )
 from .regeneration import regenerate, regeneration_check
+from .removal import remove_marked
 from .routing import (
     commit_step,
     finalize,
@@ -144,6 +147,11 @@ SIZING = {
 def _sized(unit: str) -> dict[str, Any]:
     effort, why = SIZING[unit][0]
     return {"model": MODEL, "effort": effort, "sizing": why}
+
+
+def _removal() -> Any:
+    return Script(call=remove_marked, name="removal", side_effects="workspace",
+                  summary="Remove the files of marked removal rows")
 
 
 def _commit() -> Any:
@@ -269,13 +277,15 @@ def workflow() -> Any:
                 step=Step(
                     prompt=text("prompts/phase.md"), summary="Build one phase of the plan, tests first, and commit it",
                     **_sized("phase"), tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=3600,
-                    produces={"phase_note": Value(max_chars=1500)}, after=[_commit()],
+                    # FRM-B2 to FRM-B6: the file of a marked removal row goes before the commit and the gate
+                    produces={"phase_note": Value(max_chars=1500)}, after=[_removal(), _commit()],
                     gate=Gate(check=phase_check, judge=_judge("phase", ["phases", "triage_note"])))),
             "code": Step(
                 prompt=text("prompts/code.md"), summary="Build the plan test first in one session",
                 **_sized("code"), tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=5400,
                 produces={"code_report": "file", "tests_passed": Value(choices=["yes", "no"])},
-                after=[_commit()], self_check=True,
+                # FRM-B2 to FRM-B6: the file of a marked removal row goes before the commit and the gate
+                after=[_removal(), _commit()], self_check=True,
                 gate=Gate(check=code_check, check_timeout_s=1800,
                           # A read of up to 50 source files (the reading budget of the check evidence) may not fit
                           # the engine's default judge time of 600 s, and a judge timeout escalates (JDG-B4).
