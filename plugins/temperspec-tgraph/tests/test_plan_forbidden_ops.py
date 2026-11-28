@@ -215,3 +215,68 @@ def test_forbidden_rows_function_returns_messages_for_non_chore_rows(tmp_path: P
     assert "1.2" in fmt.forbidden_rows(plan_claude)[0]
     assert fmt.forbidden_rows(plan_chore) == [], "chore rows must not trigger a finding"
     assert fmt.forbidden_rows(plan_remove) == [], "Remove without a path must not trigger a finding"
+
+
+def test_plan_check_passes_a_plan_with_a_chore_only_phase(tmp_path: Path) -> None:
+    # PLN-AC1: a plan whose sole task row in a phase is a `chore` row passes the full plan check;
+    # neither row-validity nor phase-completeness raises a finding for the chore-only phase
+    plan_text = """\
+---
+task: STANDIN-1
+complexity: simple
+status: planned
+specs: []
+---
+
+# Plan: report a missing config file
+
+## 0. Hand-off
+
+- Triage note: `triage_note.md`
+- Why this design: the file is read in one place.
+
+## 1. Requirements
+
+| Req | Criteria | Statement | Spec ids |
+|---|---|---|---|
+| R1 | AC 1 | One line on standard error names the missing file | |
+| R2 | AC 2 | The run ends with exit code 2 when the file is missing | |
+
+## 2. Phases
+
+### Phase 1: Cleanup
+
+Goal: a stale generated file is removed.
+Weight: light
+
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 1.1 | chore | R1 | `src/old.py` | | Delete src/old.py | |
+
+### Phase 2: Missing config file
+
+Goal: a start with no `tool.toml` prints one line and exits with code 2.
+Weight: light
+
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 2.1 | test | R1 | `tests/test_config.py` | AC 1 | A start with no config file prints one line | |
+| 2.2 | test | R2 | `tests/test_config.py` | AC 2 | A start with no config file exits with code 2 | |
+| 2.3 | code | R1, R2 | `src/tool/config.py` | | Report the missing file and exit with code 2 | |
+
+## 3. Verification
+
+- `git --version`
+
+| Criterion | Test | Command |
+|---|---|---|
+| AC 1 | `tests/test_config.py` | `git --version` |
+| AC 2 | `tests/test_config.py` | `git --version` |
+
+## 4. Docs to update
+
+- None
+"""
+    ctx = _setup(tmp_path / "e", plan_text)
+    res, _ = run_check(SPEC.units["plan"].gate, ctx)
+    assert res.result != "FAIL", res.evidence
